@@ -1,0 +1,5 @@
+.env
+__pycache__/
+bin
+prd_dwg_ai_estimator.md
+.venv/
