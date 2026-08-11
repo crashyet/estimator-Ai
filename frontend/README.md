@@ -1,16 +1,79 @@
-# React + Vite
+# 📱 Frontend App - AI Quantity Estimator
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Interactive single-page dashboard built with **React** and **Vite** for uploading DED/CAD engineering drawings, managing project details, visualizing auto-calculated Bill of Quantities (BOQ / RAB), and generating reports.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🛠️ Tech Stack & Dependencies
 
-## React Compiler
+- **Framework**: React 18 + Vite
+- **Styling**: Tailwind CSS / Vanilla CSS & Lucide Icons (`Icons.jsx`)
+- **HTTP Client**: Native Fetch API / Axios (`services/api.js`)
+- **State Management**: React State (`useState`, `useEffect`) & `localStorage` persistence
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## 📂 Folder & File Structure
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```text
+frontend/
+├── public/                 # Static public assets
+├── src/
+│   ├── assets/             # Images and design assets
+│   ├── components/         # Reusable UI components
+│   │   ├── Navbar.jsx      # Top navigation bar
+│   │   └── Icons.jsx       # Custom SVG icon set
+│   ├── pages/              # Application views & routes
+│   │   ├── Project.jsx     # File upload & project creation page
+│   │   ├── Anggaran.jsx    # Interactive RAB / WBS table manager
+│   │   └── Laporan.jsx     # Cost summary and export report page
+│   ├── services/
+│   │   └── api.js          # API service layer & data mapping
+│   ├── App.jsx             # Main app component & simple router
+│   ├── main.jsx            # Application entry point
+│   └── index.css           # Global CSS styles
+├── .env                    # Environment variables (VITE_API_URL)
+├── .env.example            # Environment template
+├── vite.config.js          # Vite configuration
+└── package.json            # NPM dependencies & scripts
+```
+
+---
+
+## ⚙️ Environment Variables (`.env`)
+
+Configure the backend proxy or API endpoint in `frontend/.env`:
+
+```ini
+# API Service URL (Points to CodeIgniter 4 Backend)
+VITE_API_URL=http://localhost:8080/api/rab/analyze-image
+```
+
+---
+
+## 🚀 Running locally
+
+### 1. Install Dependencies
+```bash
+npm install
+```
+
+### 2. Start Development Server
+```bash
+npm run dev
+```
+The app will run at `http://localhost:5173`.
+
+### 3. Build for Production
+```bash
+npm run build
+```
+
+---
+
+## 📡 API Integration Layer (`src/services/api.js`)
+
+The frontend communicates with the backend via `uploadDEDFile()` in `api.js`:
+- Sends `multipart/form-data` containing `name`, `client`, and `ded_file`.
+- Maps raw backend response into UI-compatible flat section/item structures (`mapToFrontendFormat`).
+- Handles response caching in `localStorage` for offline access and page navigation between `Project.jsx`, `Anggaran.jsx`, and `Laporan.jsx`.

@@ -9,3 +9,8 @@ testing/
 scrapping_ahsp/
 backup_api/
 api_v1/
+
+# Environment files
+.env
+.env.*
+!.env.example

@@ -15,9 +15,9 @@ from schemas import DynamicTakeoffResponse
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-# Default API key and settings
-DEFAULT_GEMINI_KEY = os.getenv("GEMINI_API_KEY","YOUR_API_KEY")
-DEFAULT_MODEL = os.getenv("GEMINI_MODEL","YOUR_MODEL")
+# Default API key and settings from environment
+DEFAULT_GEMINI_KEY = os.getenv("GEMINI_API_KEY", "")
+DEFAULT_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 class CADLLMEstimator:
     """
@@ -26,8 +26,8 @@ class CADLLMEstimator:
     """
 
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
-        self.api_key = api_key or os.getenv("GEMINI_API_KEY") or DEFAULT_GEMINI_KEY
-        self.model = model or os.getenv("GEMINI_MODEL") or DEFAULT_MODEL
+        self.api_key = api_key or DEFAULT_GEMINI_KEY
+        self.model = model or DEFAULT_MODEL
         
         if self.api_key:
             try:
@@ -36,6 +36,7 @@ class CADLLMEstimator:
                 logger.warning(f"Could not initialize genai.Client: {e}")
                 self.client = None
         else:
+            logger.warning("GEMINI_API_KEY is not set in environment (.env). AI requests will fail until an API key is provided.")
             self.client = None
 
     def analyze_cad_payload(self, text_payload: str, project_name: str = "Proyek CAD DWG", client_name: str = "Client") -> DynamicTakeoffResponse:
@@ -107,50 +108,6 @@ Contoh Struktur JSON Output:
           "unit": "m2",
           "confidence": "high",
           "warning_note": "Berdasarkan luas bangunan denah"
-        }}
-      ]
-    }},
-    {{
-      "section": {{
-        "id": "sec-B",
-        "type": "section",
-        "code": "B",
-        "name": "PEKERJAAN TANAH"
-      }},
-      "items": [
-        {{
-          "id": "item-B-1",
-          "type": "item",
-          "sectionCode": "B",
-          "no": 1,
-          "code": "B.1",
-          "name": "Pekerjaan Galian Tanah Pondasi",
-          "volume": 35.5,
-          "unit": "m3",
-          "confidence": "high",
-          "warning_note": "Panjang pondasi x lebar galian x kedalaman galian"
-        }}
-      ]
-    }},
-    {{
-      "section": {{
-        "id": "sec-C",
-        "type": "section",
-        "code": "C",
-        "name": "PEKERJAAN PONDASI"
-      }},
-      "items": [
-        {{
-          "id": "item-C-1",
-          "type": "item",
-          "sectionCode": "C",
-          "no": 1,
-          "code": "C.1",
-          "name": "Pasangan Pondasi Batu Belah 1:4",
-          "volume": 18.2,
-          "unit": "m3",
-          "confidence": "high",
-          "warning_note": "Volume pondasi batu kali sesuai denah"
         }}
       ]
     }}
@@ -280,13 +237,16 @@ Tugas QS:
                 logger.warning(f"Gemini SDK direct PDF call failed: {sdk_err}. Falling back to REST API...")
 
         # 2. Direct REST Call Fallback with inlineData
-        return self._analyze_pdf_via_rest(pdf_bytes, prompt_content, system_prompt, project_name, client_name)
+        return self._analyze_pdf_via_rest(pdf_bytes, filename, project_name, client_name)
 
-    def _analyze_pdf_via_rest(self, pdf_bytes: bytes, prompt_content: str, system_prompt: str, project_name: str, client_name: str) -> DynamicTakeoffResponse:
+    def _analyze_pdf_via_rest(self, pdf_bytes: bytes, filename: str = "document.pdf", project_name: str = "Proyek CAD PDF", client_name: str = "Client") -> DynamicTakeoffResponse:
         """Fallback REST request to Gemini API with direct PDF inlineData."""
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
         
         pdf_b64 = base64.b64encode(pdf_bytes).decode("utf-8")
+        prompt_content = f"Judul Gambar PDF: '{project_name}' (File: {filename})\nKlien: '{client_name}'"
+        system_prompt = "You are a professional Senior Quantity Surveyor (QS) in Indonesia."
+        
         payload = {
             "contents": [{
                 "role": "user",
@@ -330,7 +290,7 @@ Tugas QS:
 
     @staticmethod
     def _clean_and_parse_json(text: str) -> dict:
-        """Clean markdown wrapping and auto-repair broken JSON response."""
+        """Clean markdown wrapping, auto-repair broken JSON response, and normalize schema fields."""
         clean = text.strip()
         clean = re.sub(r'<think>.*?</think>', '', clean, flags=re.DOTALL).strip()
         
@@ -338,22 +298,36 @@ Tugas QS:
         if match:
             clean = match.group(1)
 
+        data = None
         try:
-            return json.loads(clean)
+            data = json.loads(clean)
         except json.JSONDecodeError:
-            pass
+            start = clean.find('{')
+            end = clean.rfind('}')
+            if start != -1 and end != -1 and end > start:
+                cand = clean[start:end+1]
+                try:
+                    data = json.loads(cand)
+                except json.JSONDecodeError:
+                    pass
 
-        start = clean.find('{')
-        end = clean.rfind('}')
-        if start != -1 and end != -1 and end > start:
-            cand = clean[start:end+1]
-            try:
-                return json.loads(cand)
-            except json.JSONDecodeError:
-                pass
+        if not isinstance(data, dict):
+            data = {}
 
-        return {
-            "project": {"title": "Analisis DWG CAD", "client": "Client", "status": "Perencanaan"},
-            "project_summary": "CAD Data extracted",
-            "wbs_sections": []
-        }
+        # Normalize schema for DynamicTakeoffResponse
+        if "project" not in data or not isinstance(data.get("project"), dict):
+            project_title = data.get("project_name") or data.get("title") or "Analisis Estimator CAD/PDF"
+            client_name = data.get("client_name") or data.get("client") or "Client"
+            data["project"] = {
+                "title": project_title,
+                "client": client_name,
+                "status": "Perencanaan"
+            }
+
+        if "project_summary" not in data or not data.get("project_summary"):
+            data["project_summary"] = data.get("summary") or "Ringkasan takeoff material otomatis dari AI."
+
+        if "wbs_sections" not in data or not isinstance(data.get("wbs_sections"), list):
+            data["wbs_sections"] = []
+
+        return data

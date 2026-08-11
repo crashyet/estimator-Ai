@@ -25,10 +25,15 @@ app = FastAPI(
     version="2.0.0"
 )
 
+# Environment configurations
+DEFAULT_HOST = os.getenv("HOST", "0.0.0.0")
+DEFAULT_PORT = int(os.getenv("PORT", 8200))
+ALLOWED_ORIGINS = [origin.strip() for origin in os.getenv("ALLOWED_ORIGINS", "*").split(",")]
+
 # CORS setup for CI4 & React Frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -118,7 +123,7 @@ def main_cli():
     parser.add_argument("--client", default="Client", help="Client Name")
     parser.add_argument("--excel", help="Output Excel file path (.xlsx)")
     parser.add_argument("--json", help="Output JSON file path (.json)")
-    parser.add_argument("--port", type=int, default=8200, help="API server port")
+    parser.add_argument("--port", type=int, default=DEFAULT_PORT, help=f"API server port (default: {DEFAULT_PORT})")
 
     args = parser.parse_args()
 
@@ -161,11 +166,11 @@ def main_cli():
             print(f"Exported to JSON: {args.json}")
 
     elif args.command == "server":
-        uvicorn.run("main:app", host="0.0.0.0", port=args.port, reload=True)
+        uvicorn.run("main:app", host=DEFAULT_HOST, port=args.port, reload=True)
 
 if __name__ == "__main__":
     import sys
     if len(sys.argv) > 1 and sys.argv[1] in ["analyze", "server"]:
         main_cli()
     else:
-        uvicorn.run("main:app", host="0.0.0.0", port=8200, reload=True)
+        uvicorn.run("main:app", host=DEFAULT_HOST, port=DEFAULT_PORT, reload=True)

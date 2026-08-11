@@ -1,4 +1,5 @@
-const API_URL = 'http://localhost:8080/api/rab/analyze-image';
+const API_URL = import.meta.env.VITE_API_URL;
+
 
 export const mapToFrontendFormat = (projectName, clientName, llmData) => {
   // If the backend response is already pre-formatted in the resoon_api.json structure

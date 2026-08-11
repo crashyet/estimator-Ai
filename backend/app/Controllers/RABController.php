@@ -17,7 +17,8 @@ class RabController extends ResourceController
             ], 400);
         }
 
-        $pythonUrl = 'http://192.168.1.41:8200/api/rab/analyze-json'; 
+        $pythonBaseUrl = rtrim(env('PYTHON_API_URL'), '/');
+        $pythonUrl = $pythonBaseUrl . '/api/rab/analyze-json'; 
 
         $client = \Config\Services::curlrequest();
 
@@ -99,8 +100,9 @@ class RabController extends ResourceController
         $projectName = $this->request->getPost('name') ?? 'Proyek BOQ Otomatis';
         $clientName  = $this->request->getPost('client') ?? 'Klien Internal';
 
-        // 3. Arahkan ke URL FastAPI Python
-        $pythonUrl = 'http://192.168.1.41:8200/api/rab/analyze-image';
+        // 3. Arahkan ke URL FastAPI Python (dinamis via .env)
+        $pythonBaseUrl = rtrim(env('PYTHON_API_URL'), '/');
+        $pythonUrl = $pythonBaseUrl . '/api/rab/analyze-image';
 
         $client = \Config\Services::curlrequest();
 
