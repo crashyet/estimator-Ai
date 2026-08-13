@@ -122,7 +122,7 @@ python3 main.py server --port 8200
 ### 2. Run CodeIgniter 4 Backend (`backend`)
 ```bash
 cd backend
-php spark serve --port 8080
+php -d upload_max_filesize=500M -d post_max_size=500M -d memory_limit=1024M -t public -S 0.0.0.0:8080 public/index.php
 ```
 
 ### 3. Run React Frontend (`frontend`)

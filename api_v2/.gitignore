@@ -1,5 +1,9 @@
 .env
 __pycache__/
-bin
-prd_dwg_ai_estimator.md
 .venv/
+build/
+tests/
+dist/
+*.spec
+bin/rvt2ifc_src.py
+prd*.md
