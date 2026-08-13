@@ -17,8 +17,9 @@ class RabController extends ResourceController
             ], 400);
         }
 
-        $pythonBaseUrl = rtrim(env('PYTHON_API_URL'), '/');
-        $pythonUrl = $pythonBaseUrl . '/api/rab/analyze-json'; 
+        $envUrl = env('PYTHON_API_URL') ?: 'http://192.168.1.41:8200';
+        $pythonBaseUrl = rtrim($envUrl, '/');
+        $pythonUrl = $pythonBaseUrl . '/api/estimate'; 
 
         $client = \Config\Services::curlrequest();
 
@@ -37,7 +38,7 @@ class RabController extends ResourceController
             return $this->respond([
                 'success' => false,
                 'message' => 'Tidak dapat terhubung ke AI service.',
-                'error' => $e->getMessage()
+                'error'   => $e->getMessage()
             ], 500);
         }
     }
@@ -58,41 +59,18 @@ class RabController extends ResourceController
             return $this->respond([
                 'success' => false,
                 'message' => 'File tidak valid.',
-                'error' => $file->getErrorString()
+                'error'   => $file->getErrorString()
             ], 400);
         }
 
-        // VALIDASI FILE 
-        $fileExt  = strtolower($file->getClientExtension());
-        $fileMime = $file->getMimeType();
+        // VALIDASI FILE BERDASARKAN EKSTENSI & SIZE (MIME di Windows sering kali terbaca text/plain atau octet-stream untuk CAD)
+        $fileExt = strtolower($file->getClientExtension());
+        $allowedExtensions = ['pdf', 'dwg', 'dxf', 'ifc', 'rvt'];
 
-        // Cek apakah ini benar-benar PDF
-        $isPdfValid = ($fileExt === 'pdf' && $fileMime === 'application/pdf');
-
-        // Cek apakah ini benar-benar DWG
-        $dwgMimeTypes = [
-            'image/vnd.dwg',
-            'application/acad',
-            'application/x-dwg',
-            'image/x-dwg',
-            'application/autocad_dwg',
-            'application/octet-stream' 
-        ];
-        $isDwgValid = ($fileExt === 'dwg' && in_array($fileMime, $dwgMimeTypes));
-
-        // Cek apakah ini benar-benar RVT (Revit)
-        $rvtMimeTypes = [
-            'application/rvt',
-            'application/vnd.autodesk.revit',
-            'application/octet-stream' // Sering kali file custom terbaca sebagai octet-stream
-        ];
-        $isRvtValid = ($fileExt === 'rvt' && in_array($fileMime, $rvtMimeTypes));
-
-        // Jika BUKAN PDF, BUKAN DWG, DAN BUKAN RVT -> TOLAK
-        if (!$isPdfValid && (!$isDwgValid) && (!$isRvtValid)) {
+        if (!in_array($fileExt, $allowedExtensions)) {
             return $this->respond([
                 'success' => false,
-                'message' => 'Format file tidak didukung. Harap gunakan file PDF, DWG, atau RVT DED yang sah.'
+                'message' => 'Format file tidak didukung. Harap gunakan file PDF, DWG, DXF, IFC, atau RVT DED yang sah.'
             ], 400);
         }
 
@@ -100,17 +78,21 @@ class RabController extends ResourceController
         $projectName = $this->request->getPost('name') ?? 'Proyek BOQ Otomatis';
         $clientName  = $this->request->getPost('client') ?? 'Klien Internal';
 
-        // 3. Arahkan ke URL FastAPI Python (dinamis via .env)
-        $pythonBaseUrl = rtrim(env('PYTHON_API_URL'), '/');
+        // 3. Arahkan ke URL FastAPI Python (dinamis via .env dengan fallback)
+        $envUrl = env('PYTHON_API_URL') ?: 'http://192.168.1.41:8200';
+        $pythonBaseUrl = rtrim($envUrl, '/');
         $pythonUrl = $pythonBaseUrl . '/api/rab/analyze-image';
 
         $client = \Config\Services::curlrequest();
 
         try {
+            // Gunakan Client MIME Type atau octet-stream fallback
+            $postMime = $file->getClientMimeType() ?: 'application/octet-stream';
+
             // Bungkus file untuk dikirim via cURL
             $curlFile = new \CURLFile(
                 $file->getTempName(),
-                $file->getMimeType(),
+                $postMime,
                 $file->getClientName()
             );
 
@@ -122,7 +104,7 @@ class RabController extends ResourceController
                     'client'   => $clientName
                 ],
                 'http_errors' => false,
-                'timeout'     => 120    
+                'timeout'     => 300    
             ]);
 
             // 5. Kembalikan response JSON dari Python ke frontend
