@@ -333,7 +333,7 @@ const Project = () => {
                     <input 
                       type="file" 
                       required
-                      accept=".xlsx,.xls,.pdf,.zip,.dwg,.dxf"
+                      accept=".pdf,.dwg,.dxf,.ifc,.rvt"
                       onChange={handleFileChange}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     />
@@ -344,7 +344,7 @@ const Project = () => {
                       {formData.file ? formData.file.name : 'Pilih file atau seret kemari'}
                     </span>
                     <span className="text-[10.5px] text-slate-400">
-                      Mendukung format PDF, DWG, DXF AutoCAD (Maks. 10MB)
+                      Mendukung format 2D/3D: PDF, DWG, DXF, IFC, RVT (Maks. 500MB)
                     </span>
                   </div>
                 </div>
