@@ -186,4 +186,4 @@ The application will be accessible at `http://localhost:5173`.
 
 ## 📄 License
 
-Internal Development & Proprietary Use - Beecons Nusantara.
+Internal Development & Proprietary Use - Magang Politeknik Negeri Cilacap - PT. Baracipta Esa Engineering.

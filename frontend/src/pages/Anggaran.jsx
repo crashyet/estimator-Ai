@@ -383,7 +383,7 @@ const getInitialData = () => {
 
   // Flatten into row format
   const flattened = [];
-  
+
   // Section A
   flattened.push({
     id: `sec-${sectionA.code}`,
@@ -449,19 +449,66 @@ const Anggaran = () => {
   useEffect(() => {
     localStorage.setItem(`estimator_uploaded_rows_${activeProjectId}`, JSON.stringify(rows));
   }, [rows, activeProjectId]);
-  
+
+  // Load project details (title, client) dynamically
+  const projectDetail = useMemo(() => {
+    const savedProjects = localStorage.getItem('estimator_projects');
+    if (savedProjects) {
+      try {
+        const parsed = JSON.parse(savedProjects);
+        const match = parsed.find(p => String(p.id) === String(projectId));
+        if (match) return match;
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    // Fallback defaults if not found
+    if (projectId === '1') return { title: 'Pembangunan Gedung Kantor Cabang', client: 'PT Beecons' };
+    if (projectId === '2') return { title: 'Renovasi Laboratorium IT', client: 'Universitas Negeri' };
+    if (projectId === '3') return { title: 'Pemasangan Jaringan Fiber Optic', client: 'Dinas Kominfo' };
+    if (projectId === '4') return { title: 'Pembangunan Gudang Logistik', client: 'PT Logistik Jaya' };
+    return { title: `Proyek Estimasi #${projectId}`, client: 'Umum' };
+  }, [projectId]);
+
+  // Export quantity takeoff rows to MS Excel compatible CSV format
+  const handleExportCSV = () => {
+    let csvContent = "\ufeffsep=;\n";
+    csvContent += "Kode/No;Uraian Pekerjaan;Volume;Satuan\n";
+
+    rows.forEach((row) => {
+      if (row.type === 'section') {
+        csvContent += `"${row.code}";"${row.name.toUpperCase()}";"";""\n`;
+      } else {
+        const formattedVolume = String(row.volume).replace('.', ',');
+        csvContent += `"${row.no}";"${row.name}";"${formattedVolume}";"${row.unit}"\n`;
+      }
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+
+    const cleanTitle = projectDetail.title.replace(/[^a-zA-Z0-9]/g, "_");
+    link.setAttribute("download", `Estimasi_Takeoff_${cleanTitle}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    triggerToast("Berhasil mengekspor data takeoff ke Excel (CSV)!", "success");
+  };
+
   // Controls state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [searchQuery, setSearchQuery] = useState("");
   const [ppnRate, setPpnRate] = useState(0);
-  
+
   // Modals state
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
   const [targetSectionCode, setTargetSectionCode] = useState("A");
-  
+
   // Form states
   const [formData, setFormData] = useState({
     name: "",
@@ -517,7 +564,7 @@ const Anggaran = () => {
   // Filter rows based on search
   const filteredRows = useMemo(() => {
     if (!searchQuery.trim()) return rows;
-    
+
     const query = searchQuery.toLowerCase();
     const result = [];
     let currentSecHeader = null;
@@ -531,7 +578,7 @@ const Anggaran = () => {
         const nameMatch = row.name.toLowerCase().includes(query);
         const sectionMatch = row.sectionCode.toLowerCase().includes(query);
         const unitMatch = row.unit.toLowerCase().includes(query);
-        
+
         if (nameMatch || sectionMatch || unitMatch) {
           if (currentSecHeader && !secHasMatchingItems) {
             result.push(currentSecHeader);
@@ -548,10 +595,10 @@ const Anggaran = () => {
   // Handle page boundaries when filter changes
   const totalItems = filteredRows.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-  
+
   // Safe page index check
   const activePage = Math.min(currentPage, totalPages);
-  
+
   const paginatedRows = useMemo(() => {
     const startIdx = (activePage - 1) * pageSize;
     return filteredRows.slice(startIdx, startIdx + pageSize);
@@ -711,25 +758,52 @@ const Anggaran = () => {
       <Navbar onResetData={handleResetData} />
 
       {/* Main Title Section */}
-      <div className="max-w-[1240px] mx-auto px-4 mt-6">
-        <div className="w-full bg-[#f1faf2] border border-[#dff3e1] rounded-lg py-4 px-6 flex items-center justify-center shadow-xs">
-          <h1 className="text-lg md:text-xl font-bold tracking-wider text-emerald-950 uppercase select-none">
-            ESTIMASI PROYEK ANDA
-          </h1>
+      <div className="max-w-[1240px] mx-auto px-4 mt-6 no-print">
+        <div className="w-full bg-[#f1faf2] border border-[#dff3e1] rounded-lg py-4 px-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
+          <div>
+            <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100/50 px-2.5 py-1 rounded-full uppercase tracking-wider">
+              Klien: {projectDetail.client}
+            </span>
+            <h1 className="text-base md:text-lg font-bold tracking-wide text-emerald-950 uppercase mt-2 select-none">
+              {projectDetail.title}
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            {/* Export Excel (CSV) Button */}
+            <button
+              onClick={handleExportCSV}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-2xs hover:shadow-sm cursor-pointer flex items-center gap-1.5"
+            >
+              <Icons.Grid className="w-3.5 h-3.5" />
+              Ekspor Excel (CSV)
+            </button>
+
+            {/* Print/PDF Button */}
+            <button
+              onClick={() => window.print()}
+              className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1.5"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5 text-slate-500">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.82l-.24-2.58a.75.75 0 01.69-.81H16.8a.75.75 0 01.69.81l-.24 2.58m-10.53 0H16.8M4.5 18.75h15a2.25 2.25 0 002.25-2.25V9.75A2.25 2.25 0 0019.5 7.5h-15A2.25 2.25 0 002.25 9.75v6.75a2.25 2.25 0 002.25 2.25z" />
+              </svg>
+              Cetak / PDF
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Main Workspace Container */}
       <main className="max-w-[1240px] mx-auto px-4 mt-6">
         <div className="bg-white rounded-xl shadow-xs border border-slate-100 p-6">
-          
+
           {/* Controls Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100 mb-5">
             {/* Left Controls: Page size */}
             <div className="flex items-center gap-2">
               <span className="text-[13px] text-slate-600 font-medium">Data per Halaman:</span>
               <div className="relative">
-                <select 
+                <select
                   value={pageSize}
                   onChange={(e) => {
                     setPageSize(Number(e.target.value));
@@ -752,7 +826,7 @@ const Anggaran = () => {
             <div className="flex items-center gap-2.5 w-full sm:w-auto max-w-xs">
               <span className="text-[13px] text-slate-600 font-medium whitespace-nowrap">Cari Data:</span>
               <div className="relative w-full">
-                <input 
+                <input
                   type="text"
                   placeholder="Masukan kata kunci..."
                   value={searchQuery}
@@ -800,7 +874,7 @@ const Anggaran = () => {
                           <td className="py-3 px-4 text-center">
                             <div className="inline-flex items-center gap-1.5 bg-[#c9f0cc] px-2.5 py-1 rounded-full shadow-2xs">
                               {/* Add item to section */}
-                              <button 
+                              <button
                                 onClick={() => handleOpenAddModal(row.code)}
                                 className="w-6 h-6 rounded-full bg-[#009624] hover:bg-emerald-700 text-white flex items-center justify-center transition-transform hover:scale-105"
                                 title={`Tambah pekerjaan ke Bagian ${row.code}`}
@@ -808,7 +882,7 @@ const Anggaran = () => {
                                 <Icons.Plus className="w-3.5 h-3.5 stroke-[3]" />
                               </button>
                               {/* Delete entire section */}
-                              <button 
+                              <button
                                 onClick={() => handleDeleteSection(row)}
                                 className="w-6 h-6 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center transition-transform hover:scale-105"
                                 title={`Hapus seluruh Bagian ${row.code}`}
@@ -824,7 +898,7 @@ const Anggaran = () => {
                     // Otherwise it is an item row
                     const itemPrice = row.volume * (row.unitPrice || 0);
                     const itemPercentage = totalProjectPrice > 0 ? (itemPrice / totalProjectPrice) * 100 : 0;
-                    
+
                     return (
                       <tr key={row.id} className="hover:bg-slate-50/50 transition-all group duration-150">
                         {/* No. */}
@@ -847,34 +921,34 @@ const Anggaran = () => {
                         <td className="py-3 px-4 text-center">
                           <div className="inline-flex items-center gap-1.5 bg-[#d2f3d5] px-2.5 py-1 rounded-full shadow-3xs group-hover:bg-[#c3eec7] transition-all">
                             {/* View / Edit button */}
-                            <button 
+                            <button
                               onClick={() => handleOpenEditModal(row)}
                               className="w-6 h-6 rounded-full bg-[#009624] hover:bg-emerald-700 text-white flex items-center justify-center transition-transform hover:scale-105"
                               title="Ubah detail pekerjaan"
                             >
                               <Icons.Edit className="w-3.5 h-3.5" />
                             </button>
-                            
+
                             {/* Actions dropdown pill */}
                             <div className="relative group/dropdown">
-                              <button 
+                              <button
                                 className="w-9 h-6 rounded-full bg-[#009624] hover:bg-emerald-700 text-white flex items-center justify-center gap-0.5 px-1.5 transition-transform hover:scale-105"
                                 title="Opsi lainnya"
                               >
                                 <Icons.Grid className="w-3 h-3" />
                                 <Icons.ChevronDown className="w-2.5 h-2.5" />
                               </button>
-                              
+
                               {/* Floating Dropdown options */}
                               <div className="absolute right-0 bottom-full mb-2 w-40 bg-white border border-slate-150 rounded-lg shadow-lg py-1 z-30 hidden group-hover/dropdown:block origin-bottom-right transition-all">
-                                <button 
+                                <button
                                   onClick={() => handleOpenEditModal(row)}
                                   className="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2 text-[12.5px] text-slate-700 font-medium"
                                 >
                                   <Icons.Edit className="w-3.5 h-3.5 text-emerald-600" />
                                   Edit Item
                                 </button>
-                                <button 
+                                <button
                                   onClick={() => handleDeleteItem(row)}
                                   className="w-full text-left px-3.5 py-2 hover:bg-red-50 text-red-600 flex items-center gap-2 text-[12.5px] font-semibold border-t border-slate-50"
                                 >
@@ -929,11 +1003,10 @@ const Anggaran = () => {
                     <button
                       key={`page-${page}`}
                       onClick={() => setCurrentPage(page)}
-                      className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-[12.5px] transition-all cursor-pointer ${
-                        isActive
+                      className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-[12.5px] transition-all cursor-pointer ${isActive
                           ? 'bg-[#009624] text-white shadow-xs'
                           : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
-                      }`}
+                        }`}
                     >
                       {page}
                     </button>
@@ -957,13 +1030,12 @@ const Anggaran = () => {
 
       {/* Floating Toast System */}
       {toast.show && (
-        <div className={`fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-4.5 py-3 rounded-lg shadow-xl text-white font-medium transition-all transform translate-y-0 animate-bounce duration-300 ${
-          toast.type === 'success' 
-            ? 'bg-emerald-600 border border-emerald-500' 
+        <div className={`fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-4.5 py-3 rounded-lg shadow-xl text-white font-medium transition-all transform translate-y-0 animate-bounce duration-300 ${toast.type === 'success'
+            ? 'bg-emerald-600 border border-emerald-500'
             : toast.type === 'warning'
               ? 'bg-amber-600 border border-amber-500'
               : 'bg-red-600 border border-red-500'
-        }`}>
+          }`}>
           <Icons.Info className="w-5 h-5" />
           <span className="text-[13px]">{toast.message}</span>
         </div>
@@ -978,21 +1050,21 @@ const Anggaran = () => {
               <h3 className="font-bold text-[14.5px] uppercase tracking-wide">
                 Tambah Pekerjaan (Bagian {targetSectionCode})
               </h3>
-              <button 
+              <button
                 onClick={() => setShowAddModal(false)}
                 className="p-1 rounded-full hover:bg-emerald-700 text-emerald-100 hover:text-white transition-colors"
               >
                 <Icons.X />
               </button>
             </div>
-            
+
             {/* Modal Form */}
             <form onSubmit={handleAddItem} className="p-5 space-y-4">
               <div>
                 <label className="block text-[12.5px] font-semibold text-slate-600 mb-1.5">
                   Uraian Pekerjaan <span className="text-red-500">*</span>
                 </label>
-                <input 
+                <input
                   type="text"
                   required
                   placeholder="Misal: Pemasangan keramik lantai..."
@@ -1007,7 +1079,7 @@ const Anggaran = () => {
                   <label className="block text-[12.5px] font-semibold text-slate-600 mb-1.5">
                     Volume <span className="text-red-500">*</span>
                   </label>
-                  <input 
+                  <input
                     type="number"
                     required
                     step="0.01"
@@ -1021,7 +1093,7 @@ const Anggaran = () => {
                   <label className="block text-[12.5px] font-semibold text-slate-600 mb-1.5">
                     Satuan <span className="text-red-500">*</span>
                   </label>
-                  <input 
+                  <input
                     type="text"
                     required
                     placeholder="m2, m3, unit, dll."
@@ -1035,14 +1107,14 @@ const Anggaran = () => {
               {/* Harga Satuan (Removed) */}
 
               <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2.5">
-                <button 
+                <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
                   className="px-4 py-2 border border-slate-200 rounded-md text-slate-700 hover:bg-slate-50 text-[12.5px] font-semibold transition-colors cursor-pointer"
                 >
                   Batal
                 </button>
-                <button 
+                <button
                   type="submit"
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[12.5px] font-semibold shadow-sm transition-colors cursor-pointer"
                 >
@@ -1063,7 +1135,7 @@ const Anggaran = () => {
               <h3 className="font-bold text-[14.5px] uppercase tracking-wide">
                 Ubah Detail Pekerjaan
               </h3>
-              <button 
+              <button
                 onClick={() => {
                   setShowEditModal(false);
                   setSelectedRow(null);
@@ -1073,14 +1145,14 @@ const Anggaran = () => {
                 <Icons.X />
               </button>
             </div>
-            
+
             {/* Modal Form */}
             <form onSubmit={handleEditItem} className="p-5 space-y-4">
               <div>
                 <label className="block text-[12.5px] font-semibold text-slate-600 mb-1.5">
                   Uraian Pekerjaan <span className="text-red-500">*</span>
                 </label>
-                <input 
+                <input
                   type="text"
                   required
                   placeholder="Misal: Pemasangan keramik lantai..."
@@ -1095,7 +1167,7 @@ const Anggaran = () => {
                   <label className="block text-[12.5px] font-semibold text-slate-600 mb-1.5">
                     Volume <span className="text-red-500">*</span>
                   </label>
-                  <input 
+                  <input
                     type="number"
                     required
                     step="0.01"
@@ -1109,7 +1181,7 @@ const Anggaran = () => {
                   <label className="block text-[12.5px] font-semibold text-slate-600 mb-1.5">
                     Satuan <span className="text-red-500">*</span>
                   </label>
-                  <input 
+                  <input
                     type="text"
                     required
                     placeholder="m2, m3, unit, dll."
@@ -1123,7 +1195,7 @@ const Anggaran = () => {
               {/* Harga Satuan (Removed) */}
 
               <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2.5">
-                <button 
+                <button
                   type="button"
                   onClick={() => {
                     setShowEditModal(false);
@@ -1133,7 +1205,7 @@ const Anggaran = () => {
                 >
                   Batal
                 </button>
-                <button 
+                <button
                   type="submit"
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[12.5px] font-semibold shadow-sm transition-colors cursor-pointer"
                 >
