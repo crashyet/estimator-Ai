@@ -110,7 +110,22 @@ export const analyzeDED = async (projectName, clientName, file) => {
   });
 
   if (!response.ok) {
-    throw new Error(`Server returned error ${response.status}: ${response.statusText}`);
+    let errorMessage = `Server returned error ${response.status}`;
+    try {
+      const errorJson = await response.json();
+      if (errorJson && errorJson.detail) {
+        errorMessage = errorJson.detail;
+      } else if (errorJson && errorJson.message) {
+        errorMessage = errorJson.message;
+      }
+    } catch (e) {
+      if (response.statusText) {
+        errorMessage = `Error ${response.status}: ${response.statusText}`;
+      } else {
+        errorMessage = `Error ${response.status}: Koneksi terputus atau server tidak merespon`;
+      }
+    }
+    throw new Error(errorMessage);
   }
 
   const result = await response.json();

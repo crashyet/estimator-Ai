@@ -1,2 +1,48 @@
 @import "tailwindcss";
 
+@media print {
+  .no-print, 
+  nav, 
+  button, 
+  select, 
+  input,
+  th:last-child, 
+  td:last-child,
+  .flex-col.sm\:flex-row.items-center.justify-between.gap-4.pt-4.border-t.border-slate-100 {
+    display: none !important;
+  }
+  
+  body {
+    background: white !important;
+    color: #1e293b !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+  
+  .bg-white {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+  }
+  
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+  
+  th {
+    background-color: #009624 !important;
+    color: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
