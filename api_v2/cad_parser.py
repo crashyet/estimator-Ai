@@ -298,19 +298,255 @@ class CADEntityExtractor:
             "source_file_type": "DWG (ezdwg direct fallback)"
         }
 
+    @staticmethod
+    def extract_from_dwf_file(dwf_file_path: str) -> Dict[str, Any]:
+        """Extract text, layers, annotations, and properties from Autodesk DWF / DWFX files."""
+        text_by_layer: Dict[str, List[str]] = {"DWF_ANNOTATIONS": []}
+        dimensions: List[str] = []
+        total_texts_count = 0
+
+        try:
+            import zipfile, xml.etree.ElementTree as ET, re
+            if zipfile.is_zipfile(dwf_file_path):
+                with zipfile.ZipFile(dwf_file_path, "r") as zf:
+                    for name in zf.namelist():
+                        if name.endswith((".xml", ".txt", ".descriptor", ".manifest", ".w2d")):
+                            try:
+                                content = zf.read(name).decode("utf-8", errors="ignore")
+                                matches = re.findall(r">([^<]{2,100})<", content)
+                                for match in matches:
+                                    clean_txt = match.strip()
+                                    if clean_txt and not clean_txt.startswith("http") and not clean_txt.startswith("schemas."):
+                                        if clean_txt not in text_by_layer["DWF_ANNOTATIONS"]:
+                                            text_by_layer["DWF_ANNOTATIONS"].append(clean_txt)
+                                            total_texts_count += 1
+                            except Exception:
+                                pass
+            else:
+                with open(dwf_file_path, "rb") as f:
+                    raw_bytes = f.read()
+                    matches = re.findall(rb"[\x20-\x7E]{4,100}", raw_bytes)
+                    for m in matches:
+                        txt = m.decode("ascii", errors="ignore").strip()
+                        if txt and not txt.startswith("(D") and not txt.startswith("DWF"):
+                            text_by_layer["DWF_ANNOTATIONS"].append(txt)
+                            total_texts_count += 1
+
+            logger.info(f"DWF Extracted {total_texts_count} text items.")
+            return {
+                "layers": sorted(list(text_by_layer.keys())),
+                "text_by_layer": text_by_layer,
+                "block_attributes": [],
+                "dimensions": dimensions,
+                "geometry_by_layer": {},
+                "total_texts_count": total_texts_count,
+                "source_file_type": "Autodesk DWF / DWFX Vector Package"
+            }
+        except Exception as e:
+            logger.error(f"Error reading DWF file {dwf_file_path}: {e}")
+            return {
+                "error": f"Failed to parse DWF file: {str(e)}",
+                "layers": [], "text_by_layer": {}, "block_attributes": [], "dimensions": [], "geometry_by_layer": {}
+            }
+
+    @staticmethod
+    def extract_from_svg_file(svg_file_path: str) -> Dict[str, Any]:
+        """Extract text, layers, annotations, and properties from SVG Vector drawing files."""
+        text_by_layer: Dict[str, List[str]] = {}
+        dimensions: List[str] = []
+        total_texts_count = 0
+
+        try:
+            import xml.etree.ElementTree as ET
+            tree = ET.parse(svg_file_path)
+            root = tree.getroot()
+
+            def strip_ns(tag):
+                return tag.split("}")[-1] if "}" in tag else tag
+
+            for elem in root.iter():
+                tag_name = strip_ns(elem.tag)
+                if tag_name in ["g", "svg"]:
+                    layer_id = elem.attrib.get("id") or elem.attrib.get("label") or elem.attrib.get("{http://www.inkscape.org/namespaces/inkscape}label") or "DEFAULT_SVG_LAYER"
+                    layer_name = str(layer_id).strip()
+
+                    for text_node in elem.findall(".//*"):
+                        if strip_ns(text_node.tag) in ["text", "tspan"]:
+                            txt = "".join(text_node.itertext()).strip()
+                            clean_txt = fix_ezdwg_cjk_encoding(txt)
+                            if clean_txt:
+                                if layer_name not in text_by_layer:
+                                    text_by_layer[layer_name] = []
+                                if clean_txt not in text_by_layer[layer_name]:
+                                    text_by_layer[layer_name].append(clean_txt)
+                                    total_texts_count += 1
+
+            if not text_by_layer:
+                text_by_layer["SVG_ELEMENTS"] = []
+                for elem in root.iter():
+                    if strip_ns(elem.tag) in ["text", "tspan"]:
+                        txt = "".join(elem.itertext()).strip()
+                        clean_txt = fix_ezdwg_cjk_encoding(txt)
+                        if clean_txt and clean_txt not in text_by_layer["SVG_ELEMENTS"]:
+                            text_by_layer["SVG_ELEMENTS"].append(clean_txt)
+                            total_texts_count += 1
+
+            logger.info(f"SVG Extracted {total_texts_count} text items across {len(text_by_layer)} layers/groups.")
+            return {
+                "layers": sorted(list(text_by_layer.keys())),
+                "text_by_layer": text_by_layer,
+                "block_attributes": [],
+                "dimensions": dimensions,
+                "geometry_by_layer": {},
+                "total_texts_count": total_texts_count,
+                "source_file_type": "Scalable Vector Graphics (SVG Drawing)"
+            }
+        except Exception as e:
+            logger.error(f"Error reading SVG file {svg_file_path}: {e}")
+            return {
+                "error": f"Failed to parse SVG file: {str(e)}",
+                "layers": [], "text_by_layer": {}, "block_attributes": [], "dimensions": [], "geometry_by_layer": {}
+            }
+
+    @staticmethod
+    def extract_from_plt_file(plt_file_path: str) -> Dict[str, Any]:
+        """Extract text, pen layers, geometry measurements, and annotations from HPGL/HPGL-2 (.plt) plotter vector files."""
+        text_by_layer: Dict[str, List[str]] = {}
+        geometry_by_layer: Dict[str, Dict[str, Any]] = {}
+        dimensions: List[str] = []
+        total_texts_count = 0
+
+        try:
+            with open(plt_file_path, "rb") as f:
+                raw_bytes = f.read()
+
+            content = raw_bytes.decode("utf-8", errors="ignore")
+
+            import re
+            current_layer = "PEN_1"
+            is_pen_down = False
+            cur_x, cur_y = 0.0, 0.0
+
+            # 1. Regex scanning for HPGL LB (label) text strings
+            # LB text can terminate with ETX (\x03), \x04, \x1b (ESC), newline, or semicolon
+            lb_matches = re.findall(r"LB([^\x03\x04\x1b\r\n;]{1,200})[\x03\x04\x1b\r\n;]", content)
+            for raw_lbl in lb_matches:
+                clean_lbl = fix_ezdwg_cjk_encoding(raw_lbl.strip())
+                if clean_lbl and len(clean_lbl) > 1 and not clean_lbl.startswith("HP"):
+                    if current_layer not in text_by_layer:
+                        text_by_layer[current_layer] = []
+                    if clean_lbl not in text_by_layer[current_layer]:
+                        text_by_layer[current_layer].append(clean_lbl)
+                        total_texts_count += 1
+                        if any(c.isdigit() for c in clean_lbl) and any(kw in clean_lbl.lower() for kw in ["m", "cm", "mm", "kg", "ø", "dn", "t=", "h="]):
+                            dimensions.append(f"[{current_layer}] {clean_lbl}")
+
+            # 2. HPGL Instruction Parser for Pen changes (SP) and Polylines/Lines (PA, PR, PD, PU)
+            commands = re.findall(r"([A-Za-z]{2}\s*[^;]*|\S+)", content)
+            for cmd_str in commands:
+                cmd_clean = cmd_str.strip()
+                if not cmd_clean:
+                    continue
+                cmd_code = cmd_clean[:2].upper()
+                params_str = cmd_clean[2:].strip()
+
+                if cmd_code == "SP":  # Select Pen -> Layer
+                    pen_num = params_str.strip() if params_str else "1"
+                    current_layer = f"PEN_{pen_num}" if pen_num else "PEN_1"
+
+                elif cmd_code == "PU":  # Pen Up
+                    is_pen_down = False
+                    coords = re.findall(r"[-+]?\d*\.?\d+", params_str)
+                    if len(coords) >= 2:
+                        try:
+                            cur_x, cur_y = float(coords[0]), float(coords[1])
+                        except ValueError:
+                            pass
+
+                elif cmd_code == "PD":  # Pen Down
+                    is_pen_down = True
+                    coords = re.findall(r"[-+]?\d*\.?\d+", params_str)
+                    if len(coords) >= 2:
+                        for i in range(0, len(coords) - 1, 2):
+                            try:
+                                nx, ny = float(coords[i]), float(coords[i+1])
+                                dist = math.hypot(nx - cur_x, ny - cur_y)
+                                if current_layer not in geometry_by_layer:
+                                    geometry_by_layer[current_layer] = {"total_length": 0.0, "entity_count": 0}
+                                geometry_by_layer[current_layer]["total_length"] += dist
+                                geometry_by_layer[current_layer]["entity_count"] += 1
+                                cur_x, cur_y = nx, ny
+                            except ValueError:
+                                pass
+
+                elif cmd_code in ["PA", "PR"]:  # Plot Absolute / Relative
+                    coords = re.findall(r"[-+]?\d*\.?\d+", params_str)
+                    if len(coords) >= 2:
+                        for i in range(0, len(coords) - 1, 2):
+                            try:
+                                target_x = float(coords[i])
+                                target_y = float(coords[i+1])
+                                nx = (cur_x + target_x) if cmd_code == "PR" else target_x
+                                ny = (cur_y + target_y) if cmd_code == "PR" else target_y
+                                if is_pen_down:
+                                    dist = math.hypot(nx - cur_x, ny - cur_y)
+                                    if current_layer not in geometry_by_layer:
+                                        geometry_by_layer[current_layer] = {"total_length": 0.0, "entity_count": 0}
+                                    geometry_by_layer[current_layer]["total_length"] += dist
+                                    geometry_by_layer[current_layer]["entity_count"] += 1
+                                cur_x, cur_y = nx, ny
+                            except ValueError:
+                                pass
+
+            # 3. Fallback: Generic ASCII string extraction if text_by_layer is empty
+            if not text_by_layer:
+                ascii_matches = re.findall(r"[\x20-\x7E]{4,100}", content)
+                fallback_texts = []
+                for match in ascii_matches:
+                    m_str = match.strip()
+                    if m_str and not m_str.startswith(("IN;", "IP", "SC", "SP", "PU", "PD", "PA", "PR", "\x1b")):
+                        if any(c.isalpha() for c in m_str) and m_str not in fallback_texts:
+                            fallback_texts.append(m_str)
+                if fallback_texts:
+                    text_by_layer["PLT_ANNOTATIONS"] = fallback_texts[:100]
+                    total_texts_count = len(text_by_layer["PLT_ANNOTATIONS"])
+
+            logger.info(f"PLT Extracted {total_texts_count} text items, {len(geometry_by_layer)} pen layers with geometry.")
+            return {
+                "layers": sorted(list(set(list(text_by_layer.keys()) + list(geometry_by_layer.keys())))),
+                "text_by_layer": text_by_layer,
+                "block_attributes": [],
+                "dimensions": dimensions,
+                "geometry_by_layer": geometry_by_layer,
+                "total_texts_count": total_texts_count,
+                "source_file_type": "HPGL/HPGL-2 Plotter Vector File (PLT)"
+            }
+        except Exception as e:
+            logger.error(f"Error reading PLT file {plt_file_path}: {e}")
+            return {
+                "error": f"Failed to parse PLT file: {str(e)}",
+                "layers": [], "text_by_layer": {}, "block_attributes": [], "dimensions": [], "geometry_by_layer": {}
+            }
+
     @classmethod
     def process_file_bytes(cls, file_bytes: bytes, filename: str) -> Dict[str, Any]:
-        """Process DWG or DXF file from raw bytes."""
+        """Process DWG, DXF, DWT, DWF, DWFX, SVG, PLT, or HPGL file from raw bytes."""
         ext = os.path.splitext(filename)[1].lower()
         with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
             tmp.write(file_bytes)
             tmp_path = tmp.name
 
         try:
-            if ext == ".dwg":
+            if ext in [".dwg", ".dwt"]:
                 return cls.extract_from_dwg_file(tmp_path)
             elif ext == ".dxf":
                 return cls.extract_from_dxf_file(tmp_path)
+            elif ext in [".dwf", ".dwfx"]:
+                return cls.extract_from_dwf_file(tmp_path)
+            elif ext == ".svg":
+                return cls.extract_from_svg_file(tmp_path)
+            elif ext in [".plt", ".hpgl", ".hpg"]:
+                return cls.extract_from_plt_file(tmp_path)
             else:
                 raise ValueError(f"Unsupported CAD extension: {ext}")
         finally:

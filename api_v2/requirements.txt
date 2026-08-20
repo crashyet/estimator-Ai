@@ -9,3 +9,7 @@ uvicorn>=0.20.0
 python-dotenv>=1.0.0
 python-multipart>=0.0.32
 ifcopenshell>=0.7.0
+
+# AHSP Vector Mapping Engine (optional — semantic work item matching)
+chromadb>=0.5.0
+sentence-transformers>=3.0.0

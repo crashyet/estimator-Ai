@@ -7,3 +7,5 @@ dist/
 *.spec
 bin/rvt2ifc_src.py
 prd*.md
+
+ahsp/ahsp_vectordb/
