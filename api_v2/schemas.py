@@ -18,6 +18,14 @@ class EstimateItem(BaseModel):
     confidence: str = Field(default="high", description="Tingkat keyakinan AI: 'high' atau 'medium'")
     warning_note: Optional[str] = Field(default=None, description="Catatan/rumus rincian kalkulasi volume dari AI")
 
+    # --- AHSP Mapping Fields (populated by AHSPMapperEngine post-processing) ---
+    ahsp_code: Optional[str] = Field(default=None, description="Kode AHSP standar yang di-mapping (e.g. '2.2.1.6.6')")
+    ahsp_name: Optional[str] = Field(default=None, description="Nama pekerjaan standar AHSP")
+    ahsp_unit: Optional[str] = Field(default=None, description="Satuan standar dari AHSP")
+    ahsp_score: Optional[float] = Field(default=None, description="Similarity score mapping (0.0-1.0)")
+    ahsp_status: str = Field(default="unmapped", description="Status mapping: 'mapped_high', 'mapped_medium', 'unmapped'")
+    ahsp_candidates: Optional[list] = Field(default=None, description="Top-3 AHSP candidates untuk medium/low confidence")
+
     @field_validator("volume", mode="before")
 
     def ensure_nonzero_volume(cls, v):

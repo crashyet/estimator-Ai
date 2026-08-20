@@ -48,7 +48,7 @@ class CADLLMEstimator:
             logger.warning("GEMINI_API_KEY is not set in environment (.env). AI requests will fail until an API key is provided.")
             self.client = None
 
-    def _analyze_via_primary_api(self, prompt_content: str, system_prompt: str, project_name: str, client_name: str, pdf_bytes: Optional[bytes] = None) -> Optional[DynamicTakeoffResponse]:
+    def _analyze_via_primary_api(self, prompt_content: str, system_prompt: str, project_name: str, client_name: str, media_bytes: Optional[bytes] = None, mime_type: Optional[str] = None) -> Optional[DynamicTakeoffResponse]:
         """Call the primary OpenAI-compatible API to perform estimation with fallback check."""
         if not self.primary_api_key or not self.primary_api_base:
             logger.warning("Primary API key or base URL is not configured. Skipping primary API.")
@@ -66,9 +66,29 @@ class CADLLMEstimator:
             {"role": "system", "content": system_prompt},
         ]
 
-        if pdf_bytes:
-            # If PDF bytes are provided, try to send as base64 in a format that some multimodal endpoints accept
-            pdf_b64 = base64.b64encode(pdf_bytes).decode("utf-8")
+        if media_bytes:
+            if mime_type and mime_type.startswith("image/"):
+                try:
+                    import io
+                    from PIL import Image
+                    img = Image.open(io.BytesIO(media_bytes))
+                    if img.mode != "RGB":
+                        img = img.convert("RGB")
+                    img.thumbnail((1600, 1600), Image.Resampling.LANCZOS)
+                    out_buf = io.BytesIO()
+                    img.save(out_buf, format="JPEG", quality=85)
+                    compressed_bytes = out_buf.getvalue()
+                    media_b64 = base64.b64encode(compressed_bytes).decode("utf-8")
+                    media_mime = "image/jpeg"
+                    logger.info(f"Compressed image from {len(media_bytes)} bytes to {len(compressed_bytes)} bytes JPEG base64.")
+                except Exception as compress_err:
+                    logger.warning(f"Image compression failed ({compress_err}), using raw media bytes.")
+                    media_b64 = base64.b64encode(media_bytes).decode("utf-8")
+                    media_mime = mime_type or "image/jpeg"
+            else:
+                media_b64 = base64.b64encode(media_bytes).decode("utf-8")
+                media_mime = mime_type or "application/pdf"
+
             messages.append({
                 "role": "user",
                 "content": [
@@ -76,7 +96,7 @@ class CADLLMEstimator:
                     {
                         "type": "image_url",
                         "image_url": {
-                            "url": f"data:application/pdf;base64,{pdf_b64}"
+                            "url": f"data:{media_mime};base64,{media_b64}"
                         }
                     }
                 ]
@@ -84,10 +104,12 @@ class CADLLMEstimator:
         else:
             messages.append({"role": "user", "content": prompt_content})
 
+        # Primary API Call: Try stream=False first for clean JSON response
         payload = {
             "model": self.primary_model,
             "messages": messages,
             "temperature": 0.0,
+            "stream": False,
             "response_format": {"type": "json_object"}
         }
 
@@ -99,28 +121,58 @@ class CADLLMEstimator:
                 headers=headers,
                 method="POST"
             )
-            # Timeout of 180 seconds to allow for complex reasoning/generation
             with urllib.request.urlopen(req, timeout=180) as resp:
                 res_data = json.loads(resp.read().decode("utf-8"))
                 choices = res_data.get("choices", [])
-                if not choices:
-                    logger.warning("Primary API returned empty choices.")
-                    return None
-                
-                message = choices[0].get("message", {})
-                raw_text = message.get("content", "")
-                
-                # Fallback: if 'content' is empty but 'reasoning_content' is present, use it.
-                if not raw_text and "reasoning_content" in message:
-                    logger.info("Content is empty but reasoning_content is present, attempting to use it.")
-                    raw_text = message["reasoning_content"]
+                if choices:
+                    msg = choices[0].get("message", {})
+                    raw_text = msg.get("content") or msg.get("reasoning_content") or ""
+                    if raw_text.strip():
+                        parsed_dict = self._clean_and_parse_json(raw_text)
+                        return DynamicTakeoffResponse(**parsed_dict)
 
-                if not raw_text:
-                    logger.warning("Primary API returned empty content.")
-                    return None
+            # If non-streaming returned empty, fallback to streaming SSE
+            logger.warning("Non-streaming call returned empty, trying SSE streaming...")
+            payload["stream"] = True
+            req_stream = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers=headers,
+                method="POST"
+            )
+            raw_text_acc = []
+            reasoning_acc = []
+            with urllib.request.urlopen(req_stream, timeout=180) as resp_s:
+                for line in resp_s:
+                    line_str = line.decode("utf-8", errors="ignore").strip()
+                    if line_str.startswith("data:"):
+                        data_part = line_str[5:].strip()
+                        if data_part == "[DONE]":
+                            continue
+                        try:
+                            chunk = json.loads(data_part)
+                            choices = chunk.get("choices", [])
+                            if choices:
+                                delta = choices[0].get("delta", {})
+                                c = delta.get("content")
+                                r = delta.get("reasoning_content")
+                                if c is not None:
+                                    raw_text_acc.append(str(c))
+                                if r is not None:
+                                    reasoning_acc.append(str(r))
+                        except Exception:
+                            pass
 
-                parsed_dict = self._clean_and_parse_json(raw_text)
-                return DynamicTakeoffResponse(**parsed_dict)
+            raw_text = "".join(raw_text_acc).strip()
+            if not raw_text and reasoning_acc:
+                raw_text = "".join(reasoning_acc).strip()
+
+            if not raw_text:
+                logger.warning("Primary API returned empty text.")
+                return None
+
+            parsed_dict = self._clean_and_parse_json(raw_text)
+            return DynamicTakeoffResponse(**parsed_dict)
         except Exception as e:
             logger.warning(f"Primary API call failed: {e}. Falling back to Gemini.")
             return None
@@ -326,11 +378,38 @@ Tugas QS:
 4. Pisahkan seksi WBS secara spesifik (misal: Pekerjaan Tanah TERPISAH dari Pekerjaan Pondasi).
 """
 
-        # NOTE: Primary API (OpenAI-compatible) does NOT support native PDF input.
-        # PDF analysis goes directly to Gemini which has native PDF support via Files API.
-        logger.info("PDF detected — skipping primary API (no native PDF support). Using Gemini directly.")
+        # Extract text & dimension annotations directly from PDF using pypdf (No image conversion)
+        pdf_text = ""
+        try:
+            import io
+            import pypdf
+            reader = pypdf.PdfReader(io.BytesIO(pdf_bytes))
+            text_pages = []
+            for idx, page in enumerate(reader.pages):
+                txt = page.extract_text() or ""
+                if txt.strip():
+                    text_pages.append(f"--- HALAMAN {idx+1} ---\n{txt.strip()}")
+            pdf_text = "\n\n".join(text_pages)
+            logger.info(f"Extracted {len(pdf_text)} characters of text from {len(reader.pages)} PDF pages.")
+            if len(pdf_text) > 15000:
+                logger.info(f"Large PDF text detected ({len(pdf_text)} chars). Trimming to 15,000 chars to avoid Cloudflare 524 timeout.")
+                pdf_text = pdf_text[:15000] + "\n\n... [Sisa teks PDF dipotong untuk optimasi kecepatan AI]"
+        except Exception as pdf_err:
+            logger.warning(f"pypdf text extraction skipped/failed: {pdf_err}")
 
-        # 1. SDK Call via google-genai using Files API for reliable large PDF upload
+        full_prompt = prompt_content
+        if pdf_text:
+            full_prompt += f"\n\n[DATA TEKS & ANOTASI DIMENSI PDF]:\n{pdf_text}"
+
+        # 1. Try Primary API (combo-code) first with PDF text payload
+        primary_res = self._analyze_via_primary_api(full_prompt, system_prompt, project_name, client_name)
+        if primary_res:
+            logger.info("Successfully obtained PDF takeoff estimation from Primary API (combo-code).")
+            return primary_res
+
+        logger.warning("Primary API failed or skipped for PDF. Falling back to Gemini API.")
+
+        # 2. SDK Call via google-genai using Files API for reliable large PDF upload
         if self.client:
             import tempfile
             with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp_pdf:
@@ -438,6 +517,142 @@ Tugas QS:
                     time.sleep(2)
 
         raise RuntimeError("Failed to obtain valid response from all Gemini API model candidates for PDF.")
+
+    def analyze_image_bytes(self, image_bytes: bytes, filename: str = "image.jpg", mime_type: str = "image/jpeg", project_name: str = "Proyek DED Gambar", client_name: str = "Client") -> DynamicTakeoffResponse:
+        """
+        Send raw image bytes (JPEG, PNG, JPG) directly to Gemini LLM for direct multimodal vision Quantity Takeoff estimation.
+        """
+        system_prompt = (
+            "You are a professional Senior Quantity Surveyor (QS) in Indonesia. "
+            "Analyze the provided construction / engineering drawing image (architectural blueprint, floor plan, elevation, structural drawing, or site plan) directly. "
+            "Directly generate complete WBS (Work Breakdown Structure) sections and work items according to real Indonesian Civil Engineering standards. "
+            "CRITICAL CAD/DRAWING SCALE & UNIT NORMALIZATION RULES: "
+            "1. DRAWING UNIT NORMALIZATION: Construction drawings in Indonesia are drawn in Millimeters (mm) or Centimeters (cm). "
+            "   - If drawing dimensions say '6000' x '10000' or '600' x '1000', convert to METERS: 6.0m x 10.0m = 60.0 m2 plot area! "
+            "   - NEVER treat raw millimeter or centimeter values directly as meters or m2! "
+            "2. SANITY CHECK ON AREA & FOOTPRINT: "
+            "   - 'Pembersihan Lapangan' & 'Bouwplank' MUST match the real building/site footprint area (typically 30 m2 to 500 m2 for residential/building drawings). "
+            "3. DETERMINISTIC STRUCTURAL FALLBACK SPECIFICATIONS (Use strictly when unstated in drawing): "
+            "   - Wall height = 3.0 meters. "
+            "   - Foundation trench depth = 0.8 meters, bottom width = 0.7 meters, top width = 0.5 meters. "
+            "   - Footplat P1 (if present without explicit dimensions) = 1.0m x 1.0m x 0.4m. "
+            "   - Sloof S1 = 0.15m x 0.20m. Kolom K1 = 0.15m x 0.15m x 3.0m. "
+            "   - Sand bed thickness = 0.05m. Aanstamping thickness = 0.10m. "
+            "4. ATOMIC VOLUME RULES: "
+            "   - EVERY WORK ITEM MUST HAVE A REALISTIC POSITIVE VOLUME (> 0.0). NEVER RETURN 0 OR 0.0 FOR VOLUME! "
+            "   - Concrete/Foundation/Excavation (m3): length x width x depth. "
+            "   - Area (m2): wall area, plastering, floor area, site area. "
+            "   - Separate PEKERJAAN TANAH (galian, urugan, pemadatan) from PEKERJAAN PONDASI (batu belah, footplat, pancang). "
+            "   - Put clear mathematical calculation steps in `warning_note` (e.g. 'Site footprint 6.0m x 10.0m = 60.0 m2'). "
+            "Output JSON directly conforming to the DynamicTakeoffResponse schema."
+        )
+
+        prompt_content = f"""Judul Gambar DED: '{project_name}' (File: {filename})
+Klien: '{client_name}'
+
+Tugas QS:
+1. Periksa notasi dimensi & denah dalam gambar ini, tentukan skala unit (mm atau cm ke meter).
+2. Lakukan Sanity Check Luas Tapak/Bangunan: Pastikan luas 'Pembersihan Lapangan' & 'Bouwplank' realistis sesuai ukuran tanah (contoh: 6m x 10m = 60 m2, BUKAN ribuan m2).
+3. Lakukan Material Takeoff & Perhitungan Volume Kuantitas Riil untuk SETIAP item pekerjaan.
+4. Pisahkan seksi WBS secara spesifik (misal: Pekerjaan Tanah TERPISAH dari Pekerjaan Pondasi).
+"""
+
+        # Try Primary API first with image
+        primary_res = self._analyze_via_primary_api(prompt_content, system_prompt, project_name, client_name, media_bytes=image_bytes, mime_type=mime_type)
+        if primary_res:
+            logger.info("Successfully obtained image estimation from Primary API.")
+            return primary_res
+
+        logger.warning("Primary API failed or skipped for image. Falling back to Gemini API.")
+
+        # 1. SDK Call via google-genai
+        if self.client:
+            try:
+                part = types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
+                for model_name in self._get_model_candidates():
+                    for attempt in range(2):
+                        try:
+                            logger.info(f"Calling Gemini LLM ({model_name}) via SDK for Direct Image Takeoff (Attempt {attempt+1})...")
+                            response = self.client.models.generate_content(
+                                model=model_name,
+                                contents=[part, prompt_content],
+                                config=types.GenerateContentConfig(
+                                    system_instruction=system_prompt,
+                                    response_mime_type="application/json",
+                                    response_schema=DynamicTakeoffResponse,
+                                    temperature=0.0,
+                                    seed=42,
+                                    max_output_tokens=32768
+                                )
+                            )
+                            if response and response.text:
+                                parsed_json = self._clean_and_parse_json(response.text)
+                                return DynamicTakeoffResponse(**parsed_json)
+                        except Exception as sdk_err:
+                            logger.warning(f"Gemini SDK direct image call for {model_name} failed: {sdk_err}. Retrying/falling back...")
+                            time.sleep(2 * (attempt + 1))
+            except Exception as part_err:
+                logger.warning(f"Failed to prepare Part.from_bytes for image: {part_err}")
+
+        # 2. Direct REST Call Fallback with inlineData
+        return self._analyze_image_via_rest(image_bytes, filename, mime_type, project_name, client_name)
+
+    def _analyze_image_via_rest(self, image_bytes: bytes, filename: str = "image.jpg", mime_type: str = "image/jpeg", project_name: str = "Proyek DED Gambar", client_name: str = "Client") -> DynamicTakeoffResponse:
+        """Fallback REST request to Gemini API with direct image inlineData and model fallback."""
+        img_b64 = base64.b64encode(image_bytes).decode("utf-8")
+        prompt_content = f"Judul Gambar DED: '{project_name}' (File: {filename})\nKlien: '{client_name}'"
+        system_prompt = "You are a professional Senior Quantity Surveyor (QS) in Indonesia."
+
+        for model_name in self._get_model_candidates():
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={self.api_key}"
+            payload = {
+                "contents": [{
+                    "role": "user",
+                    "parts": [
+                        {
+                            "inlineData": {
+                                "mimeType": mime_type,
+                                "data": img_b64
+                            }
+                        },
+                        {"text": prompt_content}
+                    ]
+                }],
+                "systemInstruction": {"parts": [{"text": system_prompt}]},
+                "generationConfig": {
+                    "responseMimeType": "application/json",
+                    "temperature": 0.0,
+                    "seed": 42,
+                    "maxOutputTokens": 32768
+                }
+            }
+
+            for attempt in range(2):
+                try:
+                    logger.info(f"Calling Gemini REST model '{model_name}' for Image (Attempt {attempt+1})...")
+                    req = urllib.request.Request(
+                        url,
+                        data=json.dumps(payload).encode("utf-8"),
+                        headers={"Content-Type": "application/json"},
+                        method="POST"
+                    )
+                    with urllib.request.urlopen(req, timeout=180) as resp:
+                        res_data = json.loads(resp.read().decode("utf-8"))
+                        candidates = res_data.get("candidates", [])
+                        if candidates:
+                            parts = candidates[0].get("content", {}).get("parts", [])
+                            if parts:
+                                raw_text = parts[0].get("text", "")
+                                parsed_dict = self._clean_and_parse_json(raw_text)
+                                return DynamicTakeoffResponse(**parsed_dict)
+                except urllib.error.HTTPError as http_err:
+                    logger.warning(f"Gemini REST Image model '{model_name}' HTTP error {http_err.code}: {http_err.reason}. Retrying...")
+                    time.sleep(3 * (attempt + 1))
+                except Exception as err:
+                    logger.warning(f"Gemini REST Image model '{model_name}' failed: {err}")
+                    time.sleep(2)
+
+        raise RuntimeError("Failed to obtain valid response from all Gemini API model candidates for Image.")
 
     def analyze_bim_payload(self, bim_payload: str, project_name: str = "Proyek BIM Revit", client_name: str = "Client") -> DynamicTakeoffResponse:
         """
@@ -590,21 +805,31 @@ Tugas QS — Buat RAB LENGKAP:
 
         # Normalize project_summary — MUST be a string, GPT-5.6 often returns dict/object
         raw_summary = data.get("project_summary")
+        # Check if wbs_sections, sections, or items are nested inside dictionary fields (like project_summary, project, takeoff) BEFORE normalizing project_summary
+        for parent_key in list(data.keys()):
+            sub_dict = data.get(parent_key)
+            if isinstance(sub_dict, dict):
+                for sub_k in ("wbs_sections", "sections", "wbs", "categories", "items", "work_items"):
+                    if sub_k in sub_dict and isinstance(sub_dict[sub_k], list):
+                        logger.info(f"[JSON Normalize] Extracted nested '{sub_k}' ({len(sub_dict[sub_k])} items) from parent dict '{parent_key}'.")
+                        data[sub_k] = sub_dict[sub_k]
+                        break
+
+        # Normalize project_summary to string safely
+        raw_summary = data.get("project_summary")
         if not isinstance(raw_summary, str):
             if isinstance(raw_summary, dict):
                 # Try to extract a readable description string from the dict
-                for key in ("description", "summary", "text", "overview"):
+                for key in ("description", "summary", "text", "overview", "note"):
                     candidate = raw_summary.get(key)
-                    if isinstance(candidate, str) and len(candidate) > 10:
+                    if isinstance(candidate, str) and len(candidate) > 5:
                         data["project_summary"] = candidate
                         break
                 else:
-                    # Serialize entire dict to readable string
-                    data["project_summary"] = json.dumps(raw_summary, ensure_ascii=False, default=str)
+                    data["project_summary"] = "Ringkasan takeoff material otomatis dari AI."
             elif isinstance(raw_summary, list):
                 data["project_summary"] = "; ".join(str(x) for x in raw_summary)
             else:
-                # None, int, or any other unexpected type
                 fallback = data.get("summary")
                 data["project_summary"] = str(fallback) if fallback else "Ringkasan takeoff material otomatis dari AI."
         
@@ -665,7 +890,61 @@ Tugas QS — Buat RAB LENGKAP:
                         "items": flat_items
                     }]
             else:
-                data["wbs_sections"] = []
+                # Custom Key Recovery: LLMs (like Gemini/Claude) sometimes return custom top-level keys like
+                # 'room_approximate_areas_sqm', 'roof_structure_details', 'overall_dimensions', etc.
+                recovered_sections = []
+                sec_counter = 65  # 'A'
+                for k, v in data.items():
+                    if k in ("project", "project_summary", "wbs_sections", "sections", "items", "project_info", "general_notes"):
+                        continue
+                    sec_code = chr(sec_counter)
+                    sec_name = k.replace("_", " ").upper()
+                    items_list = []
+                    
+                    if isinstance(v, dict):
+                        for item_key, item_val in v.items():
+                            vol = 1.0
+                            if isinstance(item_val, (int, float)):
+                                vol = float(item_val)
+                            elif isinstance(item_val, str):
+                                match = re.search(r"(\d+(?:\.\d+)?)", item_val)
+                                if match:
+                                    vol = float(match.group(1))
+
+                            items_list.append({
+                                "no": len(items_list) + 1,
+                                "name": str(item_key).replace("_", " ").title(),
+                                "volume": vol,
+                                "unit": "m2" if "area" in k or "area" in str(item_key) else ("m3" if "vol" in k else "ls"),
+                                "warning_note": f"Dari {k}: {item_val}"
+                            })
+                    elif isinstance(v, list):
+                        for idx, el in enumerate(v):
+                            if isinstance(el, dict):
+                                items_list.append(el)
+                            else:
+                                items_list.append({
+                                    "no": idx + 1,
+                                    "name": str(el),
+                                    "volume": 1.0,
+                                    "unit": "ls",
+                                    "warning_note": f"Dari {k}"
+                                })
+
+                    if items_list:
+                        recovered_sections.append({
+                            "section": {
+                                "id": f"sec-{sec_code}",
+                                "code": sec_code,
+                                "name": f"PEKERJAAN {sec_name}"
+                            },
+                            "items": items_list
+                        })
+                        sec_counter += 1
+
+                data["wbs_sections"] = recovered_sections
+                if recovered_sections:
+                    logger.info(f"[JSON Normalize] Recovered {len(recovered_sections)} WBS sections from custom LLM keys: {[s['section']['name'] for s in recovered_sections]}")
 
         # Deep-repair and normalize WBS sections and items
         for sec_idx, sec_block in enumerate(data["wbs_sections"]):
