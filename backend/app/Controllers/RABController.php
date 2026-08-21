@@ -17,7 +17,7 @@ class RabController extends ResourceController
             ], 400);
         }
 
-        $envUrl = env('PYTHON_API_URL') ?: 'http://192.168.1.41:8200';
+        $envUrl = env('PYTHON_API_URL') ?: 'http://192.168.1.26:8200';
         $pythonBaseUrl = rtrim($envUrl, '/');
         $pythonUrl = $pythonBaseUrl . '/api/estimate'; 
 
@@ -63,14 +63,27 @@ class RabController extends ResourceController
             ], 400);
         }
 
-        // VALIDASI FILE BERDASARKAN EKSTENSI & SIZE (MIME di Windows sering kali terbaca text/plain atau octet-stream untuk CAD)
+        // VALIDASI FILE BERDASARKAN EKSTENSI & SIZE (MIME di Windows sering kali terbaca text/plain atau octet-stream untuk CAD/BIM)
         $fileExt = strtolower($file->getClientExtension());
-        $allowedExtensions = ['pdf', 'dwg', 'dxf', 'ifc', 'rvt'];
+        $allowedExtensions = [
+            // 1. Format BIM (3D Models & OpenBIM)
+            'ifc',             // OpenBIM
+            'rvt',                                        // Autodesk Revit
+            'nwd', 'nwc',                                 // Autodesk Navisworks
+            'skp',                                        // SketchUp
+
+            // 2. Format CAD (2D & 3D Vektor)
+            'dwg', 'dxf', 'dwt', 'dwf', 'dwfx',           // AutoCAD & Vektor Standard
+            'svg', 'plt', 'hpgl',                  // Grafis Vektor & Plotter
+
+            // 3. Format Dokumen & Gambar DED
+            'pdf', 'png', 'jpg', 'jpeg'
+        ];
 
         if (!in_array($fileExt, $allowedExtensions)) {
             return $this->respond([
                 'success' => false,
-                'message' => 'Format file tidak didukung. Harap gunakan file PDF, DWG, DXF, IFC, atau RVT DED yang sah.'
+                'message' => 'Format file tidak didukung. Harap unggah berkas DED, CAD, BIM, atau Dokumen yang valid.'
             ], 400);
         }
 
@@ -79,7 +92,7 @@ class RabController extends ResourceController
         $clientName  = $this->request->getPost('client') ?? 'Klien Internal';
 
         // 3. Arahkan ke URL FastAPI Python (dinamis via .env dengan fallback)
-        $envUrl = env('PYTHON_API_URL') ?: 'http://192.168.1.41:8200';
+        $envUrl = env('PYTHON_API_URL') ?: 'http://192.168.1.26:8200';
         $pythonBaseUrl = rtrim($envUrl, '/');
         $pythonUrl = $pythonBaseUrl . '/api/rab/analyze-image';
 
@@ -104,7 +117,7 @@ class RabController extends ResourceController
                     'client'   => $clientName
                 ],
                 'http_errors' => false,
-                'timeout'     => 300    
+                'timeout'     => 1200 
             ]);
 
             // 5. Kembalikan response JSON dari Python ke frontend
