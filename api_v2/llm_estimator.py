@@ -199,12 +199,10 @@ class CADLLMEstimator:
             "   - NEVER treat raw CAD millimeter or centimeter values directly as meters or m2! "
             "2. SANITY CHECK ON AREA & FOOTPRINT: "
             "   - 'Pembersihan Lapangan' & 'Bouwplank' MUST match the real building/site footprint area (typically 30 m2 to 500 m2 for residential/building drawings). "
-            "3. DETERMINISTIC STRUCTURAL FALLBACK SPECIFICATIONS (Use strictly when unstated in CAD): "
-            "   - Wall height = 3.0 meters. "
-            "   - Foundation trench depth = 0.8 meters, bottom width = 0.7 meters, top width = 0.5 meters. "
-            "   - Footplat P1 (if present without explicit dimensions) = 1.0m x 1.0m x 0.4m. "
-            "   - Sloof S1 = 0.15m x 0.20m. Kolom K1 = 0.15m x 0.15m x 3.0m. "
-            "   - Sand bed thickness = 0.05m. Aanstamping thickness = 0.10m. "
+            "3. DIMENSION DERIVATION RULES: "
+            "   - ALL structural dimensions (wall height, foundation depth, column size, beam size, slab thickness) MUST be derived ONLY from the actual drawing data. "
+            "   - If a specific dimension is NOT explicitly stated in the drawing, write 'Dimensi tidak tertera pada gambar' in warning_note and set confidence to 'low'. "
+            "   - NEVER assume or fabricate any fixed default dimensions — every number must come from the drawing. "
             "4. ATOMIC VOLUME RULES: "
             "   - EVERY WORK ITEM MUST HAVE A REALISTIC POSITIVE VOLUME (> 0.0). NEVER RETURN 0 OR 0.0 FOR VOLUME! "
             "   - Concrete/Foundation/Excavation (m3): length x width x depth. "
@@ -222,43 +220,12 @@ Klien: '{client_name}'
 
 Tugas QS:
 1. Periksa notasi dimensi CAD & tentukan skala unit (mm atau cm ke meter).
-2. Lakukan Sanity Check Luas Tapak/Bangunan: Pastikan luas 'Pembersihan Lapangan' & 'Bouwplank' realistis sesuai ukuran tanah (contoh: 6m x 10m = 60 m2, BUKAN ribuan m2).
+2. Lakukan Sanity Check Luas Tapak/Bangunan: Pastikan luas 'Pembersihan Lapangan' & 'Bouwplank' realistis sesuai ukuran tanah yang TERTERA pada gambar (jangan menggunakan asumsi statis).
 3. Lakukan Material Takeoff & Perhitungan Volume Kuantitas Riil untuk SETIAP item pekerjaan.
 4. Pisahkan seksi WBS secara spesifik (misal: Pekerjaan Tanah TERPISAH dari Pekerjaan Pondasi).
 
-Contoh Struktur JSON Output:
-{{
-  "project": {{
-    "title": "{project_name}",
-    "client": "{client_name}",
-    "status": "Perencanaan"
-  }},
-  "project_summary": "Ringkasan analisis kuantitas CAD dari AI",
-  "wbs_sections": [
-    {{
-      "section": {{
-        "id": "sec-A",
-        "type": "section",
-        "code": "A",
-        "name": "PEKERJAAN PERSIAPAN & K3"
-      }},
-      "items": [
-        {{
-          "id": "item-A-1",
-          "type": "item",
-          "sectionCode": "A",
-          "no": 1,
-          "code": "A.1",
-          "name": "Pembersihan Lapangan & Pembuatan Bouwplank",
-          "volume": 120.0,
-          "unit": "m2",
-          "confidence": "high",
-          "warning_note": "Berdasarkan luas bangunan denah"
-        }}
-      ]
-    }}
-  ]
-}}
+Output JSON WAJIB sesuai schema DynamicTakeoffResponse dengan field: project (title, client, status), project_summary (string ringkasan), wbs_sections (array of section+items). Setiap item WAJIB punya: id, sectionCode, no, code, name, volume (angka riil dari gambar), unit, confidence, warning_note (rumus kalkulasi).
+SELURUH angka volume dan dimensi HARUS murni diekstrak dari gambar CAD — DILARANG menggunakan angka asumsi atau contoh.
 """
 
         # Try Primary API first
@@ -353,12 +320,10 @@ Contoh Struktur JSON Output:
             "   - NEVER treat raw CAD millimeter or centimeter values directly as meters or m2! "
             "2. SANITY CHECK ON AREA & FOOTPRINT: "
             "   - 'Pembersihan Lapangan' & 'Bouwplank' MUST match the real building/site footprint area (typically 30 m2 to 500 m2 for residential/building drawings). "
-            "3. DETERMINISTIC STRUCTURAL FALLBACK SPECIFICATIONS (Use strictly when unstated in drawing): "
-            "   - Wall height = 3.0 meters. "
-            "   - Foundation trench depth = 0.8 meters, bottom width = 0.7 meters, top width = 0.5 meters. "
-            "   - Footplat P1 (if present without explicit dimensions) = 1.0m x 1.0m x 0.4m. "
-            "   - Sloof S1 = 0.15m x 0.20m. Kolom K1 = 0.15m x 0.15m x 3.0m. "
-            "   - Sand bed thickness = 0.05m. Aanstamping thickness = 0.10m. "
+            "3. DIMENSION DERIVATION RULES: "
+            "   - ALL structural dimensions (wall height, foundation depth, column size, beam size, slab thickness) MUST be derived ONLY from the actual drawing data. "
+            "   - If a specific dimension is NOT explicitly stated in the drawing, write 'Dimensi tidak tertera pada gambar' in warning_note and set confidence to 'low'. "
+            "   - NEVER assume or fabricate any fixed default dimensions — every number must come from the drawing. "
             "4. ATOMIC VOLUME RULES: "
             "   - EVERY WORK ITEM MUST HAVE A REALISTIC POSITIVE VOLUME (> 0.0). NEVER RETURN 0 OR 0.0 FOR VOLUME! "
             "   - Concrete/Foundation/Excavation (m3): length x width x depth. "
@@ -373,7 +338,7 @@ Klien: '{client_name}'
 
 Tugas QS:
 1. Periksa notasi dimensi & denah dalam dokumen PDF ini, tentukan skala unit (mm atau cm ke meter).
-2. Lakukan Sanity Check Luas Tapak/Bangunan: Pastikan luas 'Pembersihan Lapangan' & 'Bouwplank' realistis sesuai ukuran tanah (contoh: 6m x 10m = 60 m2, BUKAN ribuan m2).
+2. Lakukan Sanity Check Luas Tapak/Bangunan: Pastikan luas 'Pembersihan Lapangan' & 'Bouwplank' realistis sesuai ukuran tanah yang TERTERA pada gambar (jangan menggunakan asumsi statis).
 3. Lakukan Material Takeoff & Perhitungan Volume Kuantitas Riil untuk SETIAP item pekerjaan.
 4. Pisahkan seksi WBS secara spesifik (misal: Pekerjaan Tanah TERPISAH dari Pekerjaan Pondasi).
 """
@@ -532,12 +497,10 @@ Tugas QS:
             "   - NEVER treat raw millimeter or centimeter values directly as meters or m2! "
             "2. SANITY CHECK ON AREA & FOOTPRINT: "
             "   - 'Pembersihan Lapangan' & 'Bouwplank' MUST match the real building/site footprint area (typically 30 m2 to 500 m2 for residential/building drawings). "
-            "3. DETERMINISTIC STRUCTURAL FALLBACK SPECIFICATIONS (Use strictly when unstated in drawing): "
-            "   - Wall height = 3.0 meters. "
-            "   - Foundation trench depth = 0.8 meters, bottom width = 0.7 meters, top width = 0.5 meters. "
-            "   - Footplat P1 (if present without explicit dimensions) = 1.0m x 1.0m x 0.4m. "
-            "   - Sloof S1 = 0.15m x 0.20m. Kolom K1 = 0.15m x 0.15m x 3.0m. "
-            "   - Sand bed thickness = 0.05m. Aanstamping thickness = 0.10m. "
+            "3. DIMENSION DERIVATION RULES: "
+            "   - ALL structural dimensions (wall height, foundation depth, column size, beam size, slab thickness) MUST be derived ONLY from the actual drawing data. "
+            "   - If a specific dimension is NOT explicitly stated in the drawing, write 'Dimensi tidak tertera pada gambar' in warning_note and set confidence to 'low'. "
+            "   - NEVER assume or fabricate any fixed default dimensions — every number must come from the drawing. "
             "4. ATOMIC VOLUME RULES: "
             "   - EVERY WORK ITEM MUST HAVE A REALISTIC POSITIVE VOLUME (> 0.0). NEVER RETURN 0 OR 0.0 FOR VOLUME! "
             "   - Concrete/Foundation/Excavation (m3): length x width x depth. "
@@ -552,7 +515,7 @@ Klien: '{client_name}'
 
 Tugas QS:
 1. Periksa notasi dimensi & denah dalam gambar ini, tentukan skala unit (mm atau cm ke meter).
-2. Lakukan Sanity Check Luas Tapak/Bangunan: Pastikan luas 'Pembersihan Lapangan' & 'Bouwplank' realistis sesuai ukuran tanah (contoh: 6m x 10m = 60 m2, BUKAN ribuan m2).
+2. Lakukan Sanity Check Luas Tapak/Bangunan: Pastikan luas 'Pembersihan Lapangan' & 'Bouwplank' realistis sesuai ukuran tanah yang TERTERA pada gambar (jangan menggunakan asumsi statis).
 3. Lakukan Material Takeoff & Perhitungan Volume Kuantitas Riil untuk SETIAP item pekerjaan.
 4. Pisahkan seksi WBS secara spesifik (misal: Pekerjaan Tanah TERPISAH dari Pekerjaan Pondasi).
 """
@@ -826,16 +789,16 @@ Tugas QS — Buat RAB LENGKAP:
                         data["project_summary"] = candidate
                         break
                 else:
-                    data["project_summary"] = "Ringkasan takeoff material otomatis dari AI."
+                    data["project_summary"] = f"Ringkasan estimasi untuk proyek: {data.get('project', {}).get('title', 'Tidak diketahui')}"
             elif isinstance(raw_summary, list):
                 data["project_summary"] = "; ".join(str(x) for x in raw_summary)
             else:
                 fallback = data.get("summary")
-                data["project_summary"] = str(fallback) if fallback else "Ringkasan takeoff material otomatis dari AI."
+                data["project_summary"] = str(fallback) if fallback else f"Ringkasan estimasi untuk proyek: {data.get('project', {}).get('title', 'Tidak diketahui')}"
         
         # Final safety: ensure it's definitely a string
         if not isinstance(data.get("project_summary"), str):
-            data["project_summary"] = "Ringkasan takeoff material otomatis dari AI."
+            data["project_summary"] = f"Ringkasan estimasi untuk proyek: {data.get('project', {}).get('title', 'Tidak diketahui')}"
 
         # Debug: log top-level keys to understand LLM response structure
         logger.info(f"[JSON Normalize] Top-level keys from LLM: {list(data.keys())}")
@@ -903,7 +866,7 @@ Tugas QS — Buat RAB LENGKAP:
                     
                     if isinstance(v, dict):
                         for item_key, item_val in v.items():
-                            vol = 1.0
+                            vol = 0.0
                             if isinstance(item_val, (int, float)):
                                 vol = float(item_val)
                             elif isinstance(item_val, str):
@@ -926,9 +889,10 @@ Tugas QS — Buat RAB LENGKAP:
                                 items_list.append({
                                     "no": idx + 1,
                                     "name": str(el),
-                                    "volume": 1.0,
+                                    "volume": 0.0,
                                     "unit": "ls",
-                                    "warning_note": f"Dari {k}"
+                                    "confidence": "low",
+                                    "warning_note": f"Volume tidak terdeteksi AI — dari key: {k}"
                                 })
 
                     if items_list:
@@ -1013,15 +977,31 @@ Tugas QS — Buat RAB LENGKAP:
                     repaired_item["no"] = item_idx + 1
 
                 repaired_item["code"] = item.get("code") or item.get("wbs_code") or f"{repaired_item['sectionCode']}.{repaired_item['no']}"
-                repaired_item["name"] = item.get("name") or item.get("wbs_item") or item.get("description") or item.get("title") or "Pekerjaan Kategori"
+                repaired_item["name"] = (
+                    item.get("name")
+                    or item.get("item_name")
+                    or item.get("nama_pekerjaan")
+                    or item.get("nama")
+                    or item.get("uraian_pekerjaan")
+                    or item.get("uraian")
+                    or item.get("wbs_item")
+                    or item.get("description")
+                    or item.get("desc")
+                    or item.get("title")
+                    or item.get("job_name")
+                    or item.get("task_name")
+                    or item.get("element_name")
+                    or item.get("element")
+                    or f"Pekerjaan {repaired_item.get('sectionCode', '?')}.{item_idx + 1} (nama tidak terdeteksi AI)"
+                )
 
-                raw_volume = item.get("volume") or item.get("qty") or item.get("quantity") or 1.0
+                raw_volume = item.get("volume") or item.get("qty") or item.get("quantity") or 0.0
                 try:
                     repaired_item["volume"] = float(raw_volume)
                 except (ValueError, TypeError):
-                    repaired_item["volume"] = 1.0
+                    repaired_item["volume"] = 0.0
 
-                repaired_item["unit"] = item.get("unit") or item.get("satuan") or "m2"
+                repaired_item["unit"] = item.get("unit") or item.get("satuan") or "ls"
                 repaired_item["id"] = item.get("id") or f"item-{repaired_item['sectionCode']}-{repaired_item['no']}"
                 repaired_item["type"] = "item"
                 repaired_item["confidence"] = item.get("confidence") or "high"

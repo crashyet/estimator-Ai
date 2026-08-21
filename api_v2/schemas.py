@@ -28,14 +28,13 @@ class EstimateItem(BaseModel):
 
     @field_validator("volume", mode="before")
 
-    def ensure_nonzero_volume(cls, v):
+    def ensure_valid_volume(cls, v):
+        """Pass through AI's exact volume value. Use 0.0 for unparseable values — never inject static defaults."""
         try:
             val = float(v)
-            if val <= 0.0:
-                return 1.0
             return round(val, 2)
         except (ValueError, TypeError):
-            return 1.0
+            return 0.0
 
 class EstimateSection(BaseModel):
     id: str = Field(..., description="ID unik seksi, contoh 'sec-A', 'sec-B'")
