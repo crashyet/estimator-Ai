@@ -17,7 +17,7 @@ const formatNumber = (value) => {
   });
 };
 
-// Generates 21 sections of data, calibrated so that the grand total matches exactly Rp 995.971.307,58
+// Generates initial sections of data
 const getInitialData = () => {
   const sectionA = {
     code: 'A',
@@ -110,237 +110,10 @@ const getInitialData = () => {
         { name: 'Pasangan glass block 20x20', volume: 40.00, unit: 'unit', unitPrice: 65000 },
         { name: 'Pekerjaan tali air plesteran', volume: 180.00, unit: 'm1', unitPrice: 15000 }
       ]
-    },
-    {
-      code: 'G',
-      name: 'PEKERJAAN KUSEN, PINTU, DAN JENDELA',
-      items: [
-        { name: 'Kusen aluminium 4" warna hitam anodized', volume: 145.00, unit: 'm1', unitPrice: 125000 },
-        { name: 'Daun pintu panel kayu kamper oven', volume: 8.00, unit: 'unit', unitPrice: 2800000 },
-        { name: 'Daun pintu kaca frame aluminium', volume: 6.00, unit: 'unit', unitPrice: 1950000 },
-        { name: 'Daun jendela kaca swing frame aluminium', volume: 18.00, unit: 'unit', unitPrice: 950000 },
-        { name: 'Kaca polos tebal 5mm untuk jendela', volume: 32.50, unit: 'm2', unitPrice: 185000 },
-        { name: 'Kunci pintu utama type Mortise Lock Dekkson', volume: 2.00, unit: 'set', unitPrice: 850000 },
-        { name: 'Kunci pintu kamar type Lever Handle Dekkson', volume: 12.00, unit: 'set', unitPrice: 450000 },
-        { name: 'Engsel pintu stainless steel 4"', volume: 42.00, unit: 'pcs', unitPrice: 4500 },
-        { name: 'Door closer type hold open Dekkson', volume: 4.00, unit: 'pcs', unitPrice: 320000 }
-      ]
-    },
-    {
-      code: 'H',
-      name: 'PEKERJAAN RANGKA ATAP DAN GENTENG',
-      items: [
-        { name: 'Rangka atap baja ringan spandek t=0.75mm', volume: 165.00, unit: 'm2', unitPrice: 185000 },
-        { name: 'Penutup atap genteng keramik Kanmuri', volume: 165.00, unit: 'm2', unitPrice: 175000 },
-        { name: 'Pasang nok genteng keramik Kanmuri', volume: 24.50, unit: 'm1', unitPrice: 95000 },
-        { name: 'Pasang flashing seng talang BJLS 30', volume: 18.00, unit: 'm1', unitPrice: 65000 },
-        { name: 'Lisplank GRC t=9mm lebar 30cm', volume: 36.00, unit: 'm1', unitPrice: 85000 },
-        { name: 'Pekerjaan gording baja profil C 125', volume: 640.00, unit: 'kg', unitPrice: 22000 },
-        { name: 'Pekerjaan ikatan angin dia. 12mm', volume: 85.00, unit: 'kg', unitPrice: 24000 },
-        { name: 'Cat meni besi untuk rangka baja', volume: 120.00, unit: 'm2', unitPrice: 35000 },
-        { name: 'Aluminium foil single side penahan panas', volume: 165.00, unit: 'm2', unitPrice: 22000 }
-      ]
-    },
-    {
-      code: 'I',
-      name: 'PEKERJAAN PLAFON GYPSUM',
-      items: [
-        { name: 'Rangka plafon hollow galvanis 40x40 & 20x40', volume: 380.00, unit: 'm2', unitPrice: 85000 },
-        { name: 'Plafon gypsum board tebal 9mm Jaya Board', volume: 320.00, unit: 'm2', unitPrice: 68000 },
-        { name: 'Plafon GRC board tebal 4mm (toilet & teras)', volume: 60.00, unit: 'm2', unitPrice: 72000 },
-        { name: 'List profil gypsum lebar 10cm', volume: 420.00, unit: 'm1', unitPrice: 28000 },
-        { name: 'Compound gypsum & tape sambungan', volume: 380.00, unit: 'm2', unitPrice: 12000 },
-        { name: 'Pekerjaan drop ceiling gypsum', volume: 65.00, unit: 'm1', unitPrice: 95000 },
-        { name: 'Manhole plafon ukuran 60x60 frame aluminium', volume: 6.00, unit: 'unit', unitPrice: 150000 },
-        { name: 'Kawat penggantung plafon dia. 4mm', volume: 450.00, unit: 'pcs', unitPrice: 4500 },
-        { name: 'Pekerjaan shadowline aluminium keliling', volume: 120.00, unit: 'm1', unitPrice: 18000 }
-      ]
-    },
-    {
-      code: 'J',
-      name: 'PEKERJAAN LANTAI DAN KERAMIK',
-      items: [
-        { name: 'Lantai Homogeneous Tile 60x60 polished Roman', volume: 280.00, unit: 'm2', unitPrice: 195000 },
-        { name: 'Lantai Homogeneous Tile 60x60 unpolished Roman', volume: 45.00, unit: 'm2', unitPrice: 210000 },
-        { name: 'Keramik lantai kamar mandi 30x30 Roman anti slip', volume: 24.00, unit: 'm2', unitPrice: 135000 },
-        { name: 'Keramik dinding kamar mandi 30x60 Roman', volume: 72.00, unit: 'm2', unitPrice: 165000 },
-        { name: 'Keramik dinding dapur 30x60 Roman', volume: 18.50, unit: 'm2', unitPrice: 175000 },
-        { name: 'Plint lantai keramik ukuran 10x60', volume: 340.00, unit: 'm1', unitPrice: 28000 },
-        { name: 'Screeding lantai dasar tebal 3cm 1:4', volume: 325.00, unit: 'm2', unitPrice: 48000 },
-        { name: 'Perekat keramik MU-400 Granit Fix', volume: 85.00, unit: 'sak', unitPrice: 145000 },
-        { name: 'Pengisi nat keramik / grout Roman', volume: 65.00, unit: 'kg', unitPrice: 18000 }
-      ]
-    },
-    {
-      code: 'K',
-      name: 'PEKERJAAN INSTALASI AIR BERSIH & KOTOR',
-      items: [
-        { name: 'Instalasi pipa air bersih PPR PN-10 dia. 1/2" Wavin', volume: 85.00, unit: 'm1', unitPrice: 38000 },
-        { name: 'Instalasi pipa air bersih PPR PN-10 dia. 3/4" Wavin', volume: 42.00, unit: 'm1', unitPrice: 48000 },
-        { name: 'Instalasi pipa air kotor PVC kelas D dia. 3" Wavin', volume: 65.00, unit: 'm1', unitPrice: 75000 },
-        { name: 'Instalasi pipa air bekas PVC kelas D dia. 4" Wavin', volume: 85.00, unit: 'm1', unitPrice: 95000 },
-        { name: 'Pipa vent PVC kelas D dia. 1-1/2" Wavin', volume: 32.00, unit: 'm1', unitPrice: 28000 },
-        { name: 'Galian tanah untuk saluran pipa air kotor', volume: 45.00, unit: 'm3', unitPrice: 75000 },
-        { name: 'Urugan pasir kempa pipa t=10cm', volume: 8.50, unit: 'm3', unitPrice: 180000 },
-        { name: 'Pekerjaan bak kontrol bata 40x40 t=50cm', volume: 6.00, unit: 'unit', unitPrice: 450000 },
-        { name: 'Septic tank biofil kapasitas 1500 liter', volume: 1.00, unit: 'unit', unitPrice: 4200000 }
-      ]
-    },
-    {
-      code: 'L',
-      name: 'PEKERJAAN SANITAIR & FAUCETS',
-      items: [
-        { name: 'Monoblock closet duduk type CW421J Toto putih', volume: 6.00, unit: 'unit', unitPrice: 2650000 },
-        { name: 'Wastafel gantung type LW230J Toto putih', volume: 6.00, unit: 'unit', unitPrice: 850000 },
-        { name: 'Kran dinding leher angsa dapur type TX603KES Toto', volume: 2.00, unit: 'unit', unitPrice: 950000 },
-        { name: 'Kran shower mixer tiang panas dingin Toto', volume: 6.00, unit: 'unit', unitPrice: 3200000 },
-        { name: 'Jet shower toilet type TX403SB Toto putih', volume: 6.00, unit: 'unit', unitPrice: 380000 },
-        { name: 'Floor drain stainless steel type TX1BN Toto', volume: 8.00, unit: 'pcs', unitPrice: 280000 },
-        { name: 'Gantungan handuk stainless steel Toto', volume: 6.00, unit: 'pcs', unitPrice: 320000 },
-        { name: 'Tempat sabun keramik tanam Toto', volume: 6.00, unit: 'pcs', unitPrice: 145000 },
-        { name: 'Cermin wastafel beveled tebal 5mm 60x80', volume: 6.00, unit: 'pcs', unitPrice: 350000 }
-      ]
-    },
-    {
-      code: 'M',
-      name: 'PEKERJAAN INSTALASI LISTRIK',
-      items: [
-        { name: 'Instalasi titik lampu kabel NYM 3x2.5mm Eternal', volume: 68.00, unit: 'titik', unitPrice: 245000 },
-        { name: 'Instalasi titik stop kontak kabel NYM 3x2.5mm Eternal', volume: 42.00, unit: 'titik', unitPrice: 265000 },
-        { name: 'Instalasi titik AC kabel NYM 3x2.5mm + pipa drain', volume: 8.00, unit: 'titik', unitPrice: 480000 },
-        { name: 'Instalasi titik exhaust fan toilet + pipa exhaust', volume: 6.00, unit: 'titik', unitPrice: 320000 },
-        { name: 'Instalasi pipa conduit PVC high impact dia. 20mm', volume: 180.00, unit: 'batang', unitPrice: 12500 },
-        { name: 'T-Dos & Cross-Dos PVC Clipsal', volume: 120.00, unit: 'pcs', unitPrice: 4500 },
-        { name: 'Kawat penarik kabel / fishing tape', volume: 1.00, unit: 'roll', unitPrice: 280000 },
-        { name: 'Instalasi arde ground tembaga BC-16 L=6m', volume: 1.00, unit: 'lot', unitPrice: 1450000 },
-        { name: 'Pengujian instalasi & megger test tahanan isolasi', volume: 1.00, unit: 'ls', unitPrice: 1200000 }
-      ]
-    },
-    {
-      code: 'N',
-      name: 'PEKERJAAN ARMATUR & LAMPU',
-      items: [
-        { name: 'Lampu LED Downlight 9W Panasonic round putih', volume: 54.00, unit: 'pcs', unitPrice: 95000 },
-        { name: 'Lampu LED Strip warm white untuk drop ceiling 12V', volume: 120.00, unit: 'm1', unitPrice: 45000 },
-        { name: 'Saklar tunggal type Wide Series Panasonic', volume: 8.00, unit: 'pcs', unitPrice: 28000 },
-        { name: 'Saklar ganda type Wide Series Panasonic', volume: 14.00, unit: 'pcs', unitPrice: 38000 },
-        { name: 'Stop kontak CP type Wide Series Panasonic', volume: 38.00, unit: 'pcs', unitPrice: 36000 },
-        { name: 'Panel box MCB 12 Group in-bow Schneider', volume: 2.00, unit: 'unit', unitPrice: 420000 },
-        { name: 'MCB 1 Phase 10A / 16A Schneider Domae', volume: 12.00, unit: 'pcs', unitPrice: 65000 },
-        { name: 'Lampu dinding eksterior waterproof fitting E27', volume: 8.00, unit: 'pcs', unitPrice: 185000 },
-        { name: 'Exhaust fan plafon type 10" KDK', volume: 6.00, unit: 'unit', unitPrice: 420000 }
-      ]
-    },
-    {
-      code: 'O',
-      name: 'PEKERJAAN PENGECATAN DINDING & PLAFON',
-      items: [
-        { name: 'Cat dinding interior 3 lapis Dulux Pentalite', volume: 960.00, unit: 'm2', unitPrice: 48000 },
-        { name: 'Cat dinding eksterior 3 lapis Dulux Weathershield', volume: 190.00, unit: 'm2', unitPrice: 72000 },
-        { name: 'Cat Plafon gypsum 3 lapis Dulux Catylac', volume: 380.00, unit: 'm2', unitPrice: 35000 },
-        { name: 'Pekerjaan plamir dinding semen instan MU-290', volume: 1150.00, unit: 'm2', unitPrice: 18000 },
-        { name: 'Pekerjaan sealer wall primer alkali resisting Dulux', volume: 1150.00, unit: 'm2', unitPrice: 22000 },
-        { name: 'Cat permukaan beton ekspos / coating doff', volume: 85.00, unit: 'm2', unitPrice: 45000 },
-        { name: 'Cat lis profil gypsum cat air putih', volume: 420.00, unit: 'm1', unitPrice: 12000 },
-        { name: 'Pekerjaan amplas dinding & plafon halus', volume: 1530.00, unit: 'm2', unitPrice: 6500 },
-        { name: 'Pekerjaan proteksi lantai dengan plastik cor', volume: 380.00, unit: 'm2', unitPrice: 4500 }
-      ]
-    },
-    {
-      code: 'P',
-      name: 'PEKERJAAN WATERPROOFING & COATING',
-      items: [
-        { name: 'Waterproofing cementitious 2 lapis SikaTop-107 toilet', volume: 96.00, unit: 'm2', unitPrice: 95000 },
-        { name: 'Waterproofing membrane bakar t=3mm Sika dak beton', volume: 45.00, unit: 'm2', unitPrice: 185000 },
-        { name: 'Pekerjaan screed pelindung waterproofing t=3cm', volume: 45.00, unit: 'm2', unitPrice: 65000 },
-        { name: 'Waterproofing polyurethane coating area luar', volume: 64.00, unit: 'm2', unitPrice: 120000 },
-        { name: 'Coating batu alam gloss/doff Arca', volume: 32.00, unit: 'm2', unitPrice: 48000 },
-        { name: 'Kawat ayam kassa penguat sudut waterproofing', volume: 120.00, unit: 'm1', unitPrice: 15000 },
-        { name: 'Pekerjaan uji rendam air toilet 1x24 jam', volume: 6.00, unit: 'ruang', unitPrice: 150000 },
-        { name: 'Pekerjaan injeksi polyurethane kebocoran beton', volume: 1.00, unit: 'lot', unitPrice: 2500000 },
-        { name: 'Pembersihan permukaan beton sebelum coating', volume: 205.00, unit: 'm2', unitPrice: 8500 }
-      ]
-    },
-    {
-      code: 'Q',
-      name: 'PEKERJAAN RAILING & BESI',
-      items: [
-        { name: 'Railing tangga besi hollow hitam + handrail kayu', volume: 18.50, unit: 'm1', unitPrice: 950000 },
-        { name: 'Railing balkon kaca tempered 10mm + frame stainless 304', volume: 12.40, unit: 'm1', unitPrice: 1850000 },
-        { name: 'Pekerjaan kanopi kaca tempered 8mm + rangka besi WF', volume: 24.00, unit: 'm2', unitPrice: 1450000 },
-        { name: 'Tangga putar besi servis dia. 100cm t=3m', volume: 1.00, unit: 'unit', unitPrice: 4500000 },
-        { name: 'Grating besi saluran air selokan luar 20x100', volume: 15.00, unit: 'pcs', unitPrice: 180000 },
-        { name: 'Pekerjaan cat duco railing tangga & balkon', volume: 1.00, unit: 'lot', unitPrice: 2800000 },
-        { name: 'Cat anti karat zinc chromate untuk kanopi', volume: 48.00, unit: 'm2', unitPrice: 25000 },
-        { name: 'Dynabolt M12 x 100 untuk dudukan railing', volume: 85.00, unit: 'pcs', unitPrice: 12000 },
-        { name: 'Las sambungan konstruksi kanopi besi', volume: 1.00, unit: 'lot', unitPrice: 1500000 }
-      ]
-    },
-    {
-      code: 'R',
-      name: 'PEKERJAAN FACADE & CLADDING',
-      items: [
-        { name: 'Aluminium Composite Panel (ACP) PVDF 0.3mm Seven', volume: 68.00, unit: 'm2', unitPrice: 680000 },
-        { name: 'Rangka ACP besi siku 40x40x3 & hollow 40x40', volume: 420.00, unit: 'kg', unitPrice: 24000 },
-        { name: 'Curtain wall kaca stopsol 6mm + frame aluminium', volume: 24.50, unit: 'm2', unitPrice: 1650000 },
-        { name: 'Sealant silicone neutral Dowsil keliling ACP/kaca', volume: 240.00, unit: 'm1', unitPrice: 28000 },
-        { name: 'Scaffolding sewa & pemasangan untuk facade', volume: 1.00, unit: 'lot', unitPrice: 3500000 },
-        { name: 'Bracket besi tebal 6mm + angkur untuk ACP', volume: 180.00, unit: 'pcs', unitPrice: 45000 },
-        { name: 'Pekerjaan kisi-kisi louvre aluminium shading', volume: 18.50, unit: 'm2', unitPrice: 850000 },
-        { name: 'Skrup roofing + dynabolt M10 untuk facade', volume: 1.00, unit: 'lot', unitPrice: 1200000 },
-        { name: 'Pembersihan kaca & ACP area facade luar', volume: 111.00, unit: 'm2', unitPrice: 18000 }
-      ]
-    },
-    {
-      code: 'S',
-      name: 'PEKERJAAN HALAMAN, PAGAR & LANSKAP',
-      items: [
-        { name: 'Pasang paving block press K-250 tebal 6cm grey', volume: 120.00, unit: 'm2', unitPrice: 135000 },
-        { name: 'Urugan pasir bawah paving block t=5cm', volume: 6.00, unit: 'm3', unitPrice: 180000 },
-        { name: 'Kanstin beton pembatas paving 15x30x40', volume: 45.00, unit: 'pcs', unitPrice: 48000 },
-        { name: 'Pagar depan besi hollow minimalis t=1.5m sliding', volume: 12.00, unit: 'm2', unitPrice: 850000 },
-        { name: 'Pondasi pagar beton cor & batu kali', volume: 1.00, unit: 'lot', unitPrice: 6500000 },
-        { name: 'Pekerjaan taman rumput gajah mini + tanah subur', volume: 32.00, unit: 'm2', unitPrice: 75000 },
-        { name: 'Pekerjaan pohon peneduh ketapang kencana H=3m', volume: 3.00, unit: 'pohon', unitPrice: 450000 },
-        { name: 'Pasang batu alam susun sirih dinding pagar', volume: 18.50, unit: 'm2', unitPrice: 220000 },
-        { name: 'Lampu taman tancap solar cell LED', volume: 6.00, unit: 'unit', unitPrice: 125000 }
-      ]
-    },
-    {
-      code: 'T',
-      name: 'PEKERJAAN PEMBERSIHAN AKHIR',
-      items: [
-        { name: 'Pembersihan kaca jendela & pintu seluruh bangunan', volume: 1.00, unit: 'ls', unitPrice: 1500000 },
-        { name: 'Pembersihan noda semen keramik lantai & dinding', volume: 420.00, unit: 'm2', unitPrice: 7500 },
-        { name: 'Pembuangan puing sisa konstruksi keluar proyek', volume: 8.00, unit: 'rit', unitPrice: 450000 },
-        { name: 'General cleaning menggunakan poles lantai', volume: 1.00, unit: 'lot', unitPrice: 3500000 },
-        { name: 'Penyemprotan disinfektan / anti rayap pra-huni', volume: 380.00, unit: 'm2', unitPrice: 12000 },
-        { name: 'Pembersihan area luar & saluran air selokan', volume: 1.00, unit: 'ls', unitPrice: 1200000 },
-        { name: 'Perapihan sisa cat & plesteran yang menempel', volume: 1.00, unit: 'ls', unitPrice: 950000 },
-        { name: 'Sewa dump truck pembuangan sampah proyek', volume: 2.00, unit: 'hari', unitPrice: 850000 },
-        { name: 'Pekerjaan perapihan jalan umum rusak akibat proyek', volume: 1.00, unit: 'ls', unitPrice: 2500000 }
-      ]
-    },
-    {
-      code: 'U',
-      name: 'PEKERJAAN MOBILISASI & K3',
-      items: [
-        { name: 'Mobilisasi dan demobilisasi peralatan berat', volume: 1.00, unit: 'ls', unitPrice: 5000000 },
-        { name: 'Sewa direksikit & barak pekerja kontainer 20ft', volume: 6.00, unit: 'bulan', unitPrice: 3500000 },
-        { name: 'Sewa toilet portable proyek + sedot berkala', volume: 6.00, unit: 'bulan', unitPrice: 1200000 },
-        { name: 'Penyediaan air kerja & listrik kerja', volume: 6.00, unit: 'bulan', unitPrice: 1800000 },
-        { name: 'Penyediaan APD (Helm, Rompi, Sepatu Boot) pekerja', volume: 25.00, unit: 'set', unitPrice: 150000 },
-        { name: 'Penyediaan kotak P3K & rambu-rambu K3', volume: 1.00, unit: 'set', unitPrice: 1200000 },
-        { name: 'Pekerjaan pembuatan shop drawing & as-built drawing', volume: 1.00, unit: 'lot', unitPrice: 4500000 },
-        { name: 'Sewa scaffolding per set/bulan', volume: 80.00, unit: 'set', unitPrice: 35000 },
-        { name: 'Biaya admin, koordinasi lingkungan & ijin lingkungan', volume: 1.00, unit: 'ls', unitPrice: 1000000 }
-      ]
     }
   ];
 
-  const targetBToU = 954247569.57; // 995,971,307.58 - 41,723,738.01
-
-  // Compute current raw sum of B to U
+  const targetBToU = 954247569.57;
   let rawSumBToU = 0;
   rawSectionsBToU.forEach(sec => {
     sec.items.forEach(it => {
@@ -349,42 +122,20 @@ const getInitialData = () => {
   });
 
   const factor = targetBToU / rawSumBToU;
-
   let currentSumBToU = 0;
   const scaledSections = rawSectionsBToU.map((sec, secIdx) => {
     const isLastSec = secIdx === rawSectionsBToU.length - 1;
     const scaledItems = sec.items.map((it, itIdx) => {
       const isLastItem = isLastSec && itIdx === sec.items.length - 1;
-      if (isLastItem) {
-        return { ...it }; // Adjusted separately later
-      }
+      if (isLastItem) return { ...it };
       const newPrice = Math.round((it.unitPrice * factor) * 100) / 100;
       currentSumBToU += it.volume * newPrice;
-      return {
-        ...it,
-        unitPrice: newPrice
-      };
+      return { ...it, unitPrice: newPrice };
     });
-    return {
-      ...sec,
-      items: scaledItems
-    };
+    return { ...sec, items: scaledItems };
   });
 
-  // Adjust the very last item of Section U to make the total exact
-  const lastSec = scaledSections[scaledSections.length - 1];
-  const lastItemIdx = lastSec.items.length - 1;
-  const lastItem = lastSec.items[lastItemIdx];
-  const neededLastItemPrice = targetBToU - currentSumBToU;
-  lastSec.items[lastItemIdx] = {
-    ...lastItem,
-    unitPrice: Math.round(neededLastItemPrice * 100) / 100
-  };
-
-  // Flatten into row format
   const flattened = [];
-
-  // Section A
   flattened.push({
     id: `sec-${sectionA.code}`,
     type: 'section',
@@ -400,11 +151,11 @@ const getInitialData = () => {
       name: it.name,
       volume: it.volume,
       unit: it.unit,
-      unitPrice: it.unitPrice
+      unitPrice: it.unitPrice,
+      code: `A.${idx + 1}`
     });
   });
 
-  // Sections B to U
   scaledSections.forEach(sec => {
     flattened.push({
       id: `sec-${sec.code}`,
@@ -421,7 +172,8 @@ const getInitialData = () => {
         name: it.name,
         volume: it.volume,
         unit: it.unit,
-        unitPrice: it.unitPrice
+        unitPrice: it.unitPrice,
+        code: `${sec.code}.${idx + 1}`
       });
     });
   });
@@ -450,7 +202,6 @@ const Anggaran = () => {
     localStorage.setItem(`estimator_uploaded_rows_${activeProjectId}`, JSON.stringify(rows));
   }, [rows, activeProjectId]);
 
-  // Load project details (title, client) dynamically
   const projectDetail = useMemo(() => {
     const savedProjects = localStorage.getItem('estimator_projects');
     if (savedProjects) {
@@ -462,40 +213,8 @@ const Anggaran = () => {
         console.error(e);
       }
     }
-    // Fallback defaults if not found
-    if (projectId === '1') return { title: 'Pembangunan Gedung Kantor Cabang', client: 'PT Beecons' };
-    if (projectId === '2') return { title: 'Renovasi Laboratorium IT', client: 'Universitas Negeri' };
-    if (projectId === '3') return { title: 'Pemasangan Jaringan Fiber Optic', client: 'Dinas Kominfo' };
-    if (projectId === '4') return { title: 'Pembangunan Gudang Logistik', client: 'PT Logistik Jaya' };
-    return { title: `Proyek Estimasi #${projectId}`, client: 'Umum' };
+    return { title: `Proyek Estimasi #${projectId}`, client: 'PT Beecons' };
   }, [projectId]);
-
-  // Export quantity takeoff rows to MS Excel compatible CSV format
-  const handleExportCSV = () => {
-    let csvContent = "\ufeffsep=;\n";
-    csvContent += "Kode/No;Uraian Pekerjaan;Volume;Satuan\n";
-
-    rows.forEach((row) => {
-      if (row.type === 'section') {
-        csvContent += `"${row.code}";"${row.name.toUpperCase()}";"";""\n`;
-      } else {
-        const formattedVolume = String(row.volume).replace('.', ',');
-        csvContent += `"${row.no}";"${row.name}";"${formattedVolume}";"${row.unit}"\n`;
-      }
-    });
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-
-    const cleanTitle = projectDetail.title.replace(/[^a-zA-Z0-9]/g, "_");
-    link.setAttribute("download", `Estimasi_Takeoff_${cleanTitle}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    triggerToast("Berhasil mengekspor data takeoff ke Excel (CSV)!", "success");
-  };
 
   // Controls state
   const [currentPage, setCurrentPage] = useState(1);
@@ -503,11 +222,19 @@ const Anggaran = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [ppnRate, setPpnRate] = useState(0);
 
-  // Modals state
+  // Standard Modals state
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
   const [targetSectionCode, setTargetSectionCode] = useState("A");
+
+  // AHSP Mapping Modal State
+  const [showAhspModal, setShowAhspModal] = useState(false);
+  const [ahspTargetRow, setAhspTargetRow] = useState(null);
+  const [ahspSearchQuery, setAhspSearchQuery] = useState("");
+  const [ahspSearchResults, setAhspSearchResults] = useState([]);
+  const [isSearchingAhsp, setIsSearchingAhsp] = useState(false);
+  const [isMappingBatch, setIsMappingBatch] = useState(false);
 
   // Form states
   const [formData, setFormData] = useState({
@@ -524,7 +251,6 @@ const Anggaran = () => {
     type: "success"
   });
 
-  // Utility to show toasts
   const triggerToast = (message, type = "success") => {
     setToast({ show: true, message, type });
     setTimeout(() => {
@@ -532,7 +258,6 @@ const Anggaran = () => {
     }, 3500);
   };
 
-  // Reset to initial seed data
   const handleResetData = () => {
     if (window.confirm("Apakah Anda yakin ingin mengatur ulang semua data ke estimasi awal?")) {
       setRows(getInitialData());
@@ -543,25 +268,149 @@ const Anggaran = () => {
     }
   };
 
-  // Dynamic calculations based on current state
+  // Export CSV
+  const handleExportCSV = () => {
+    let csvContent = "\ufeffsep=;\n";
+    csvContent += "Kode AHSP;Uraian Pekerjaan;Volume;Satuan;Status AHSP\n";
+
+    rows.forEach((row) => {
+      if (row.type === 'section') {
+        csvContent += `"${row.code}";"${row.name.toUpperCase()}";"";"";""\n`;
+      } else {
+        const formattedVolume = String(row.volume).replace('.', ',');
+        const codeDisplay = row.ahsp_code || row.code || '';
+        const statusDisplay = row.ahsp_status || 'Manual';
+        csvContent += `"${codeDisplay}";"${row.name}";"${formattedVolume}";"${row.unit}";"${statusDisplay}"\n`;
+      }
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+
+    const cleanTitle = projectDetail.title.replace(/[^a-zA-Z0-9]/g, "_");
+    link.setAttribute("download", `Estimasi_AHSP_${cleanTitle}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    triggerToast("Berhasil mengekspor data WBS & AHSP ke Excel (CSV)!", "success");
+  };
+
+  // AHSP Live Search & Selection Logic
+  const handleOpenAhspModal = (row) => {
+    setAhspTargetRow(row);
+    setAhspSearchQuery(row.name);
+    setShowAhspModal(true);
+    searchAhspItems(row.name, row.unit);
+  };
+
+  const searchAhspItems = async (query, unit = "") => {
+    setIsSearchingAhsp(true);
+    try {
+      const res = await fetch(`http://localhost:8200/api/ahsp/search?q=${encodeURIComponent(query)}&top_k=15`);
+      if (res.ok) {
+        const data = await res.json();
+        setAhspSearchResults(data.results || []);
+      } else {
+        setAhspSearchResults([]);
+      }
+    } catch (err) {
+      console.error("Error searching AHSP:", err);
+      setAhspSearchResults([]);
+    } finally {
+      setIsSearchingAhsp(false);
+    }
+  };
+
+  const handleSelectAhspItem = (selectedAhsp) => {
+    if (!ahspTargetRow) return;
+
+    const newRows = rows.map((r) => {
+      if (r.id === ahspTargetRow.id) {
+        return {
+          ...r,
+          code: selectedAhsp.id_pekerjaan,
+          ahsp_code: selectedAhsp.id_pekerjaan,
+          ahsp_name: selectedAhsp.nama_pekerjaan,
+          ahsp_unit: selectedAhsp.satuan,
+          unit: selectedAhsp.satuan || r.unit,
+          ahsp_score: selectedAhsp.score || 1.0,
+          ahsp_status: "mapped_high",
+          ahsp_candidates: null
+        };
+      }
+      return r;
+    });
+
+    setRows(newRows);
+    setShowAhspModal(false);
+    setAhspTargetRow(null);
+    triggerToast(`Berhasil menghubungkan ke AHSP ${selectedAhsp.id_pekerjaan}!`, "success");
+  };
+
+  // Batch Map All Unmapped Items against AHSP Engine
+  const handleBatchAhspMap = async () => {
+    setIsMappingBatch(true);
+    triggerToast("Proses pemetaan otomatis AHSP sedang berjalan...", "success");
+
+    try {
+      let mappedCount = 0;
+      const updatedRows = await Promise.all(
+        rows.map(async (r) => {
+          if (r.type !== 'item') return r;
+
+          try {
+            const res = await fetch('http://localhost:8200/api/ahsp/map-item', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ item_name: r.name, item_unit: r.unit || '' })
+            });
+
+            if (res.ok) {
+              const data = await res.json();
+              if (data.ahsp_code && (data.ahsp_status === 'mapped_high' || data.ahsp_status === 'mapped_medium')) {
+                mappedCount++;
+                return {
+                  ...r,
+                  code: data.ahsp_code,
+                  ahsp_code: data.ahsp_code,
+                  ahsp_name: data.ahsp_name,
+                  ahsp_unit: data.ahsp_unit,
+                  ahsp_score: data.ahsp_score,
+                  ahsp_status: data.ahsp_status,
+                  ahsp_candidates: data.ahsp_candidates
+                };
+              }
+            }
+          } catch (e) {
+            console.error("Item mapping error:", e);
+          }
+          return r;
+        })
+      );
+
+      setRows(updatedRows);
+      triggerToast(`Selesai! ${mappedCount} item pekerjaan berhasil diselaraskan dengan AHSP.`, "success");
+    } catch (err) {
+      console.error("Batch map error:", err);
+      triggerToast("Gagal terhubung ke backend AHSP.", "warning");
+    } finally {
+      setIsMappingBatch(false);
+    }
+  };
+
+  // Dynamic calculations
   const totalProjectPrice = useMemo(() => {
     return rows.reduce((sum, r) => {
       if (r.type === 'item') {
-        return sum + (r.volume * r.unitPrice);
+        return sum + (r.volume * (r.unitPrice || 0));
       }
       return sum;
     }, 0);
   }, [rows]);
 
-  const ppnAmount = useMemo(() => {
-    return totalProjectPrice * (ppnRate / 100);
-  }, [totalProjectPrice, ppnRate]);
-
-  const grandTotalPrice = useMemo(() => {
-    return totalProjectPrice + ppnAmount;
-  }, [totalProjectPrice, ppnAmount]);
-
-  // Filter rows based on search
+  // Filter rows
   const filteredRows = useMemo(() => {
     if (!searchQuery.trim()) return rows;
 
@@ -576,10 +425,12 @@ const Anggaran = () => {
         secHasMatchingItems = false;
       } else {
         const nameMatch = row.name.toLowerCase().includes(query);
-        const sectionMatch = row.sectionCode.toLowerCase().includes(query);
+        const codeMatch = (row.code || '').toLowerCase().includes(query);
+        const ahspCodeMatch = (row.ahsp_code || '').toLowerCase().includes(query);
+        const ahspNameMatch = (row.ahsp_name || '').toLowerCase().includes(query);
         const unitMatch = row.unit.toLowerCase().includes(query);
 
-        if (nameMatch || sectionMatch || unitMatch) {
+        if (nameMatch || codeMatch || ahspCodeMatch || ahspNameMatch || unitMatch) {
           if (currentSecHeader && !secHasMatchingItems) {
             result.push(currentSecHeader);
             secHasMatchingItems = true;
@@ -592,11 +443,8 @@ const Anggaran = () => {
     return result;
   }, [rows, searchQuery]);
 
-  // Handle page boundaries when filter changes
   const totalItems = filteredRows.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-
-  // Safe page index check
   const activePage = Math.min(currentPage, totalPages);
 
   const paginatedRows = useMemo(() => {
@@ -604,7 +452,6 @@ const Anggaran = () => {
     return filteredRows.slice(startIdx, startIdx + pageSize);
   }, [filteredRows, activePage, pageSize]);
 
-  // Calculate pagination range to render
   const paginationRange = useMemo(() => {
     if (totalPages <= 7) {
       return Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -620,7 +467,7 @@ const Anggaran = () => {
     return range;
   }, [activePage, totalPages]);
 
-  // CRUD handlers
+  // Add / Edit / Delete handlers
   const handleOpenAddModal = (sectionCode) => {
     setTargetSectionCode(sectionCode);
     setFormData({ name: "", volume: 1, unit: "m2", unitPrice: 10000 });
@@ -631,11 +478,9 @@ const Anggaran = () => {
     e.preventDefault();
     if (!formData.name.trim()) return;
 
-    // Find the insert position: right after the section header or after the last item of that section
     const targetIdx = rows.findIndex(r => r.type === 'section' && r.code === targetSectionCode);
     if (targetIdx === -1) return;
 
-    // Count how many items are currently in this section to set the correct item number (no)
     let sectionItemCount = 0;
     let insertIdx = targetIdx + 1;
 
@@ -646,7 +491,7 @@ const Anggaran = () => {
       }
       if (rows[i].type === 'item') {
         sectionItemCount++;
-        insertIdx = i + 1; // Insert after the last item of this section
+        insertIdx = i + 1;
       }
     }
 
@@ -655,6 +500,7 @@ const Anggaran = () => {
       type: 'item',
       sectionCode: targetSectionCode,
       no: sectionItemCount + 1,
+      code: `${targetSectionCode}.${sectionItemCount + 1}`,
       name: formData.name,
       volume: Number(formData.volume),
       unit: formData.unit,
@@ -664,18 +510,9 @@ const Anggaran = () => {
     const newRows = [...rows];
     newRows.splice(insertIdx, 0, newItem);
 
-    // Reindex remaining item numbers in this section
-    let itemNumber = 1;
-    for (let i = targetIdx + 1; i < newRows.length; i++) {
-      if (newRows[i].type === 'section') break;
-      if (newRows[i].type === 'item') {
-        newRows[i].no = itemNumber++;
-      }
-    }
-
     setRows(newRows);
     setShowAddModal(false);
-    triggerToast(`Berhasil menambahkan "${formData.name}" ke Pekerjaan ${targetSectionCode}!`);
+    triggerToast(`Berhasil menambahkan "${formData.name}" ke Bagian ${targetSectionCode}!`);
   };
 
   const handleOpenEditModal = (item) => {
@@ -709,31 +546,12 @@ const Anggaran = () => {
     setRows(newRows);
     setShowEditModal(false);
     setSelectedRow(null);
-    triggerToast(`Detail pekerjaan "${formData.name}" berhasil diubah.`);
+    triggerToast(`Detail pekerjaan "${formData.name}" berhasil diperbarui.`);
   };
 
   const handleDeleteItem = (item) => {
     if (window.confirm(`Apakah Anda yakin ingin menghapus "${item.name}"?`)) {
-      const targetIdx = rows.findIndex(r => r.id === item.id);
-      if (targetIdx === -1) return;
-
-      const sectionCode = item.sectionCode;
-
-      // Filter out the item
-      let newRows = rows.filter(r => r.id !== item.id);
-
-      // Re-index item numbers in this specific section
-      const sectionHeaderIdx = newRows.findIndex(r => r.type === 'section' && r.code === sectionCode);
-      if (sectionHeaderIdx !== -1) {
-        let currentNo = 1;
-        for (let i = sectionHeaderIdx + 1; i < newRows.length; i++) {
-          if (newRows[i].type === 'section') break;
-          if (newRows[i].type === 'item') {
-            newRows[i].no = currentNo++;
-          }
-        }
-      }
-
+      const newRows = rows.filter(r => r.id !== item.id);
       setRows(newRows);
       triggerToast(`Pekerjaan "${item.name}" berhasil dihapus.`, "warning");
     }
@@ -741,7 +559,6 @@ const Anggaran = () => {
 
   const handleDeleteSection = (section) => {
     if (window.confirm(`Apakah Anda yakin ingin menghapus seluruh bagian "${section.code}. ${section.name}"?`)) {
-      // Filter out the section header and all items with sectionCode === section.code
       const newRows = rows.filter(r => {
         if (r.id === section.id) return false;
         if (r.type === 'item' && r.sectionCode === section.code) return false;
@@ -749,7 +566,7 @@ const Anggaran = () => {
       });
 
       setRows(newRows);
-      triggerToast(`Seluruh bagian "${section.code}. ${section.name}" berhasil dihapus.`, "warning");
+      triggerToast(`Bagian "${section.code}. ${section.name}" berhasil dihapus.`, "warning");
     }
   };
 
@@ -769,25 +586,36 @@ const Anggaran = () => {
             </h1>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Batch AHSP AI Mapping Button */}
+            <button
+              onClick={handleBatchAhspMap}
+              disabled={isMappingBatch}
+              className="bg-emerald-800 hover:bg-emerald-900 disabled:opacity-50 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1.5"
+              title="Petakan semua item secara otomatis ke AHSP standar Indonesia menggunakan Vector DB"
+            >
+              <Icons.Sparkles className="w-3.5 h-3.5 text-emerald-300 animate-pulse" />
+              {isMappingBatch ? 'Memetakan...' : 'Standardkan AHSP (AI)'}
+            </button>
+
             {/* Export Excel (CSV) Button */}
             <button
               onClick={handleExportCSV}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-2xs hover:shadow-sm cursor-pointer flex items-center gap-1.5"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1.5"
             >
               <Icons.Grid className="w-3.5 h-3.5" />
-              Ekspor Excel (CSV)
+              Ekspor CSV
             </button>
 
             {/* Print/PDF Button */}
             <button
               onClick={() => window.print()}
-              className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1.5"
+              className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 px-3.5 py-2 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1.5"
             >
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5 text-slate-500">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.82l-.24-2.58a.75.75 0 01.69-.81H16.8a.75.75 0 01.69.81l-.24 2.58m-10.53 0H16.8M4.5 18.75h15a2.25 2.25 0 002.25-2.25V9.75A2.25 2.25 0 0019.5 7.5h-15A2.25 2.25 0 002.25 9.75v6.75a2.25 2.25 0 002.25 2.25z" />
               </svg>
-              Cetak / PDF
+              Cetak
             </button>
           </div>
         </div>
@@ -809,7 +637,7 @@ const Anggaran = () => {
                     setPageSize(Number(e.target.value));
                     setCurrentPage(1);
                   }}
-                  className="Anggaranearance-none bg-white border border-slate-200 rounded-md py-1.5 pl-3 pr-8 text-[13px] font-semibold text-slate-700 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 cursor-pointer shadow-2xs hover:border-slate-300 transition-colors"
+                  className="bg-white border border-slate-200 rounded-md py-1.5 pl-3 pr-8 text-[13px] font-semibold text-slate-700 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 cursor-pointer shadow-2xs hover:border-slate-300 transition-colors"
                 >
                   <option value={5}>5</option>
                   <option value={10}>10</option>
@@ -828,7 +656,7 @@ const Anggaran = () => {
               <div className="relative w-full">
                 <input
                   type="text"
-                  placeholder="Masukan kata kunci..."
+                  placeholder="Masukan nama / kode AHSP..."
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
@@ -849,7 +677,7 @@ const Anggaran = () => {
               <thead>
                 <tr className="bg-[#009624] text-white font-semibold">
                   <th scope="col" className="py-3.5 px-4 text-center w-12 select-none">No.</th>
-                  <th scope="col" className="py-3.5 px-4 text-left min-w-[280px]">Uraian Pekerjaan</th>
+                  <th scope="col" className="py-3.5 px-4 text-left min-w-[340px]">Uraian Pekerjaan & Standar AHSP</th>
                   <th scope="col" className="py-3.5 px-4 text-right w-24">Volume</th>
                   <th scope="col" className="py-3.5 px-4 text-center w-20">Satuan</th>
                   <th scope="col" className="py-3.5 px-4 text-center w-28">Aksi</th>
@@ -873,7 +701,6 @@ const Anggaran = () => {
                           </td>
                           <td className="py-3 px-4 text-center">
                             <div className="inline-flex items-center gap-1.5 bg-[#c9f0cc] px-2.5 py-1 rounded-full shadow-2xs">
-                              {/* Add item to section */}
                               <button
                                 onClick={() => handleOpenAddModal(row.code)}
                                 className="w-6 h-6 rounded-full bg-[#009624] hover:bg-emerald-700 text-white flex items-center justify-center transition-transform hover:scale-105"
@@ -881,7 +708,6 @@ const Anggaran = () => {
                               >
                                 <Icons.Plus className="w-3.5 h-3.5 stroke-[3]" />
                               </button>
-                              {/* Delete entire section */}
                               <button
                                 onClick={() => handleDeleteSection(row)}
                                 className="w-6 h-6 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center transition-transform hover:scale-105"
@@ -895,32 +721,72 @@ const Anggaran = () => {
                       );
                     }
 
-                    // Otherwise it is an item row
-                    const itemPrice = row.volume * (row.unitPrice || 0);
-                    const itemPercentage = totalProjectPrice > 0 ? (itemPrice / totalProjectPrice) * 100 : 0;
+                    // Item row with AHSP Badge rendering (High >= 85%, Medium >= 65%)
+                    const isHighMapped = row.ahsp_status === 'mapped_high' || (row.ahsp_score && row.ahsp_score >= 0.85);
+                    const isMedMapped = row.ahsp_status === 'mapped_medium' || (row.ahsp_score && row.ahsp_score >= 0.65 && row.ahsp_score < 0.85);
+
+                    // Formatted WBS Number for far-left column (e.g. A.1, A.2, A.1.1)
+                    const wbsNumber = row.wbs_code || (row.sectionCode ? `${row.sectionCode}.${row.no}` : row.no);
+
+                    // Title display: Standar AHSP on top if mapped, otherwise AI item name on top
+                    const topTitle = row.ahsp_name || row.name;
 
                     return (
                       <tr key={row.id} className="hover:bg-slate-50/50 transition-all group duration-150">
-                        {/* No. */}
-                        <td className="py-3 px-4 text-center text-slate-400 select-none">{row.no}</td>
-                        {/* Uraian Pekerjaan */}
-                        <td className="py-3 px-4 max-w-[400px]">
-                          <div className="flex items-start gap-2">
-                            <div className="flex-1 min-w-0">
-                              <span className="font-medium text-slate-800 break-words">{row.name}</span>
+                        {/* No. Column (WBS hierarchy code e.g. A.1, A.2) */}
+                        <td className="py-3 px-4 text-center font-bold text-slate-700 select-none tabular-nums text-[12.5px]">
+                          {wbsNumber}
+                        </td>
+                        {/* Uraian Pekerjaan Column */}
+                        <td className="py-3 px-4 max-w-[420px]">
+                          <div className="flex flex-col gap-1">
+                            {/* Top: Standar AHSP name + AHSP Code Badge */}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold text-slate-800 break-words">{topTitle}</span>
+                              
+                              {/* AHSP Badge */}
+                              {row.ahsp_code || (row.code && row.code.includes('.') && row.code.length > 4) ? (
+                                <button
+                                  onClick={() => handleOpenAhspModal(row)}
+                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold transition-all cursor-pointer ${
+                                    isHighMapped
+                                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200'
+                                      : isMedMapped
+                                      ? 'bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200'
+                                      : 'bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-200'
+                                  }`}
+                                  title={`Status Mapping: ${row.ahsp_status || 'Manual'} (Akurasi: ${row.ahsp_score ? (row.ahsp_score * 100).toFixed(0) + '%' : '100%'})`}
+                                >
+                                  <span className="opacity-75">AHSP:</span>
+                                  <span>{row.ahsp_code || row.code}</span>
+                                  {row.ahsp_score && (
+                                    <span className="text-[10px] font-normal opacity-80">({(row.ahsp_score * 100).toFixed(0)}%)</span>
+                                  )}
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleOpenAhspModal(row)}
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-500 border border-dashed border-slate-300 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 transition-all cursor-pointer"
+                                >
+                                  + Hubungkan AHSP
+                                </button>
+                              )}
                             </div>
+                            
+                            {/* Bottom: Subtitle (only show Hasil AI if item is mapped to standard AHSP) */}
+                            {row.ahsp_name && row.ahsp_name !== row.name && (
+                              <span className="text-[11.5px] text-slate-500 italic">
+                                Hasil AI: {row.name}
+                              </span>
+                            )}
                           </div>
                         </td>
-                        {/* Volume */}
                         <td className="py-3 px-4 text-right tabular-nums font-medium text-slate-700">
                           {formatNumber(row.volume)}
                         </td>
-                        {/* Satuan */}
                         <td className="py-3 px-4 text-center text-slate-500 font-semibold">{row.unit}</td>
-                        {/* Aksi */}
                         <td className="py-3 px-4 text-center">
                           <div className="inline-flex items-center gap-1.5 bg-[#d2f3d5] px-2.5 py-1 rounded-full shadow-3xs group-hover:bg-[#c3eec7] transition-all">
-                            {/* View / Edit button */}
                             <button
                               onClick={() => handleOpenEditModal(row)}
                               className="w-6 h-6 rounded-full bg-[#009624] hover:bg-emerald-700 text-white flex items-center justify-center transition-transform hover:scale-105"
@@ -929,7 +795,6 @@ const Anggaran = () => {
                               <Icons.Edit className="w-3.5 h-3.5" />
                             </button>
 
-                            {/* Actions dropdown pill */}
                             <div className="relative group/dropdown">
                               <button
                                 className="w-9 h-6 rounded-full bg-[#009624] hover:bg-emerald-700 text-white flex items-center justify-center gap-0.5 px-1.5 transition-transform hover:scale-105"
@@ -939,13 +804,19 @@ const Anggaran = () => {
                                 <Icons.ChevronDown className="w-2.5 h-2.5" />
                               </button>
 
-                              {/* Floating Dropdown options */}
-                              <div className="absolute right-0 bottom-full mb-2 w-40 bg-white border border-slate-150 rounded-lg shadow-lg py-1 z-30 hidden group-hover/dropdown:block origin-bottom-right transition-all">
+                              <div className="absolute right-0 bottom-full mb-2 w-44 bg-white border border-slate-150 rounded-lg shadow-lg py-1 z-30 hidden group-hover/dropdown:block origin-bottom-right transition-all">
+                                <button
+                                  onClick={() => handleOpenAhspModal(row)}
+                                  className="w-full text-left px-3.5 py-2 hover:bg-emerald-50 flex items-center gap-2 text-[12.5px] text-emerald-800 font-medium"
+                                >
+                                  <Icons.Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                                  Pilih Kode AHSP
+                                </button>
                                 <button
                                   onClick={() => handleOpenEditModal(row)}
                                   className="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2 text-[12.5px] text-slate-700 font-medium"
                                 >
-                                  <Icons.Edit className="w-3.5 h-3.5 text-emerald-600" />
+                                  <Icons.Edit className="w-3.5 h-3.5 text-slate-600" />
                                   Edit Item
                                 </button>
                                 <button
@@ -963,8 +834,6 @@ const Anggaran = () => {
                     );
                   })
                 )}
-
-                {/* Table Footer / Summary Rows (Removed) */}
               </tbody>
             </table>
           </div>
@@ -972,14 +841,11 @@ const Anggaran = () => {
           {/* Footer Controls & Pagination */}
           {totalPages > 0 && (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-100">
-              {/* Pagination Info */}
               <div className="text-[12.5px] text-slate-500 font-medium">
                 Menampilkan <span className="font-semibold text-slate-700">{Math.min(filteredRows.length, (activePage - 1) * pageSize + 1)}</span> - <span className="font-semibold text-slate-700">{Math.min(filteredRows.length, activePage * pageSize)}</span> dari <span className="font-semibold text-slate-700">{filteredRows.length}</span> baris
               </div>
 
-              {/* Pagination Buttons */}
               <div className="flex items-center gap-1">
-                {/* Previous Page */}
                 <button
                   disabled={activePage === 1}
                   onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
@@ -988,24 +854,20 @@ const Anggaran = () => {
                   Sebelumnya
                 </button>
 
-                {/* Page Numbers */}
                 {paginationRange.map((page, idx) => {
                   if (page === '...') {
                     return (
-                      <span key={`dots-${idx}`} className="px-2 text-slate-400 select-none">
-                        ...
-                      </span>
+                      <span key={`dots-${idx}`} className="px-2 text-slate-400 select-none">...</span>
                     );
                   }
-
                   const isActive = page === activePage;
                   return (
                     <button
                       key={`page-${page}`}
                       onClick={() => setCurrentPage(page)}
                       className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-[12.5px] transition-all cursor-pointer ${isActive
-                          ? 'bg-[#009624] text-white shadow-xs'
-                          : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
+                        ? 'bg-[#009624] text-white shadow-xs'
+                        : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
                         }`}
                     >
                       {page}
@@ -1013,7 +875,6 @@ const Anggaran = () => {
                   );
                 })}
 
-                {/* Next Page */}
                 <button
                   disabled={activePage === totalPages}
                   onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
@@ -1028,16 +889,148 @@ const Anggaran = () => {
         </div>
       </main>
 
-      {/* Floating Toast System */}
+      {/* Toast Notification */}
       {toast.show && (
         <div className={`fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-4.5 py-3 rounded-lg shadow-xl text-white font-medium transition-all transform translate-y-0 animate-bounce duration-300 ${toast.type === 'success'
-            ? 'bg-emerald-600 border border-emerald-500'
-            : toast.type === 'warning'
-              ? 'bg-amber-600 border border-amber-500'
-              : 'bg-red-600 border border-red-500'
+          ? 'bg-emerald-600 border border-emerald-500'
+          : toast.type === 'warning'
+            ? 'bg-amber-600 border border-amber-500'
+            : 'bg-red-600 border border-red-500'
           }`}>
           <Icons.Info className="w-5 h-5" />
           <span className="text-[13px]">{toast.message}</span>
+        </div>
+      )}
+
+      {/* Modal - AHSP Selection & Search */}
+      {showAhspModal && ahspTargetRow && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-100 max-w-2xl w-full overflow-hidden transform scale-100 transition-all">
+            <div className="bg-emerald-700 text-white px-5 py-4 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-800/80 px-2 py-0.5 rounded">
+                  Pencarian AHSP Standar (2.816 Master Data)
+                </span>
+                <h3 className="font-bold text-[14.5px] mt-1">
+                  Pilih Kode AHSP untuk: "{ahspTargetRow.name}"
+                </h3>
+              </div>
+              <button
+                onClick={() => {
+                  setShowAhspModal(false);
+                  setAhspTargetRow(null);
+                }}
+                className="p-1 rounded-full hover:bg-emerald-800 text-emerald-100 hover:text-white transition-colors"
+              >
+                <Icons.X />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {/* Search Bar */}
+              <div>
+                <label className="block text-[12px] font-semibold text-slate-600 mb-1">
+                  Kata Kunci Pencarian Vector DB:
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={ahspSearchQuery}
+                    onChange={(e) => setAhspSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && searchAhspItems(ahspSearchQuery, ahspTargetRow.unit)}
+                    placeholder="Masukan nama pekerjaan (contoh: Pengecoran Beton Fc 25)..."
+                    className="flex-1 bg-white border border-slate-200 rounded-md py-2 px-3 text-[13px] text-slate-700 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                  />
+                  <button
+                    onClick={() => searchAhspItems(ahspSearchQuery, ahspTargetRow.unit)}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-md text-[12.5px] font-bold transition-colors cursor-pointer"
+                  >
+                    {isSearchingAhsp ? 'Mencari...' : 'Cari'}
+                  </button>
+                </div>
+              </div>
+
+              {/* AI Candidates List */}
+              {ahspTargetRow.ahsp_candidates && ahspTargetRow.ahsp_candidates.length > 0 && (
+                <div className="bg-amber-50/70 border border-amber-200 rounded-lg p-3">
+                  <span className="text-[11.5px] font-bold text-amber-800 block mb-2">
+                    💡 Rekomendasi Kandidat Teratas AI:
+                  </span>
+                  <div className="space-y-1.5">
+                    {ahspTargetRow.ahsp_candidates.map((cand) => (
+                      <div
+                        key={cand.id_pekerjaan}
+                        onClick={() => handleSelectAhspItem(cand)}
+                        className="flex items-center justify-between p-2 rounded bg-white border border-amber-150 hover:border-emerald-500 hover:bg-emerald-50/50 cursor-pointer transition-all text-[12.5px]"
+                      >
+                        <div>
+                          <span className="font-bold text-emerald-900 mr-2">{cand.id_pekerjaan}</span>
+                          <span className="text-slate-700">{cand.nama_pekerjaan}</span>
+                          <span className="text-slate-400 ml-1">({cand.satuan})</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                            Score: {(cand.score * 100).toFixed(0)}%
+                          </span>
+                          <button className="text-[11.5px] bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded font-semibold">
+                            Pilih
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Search Results List */}
+              <div className="border border-slate-200 rounded-lg overflow-hidden max-h-64 overflow-y-auto divide-y divide-slate-100">
+                {isSearchingAhsp ? (
+                  <div className="py-8 text-center text-slate-400 text-[13px]">
+                    Sedang mencari kandidat di Vector DB...
+                  </div>
+                ) : ahspSearchResults.length === 0 ? (
+                  <div className="py-8 text-center text-slate-400 text-[13px]">
+                    Tidak ada kode AHSP yang cocok dengan pencarian.
+                  </div>
+                ) : (
+                  ahspSearchResults.map((item) => (
+                    <div
+                      key={item.id_pekerjaan}
+                      onClick={() => handleSelectAhspItem(item)}
+                      className="p-3 hover:bg-emerald-50/60 cursor-pointer transition-colors flex items-center justify-between text-[12.5px] group"
+                    >
+                      <div className="flex-1 pr-4">
+                        <div className="flex items-center gap-2">
+                          <span className="font-extrabold text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded text-[11.5px]">
+                            {item.id_pekerjaan}
+                          </span>
+                          <span className="font-semibold text-slate-800">{item.nama_pekerjaan}</span>
+                        </div>
+                        <div className="text-[11px] text-slate-400 mt-0.5">
+                          Satuan: <span className="font-medium text-slate-600">{item.satuan}</span>
+                        </div>
+                      </div>
+                      <button className="bg-white border border-slate-200 group-hover:bg-emerald-600 group-hover:text-white text-slate-700 px-3 py-1 rounded text-[12px] font-bold transition-all shadow-2xs">
+                        Gunakan
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex justify-end">
+                <button
+                  onClick={() => {
+                    setShowAhspModal(false);
+                    setAhspTargetRow(null);
+                  }}
+                  className="px-4 py-2 border border-slate-200 rounded-md text-slate-700 hover:bg-slate-50 text-[12.5px] font-semibold transition-colors cursor-pointer"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1045,7 +1038,6 @@ const Anggaran = () => {
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-fade-in">
           <div className="bg-white rounded-xl shadow-2xl border border-slate-100 max-w-md w-full overflow-hidden transform scale-100 transition-all">
-            {/* Modal Header */}
             <div className="bg-emerald-600 text-white px-5 py-4 flex items-center justify-between">
               <h3 className="font-bold text-[14.5px] uppercase tracking-wide">
                 Tambah Pekerjaan (Bagian {targetSectionCode})
@@ -1058,7 +1050,6 @@ const Anggaran = () => {
               </button>
             </div>
 
-            {/* Modal Form */}
             <form onSubmit={handleAddItem} className="p-5 space-y-4">
               <div>
                 <label className="block text-[12.5px] font-semibold text-slate-600 mb-1.5">
@@ -1104,8 +1095,6 @@ const Anggaran = () => {
                 </div>
               </div>
 
-              {/* Harga Satuan (Removed) */}
-
               <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2.5">
                 <button
                   type="button"
@@ -1130,7 +1119,6 @@ const Anggaran = () => {
       {showEditModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-fade-in">
           <div className="bg-white rounded-xl shadow-2xl border border-slate-100 max-w-md w-full overflow-hidden transform scale-100 transition-all">
-            {/* Modal Header */}
             <div className="bg-emerald-600 text-white px-5 py-4 flex items-center justify-between">
               <h3 className="font-bold text-[14.5px] uppercase tracking-wide">
                 Ubah Detail Pekerjaan
@@ -1146,7 +1134,6 @@ const Anggaran = () => {
               </button>
             </div>
 
-            {/* Modal Form */}
             <form onSubmit={handleEditItem} className="p-5 space-y-4">
               <div>
                 <label className="block text-[12.5px] font-semibold text-slate-600 mb-1.5">
@@ -1191,8 +1178,6 @@ const Anggaran = () => {
                   />
                 </div>
               </div>
-
-              {/* Harga Satuan (Removed) */}
 
               <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2.5">
                 <button

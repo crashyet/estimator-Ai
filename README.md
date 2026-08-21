@@ -1,8 +1,8 @@
 # 🏗️ AI-Powered Quantity Estimator & RAB Engine
 
-A modern, full-stack AI platform for automatic **Quantity Surveying (QS)** and **Bill of Quantities (BOQ / RAB)** generation directly from engineering drawings (Detail Engineering Design / DED in **DWG**, **DXF**, and **PDF** formats).
+A modern, full-stack AI platform for automatic **Quantity Surveying (QS)**, **100% Real-Data Volumetric Takeoff**, and **AHSP VectorDB Standard Mapping** (SE PUPR 2025) directly from engineering drawings & BIM models (**DWG**, **DXF**, **DWT**, **DWF**, **SVG**, **PLT**, **IFC**, **RVT**, **NWD**, **SKP**, **PDF**, **JPG**).
 
-Driven by direct vector entity extraction (`ezdwg`, `ezdxf`) and multimodal AI vision reasoning (**Google Gemini LLM**), this system eliminates manual measurement overhead, generating precise Work Breakdown Structure (WBS) items, real volumetric calculations, and formatted cost estimation tables.
+Driven by direct vector entity extraction (`ezdwg`, `ezdxf`), OpenBIM parametric parsing (`ifcopenshell`, Autodesk APS Cloud), VectorDB semantic mapping (`ChromaDB` + `Sentence Transformers`), and multimodal AI reasoning (**Google Gemini LLM**), this system eliminates manual measurement overhead, generating precise Work Breakdown Structure (WBS) items, real volumetric calculations, and mapped cost estimation tables.
 
 ---
 
@@ -10,19 +10,24 @@ Driven by direct vector entity extraction (`ezdwg`, `ezdxf`) and multimodal AI v
 
 ```mermaid
 flowchart LR
-    User[Client Browser] -->|Upload .dwg / .dxf / .pdf| Frontend[React + Vite Frontend\n:5173]
+    User[Client Browser] -->|Upload CAD/BIM/PDF| Frontend[React + Vite Frontend\n:5173]
     Frontend -->|POST /api/rab/analyze-image| Backend[CodeIgniter 4 Backend\n:8080]
     Backend -->|Multipart Proxy Request| FastApi[Python FastAPI Engine\n:8200]
     
     subgraph Python AI Estimator Engine (api_v2)
-        FastApi --> Parser{File Type}
-        Parser -->|.dwg / .dxf| VectorEngine[ezdwg / ezdxf Direct Vector Engine]
-        Parser -->|.pdf| PdfEngine[PyMuPDF / Multimodal Engine]
-        VectorEngine -->|Structured CAD Dump| Gemini[Google Gemini LLM Engine]
-        PdfEngine -->|Multimodal Visual & Text| Gemini
+        FastApi --> Parser{File Extension}
+        Parser -->|.dwg / .dxf / .plt / .dwf| VectorEngine[ezdwg / ezdxf / Vector Extractor]
+        Parser -->|.ifc / .rvt / .nwd / .skp| BimEngine[ifcopenshell / APS Cloud Engine]
+        Parser -->|.pdf / .jpg / .png| VisionEngine[Multimodal Vision Engine]
+        
+        VectorEngine -->|Structured CAD Payload| Gemini[Google Gemini LLM Engine]
+        BimEngine -->|3D Parametric Quantities| Gemini
+        VisionEngine -->|Multimodal Visual & Text| Gemini
+        
+        Gemini -->|Dynamic WBS Takeoff JSON| AhspMapper[AHSP VectorDB Mapper Engine\nChromaDB + PUPR 2025]
     end
 
-    Gemini -->|Dynamic WBS Takeoff JSON| FastApi
+    AhspMapper -->|Mapped RAB Response| FastApi
     FastApi -->|Formatted Response| Backend
     Backend -->|Response JSON| Frontend
 ```
@@ -31,11 +36,14 @@ flowchart LR
 
 ## ⚡ Key Features
 
-- **Native DWG/DXF Parsing (`ezdwg` + `ezdxf`)**: Reads pure vector entities (`TEXT`, `MTEXT`, `DIMENSION`, block schedules) directly from binary `.dwg` files without heavy PDF/Image conversion.
-- **Multimodal PDF Drawing Vision Analysis**: Processes multi-page technical drawings directly with Gemini multimodal vision capabilities.
-- **Dynamic WBS Categorization**: Automatically groups items into civil engineering standard categories (A: Persiapan, B: Tanah & Pondasi, C: Struktur Beton, D: Arsitektur & Finishing, E: Atap & Plafon, F: MEP, G: Lain-lain).
-- **Environment-Driven Configuration (`.env`)**: Fully dynamic, non-static port, host, API endpoint, and secret key configurations.
-- **Full Stack Architecture**: Interactive React dashboard for visualizing, editing, and exporting RAB budgets.
+- **100% Real-Data Guarantee (Zero Dummy Policy)**: Complete removal of static dummy numbers, hardcoded fallback dimensions, and sample prompt volumes. Every quantity ($m^3$, $m^2$, $m^1$, unit, set, ls) is dynamically derived from project metadata and AI vector reasoning.
+- **AHSP Semantic VectorDB Mapper (`ChromaDB` + `IndoRoBERTa`)**: Maps extracted work items against 8,900+ official SE PUPR 2025 standard items with precision confidence scoring:
+  - **High Confidence (>= 85%)**: Automated high-precision mapping.
+  - **Medium Confidence (65% – 84%)**: Top-3 candidate recommendations.
+  - **Unmapped (< 65%)**: Flagged for QS manual override.
+- **Multi-Format Vector CAD Extraction**: Reads pure vector entities (`TEXT`, `MTEXT`, `DIMENSION`, block schedules) directly from binary `.dwg`, `.dxf`, `.dwt`, `.dwf`, `.dwfx`, `.svg`, and `.plt` files without heavy raster conversion.
+- **3D BIM & Cloud Model Conversion**: Parses OpenBIM `.ifc` files directly via `ifcopenshell` and native Revit (`.rvt`, `.rfa`), Navisworks (`.nwd`, `.nwc`), SketchUp (`.skp`) files via local binary CLI or Autodesk Platform Services (APS) Cloud API.
+- **Interactive React Dashboard**: High-performance UI for visualizing WBS sections, confidence badges, manual AHSP overrides, and Excel report export.
 
 ---
 
@@ -43,11 +51,11 @@ flowchart LR
 
 ```text
 estimator/
-├── frontend/               # React + Vite Frontend UI
+├── frontend/               # React + Vite Frontend UI (AHSP badges & override modal)
 │   ├── src/
 │   │   ├── components/     # UI Components (Navbar, Icons, etc.)
 │   │   ├── pages/          # Application Pages (Anggaran, Laporan, Project)
-│   │   └── services/       # API Service Integration (api.js)
+│   │   └── services/       # API Service Integration (api.js & AHSP endpoints)
 │   ├── .env.example        # Frontend environment template
 │   └── package.json
 │
@@ -58,16 +66,18 @@ estimator/
 │   ├── env                 # CI4 environment template
 │   └── public/             # Public webroot index.php
 │
-├── api_v2/                 # Production Python FastAPI Engine (Native CAD + Gemini)
-│   ├── cad_parser.py       # Direct ezdwg / ezdxf vector entity extractor
-│   ├── llm_estimator.py    # Google Gemini LLM Takeoff engine
+├── api_v2/                 # Production Python FastAPI Engine (Native CAD, BIM, AHSP VectorDB)
+│   ├── ahsp/               # ChromaDB VectorDB & SE PUPR 2025 dataset
+│   ├── bim_parser.py       # Direct OpenBIM & APS cloud quantity extractor
+│   ├── cad_parser.py       # Direct ezdwg / ezdxf / vector entity extractor
+│   ├── llm_estimator.py    # Google Gemini LLM Takeoff engine (Zero-Dummy Prompts)
 │   ├── main.py             # FastAPI Server & CLI runner
-│   ├── schemas.py          # Pydantic data schemas
+│   ├── schemas.py          # Pydantic data schemas (0.0 volume pass-through)
 │   ├── exporter.py         # Excel & JSON export utility
 │   ├── .env.example        # Python service environment template
 │   └── requirements.txt    # Python dependencies
 │
-├── api_v1/                 # Legacy Python FastAPI Engine (ChromaDB + Groq Llama)
+├── api_v1/                 # Legacy Python FastAPI Engine
 └── README.md               # Main System Documentation
 ```
 
@@ -83,10 +93,15 @@ Each tier utilizes `.env` files for dynamic configuration. Copy `.env.example` t
 GEMINI_API_KEY=your_google_gemini_api_key_here
 GEMINI_MODEL=gemini-2.5-flash
 
+# Autodesk APS Cloud Settings (Optional for RVT/NWD cloud conversion)
+APS_CLIENT_ID=your_autodesk_aps_client_id
+APS_CLIENT_SECRET=your_autodesk_aps_client_secret
+
 # FastAPI Server Settings
 HOST=0.0.0.0
 PORT=8200
 ALLOWED_ORIGINS=*
+MAX_UPLOAD_SIZE_MB=500
 ```
 
 ### 2. CodeIgniter 4 Backend (`backend/.env`)
@@ -133,54 +148,6 @@ npm run dev
 ```
 
 The application will be accessible at `http://localhost:5173`.
-
----
-
-## 📡 API Reference
-
-### Analyze DED / CAD File
-
-- **Endpoint**: `POST /api/rab/analyze-image` (via CI4 Backend or direct to Python API)
-- **Content-Type**: `multipart/form-data`
-
-#### Request Parameters
-| Parameter | Type | Required | Description |
-| :--- | :--- | :---: | :--- |
-| `name` | `string` | Yes | Construction project title |
-| `client` | `string` | Yes | Client or owner name |
-| `ded_file` | `file` | Yes | Binary file (`.dwg`, `.dxf`, or `.pdf`) |
-
-#### Sample Response (`200 OK`)
-```json
-{
-  "project": {
-    "title": "Pembangunan Rumah Type 36",
-    "client": "Klien Mandiri",
-    "status": "Perencanaan"
-  },
-  "items": [
-    {
-      "id": "sec-A",
-      "type": "section",
-      "code": "A",
-      "name": "PEKERJAAN PERSIAPAN & K3"
-    },
-    {
-      "id": "item-A-0",
-      "type": "item",
-      "sectionCode": "A",
-      "no": 1,
-      "code": "A.1",
-      "name": "Pembersihan Lapangan & Pembuatan Bouwplank",
-      "volume": 60.0,
-      "unit": "m2",
-      "confidence": "high",
-      "warning_note": "Berdasarkan luas denah 6.0m x 10.0m"
-    }
-  ],
-  "processing_mode": "native_dwg_vector"
-}
-```
 
 ---
 
