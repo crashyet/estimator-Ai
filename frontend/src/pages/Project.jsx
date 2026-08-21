@@ -42,7 +42,7 @@ const getFriendlyErrorMessage = (rawError) => {
         </p>
         <div className="bg-emerald-50 border border-emerald-150 p-3 rounded-lg text-xs text-emerald-950 mt-2.5">
           <strong className="block mb-1 text-emerald-800">💡 Solusi Alternatif Stabil:</strong>
-          Silakan buka proyek Anda di software Autodesk Revit, lalu pilih <strong>File &rarr; Export &rarr; IFC</strong> untuk menyimpannya sebagai file <strong>.ifc</strong>. 
+          Silakan buka proyek Anda di software Autodesk Revit, lalu pilih <strong>File &rarr; Export &rarr; IFC</strong> untuk menyimpannya sebagai file <strong>.ifc</strong>.
           Kemudian, unggah file <strong>.ifc</strong> tersebut ke aplikasi ini. Pemrosesan file IFC dilakukan secara lokal di server kami tanpa cloud Autodesk, sehingga selesai dalam <strong>kurang dari 1 menit</strong> dan <strong>100% sukses</strong>!
         </div>
       </div>
@@ -100,7 +100,7 @@ const getFriendlyErrorMessage = (rawError) => {
         Detail Teknis: {rawError}
       </div>
       <p className="text-[11px] text-slate-500">
-        Saran: Pastikan file yang Anda unggah tidak rusak, tidak terkunci password, dan memiliki ekstensi yang valid (.pdf, .dwg, .dxf, .ifc, .rvt).
+        Saran: Pastikan file yang Anda unggah tidak rusak, tidak terkunci password, dan memiliki ekstensi yang valid (.pdf, .dwg, .dxf, .dwt, .dwf, .dwfx, .svg, .plt, .hpgl, .hpg, .ifc, .rvt, .rfa, .nwd, .nwc, .skp, .jpeg, .png, .jpg).
       </p>
     </div>
   );
@@ -108,7 +108,7 @@ const getFriendlyErrorMessage = (rawError) => {
 
 const Project = () => {
   const navigate = useNavigate()
-  
+
   // Initialize projects list from localStorage or defaults
   const [projects, setProjects] = useState(() => {
     const saved = localStorage.getItem('estimator_projects')
@@ -217,11 +217,11 @@ const Project = () => {
 
     // Determine pipeline steps and duration targets based on file format
     let stepsList = []
-    if (ext === '.rvt') {
+    if (['.rvt', '.rfa', '.nwd', '.nwc', '.skp'].includes(ext)) {
       stepsList = [
-        { label: 'Mengunggah file Revit (.rvt) ke server', duration: 8 },
+        { label: `Mengunggah file 3D CAD/BIM (${ext.toUpperCase()}) ke server`, duration: 8 },
         { label: 'Otorisasi & Unggah ke S3 Autodesk Cloud', duration: 15 },
-        { label: 'Pemrosesan RVT & Konversi ke IFC (Cloud Polling)', duration: 180 },
+        { label: 'Pemrosesan 3D Model & Translasi Derivative (Cloud Polling)', duration: 180 },
         { label: 'Membaca komponen geometri & volume 3D', duration: 25 },
         { label: 'Menyusun RAB WBS AHSP dengan Gemini AI', duration: 30 }
       ]
@@ -230,6 +230,12 @@ const Project = () => {
         { label: 'Mengunggah file OpenBIM (.ifc) ke server', duration: 5 },
         { label: 'Membaca komponen geometri & volume 3D (Lokal)', duration: 12 },
         { label: 'Menyusun RAB WBS AHSP dengan Gemini AI', duration: 25 }
+      ]
+    } else if (['.jpeg', '.jpg', '.png'].includes(ext)) {
+      stepsList = [
+        { label: 'Mengunggah gambar DED (JPEG/PNG/JPG) ke server', duration: 5 },
+        { label: 'Analisis visual geometri & Notasi Gambar dengan Gemini Vision', duration: 15 },
+        { label: 'Menyusun RAB WBS AHSP dengan Gemini AI', duration: 20 }
       ]
     } else { // .dwg, .dxf, .pdf
       stepsList = [
@@ -274,7 +280,7 @@ const Project = () => {
       // Ensures the progress bar doesn't get stuck at 100% while waiting for actual server response
       const stepTargetPct = ((activeIdx + 1) / stepsList.length) * 98
       const prevStepPct = activeIdx > 0 ? (activeIdx / stepsList.length) * 98 : 0
-      
+
       const stepStartTime = activeIdx > 0 ? stepsList.slice(0, activeIdx).reduce((sum, s) => sum + s.duration, 0) : 0
       const stepElapsed = elapsed - stepStartTime
       const stepDuration = stepsList[activeIdx].duration
@@ -339,7 +345,7 @@ const Project = () => {
           <h1 className="text-lg md:text-xl font-bold tracking-wider text-emerald-950 uppercase select-none">
             Daftar Proyek Aktif
           </h1>
-          <button 
+          <button
             onClick={() => {
               setApiError(null)
               setShowModal(true)
@@ -397,7 +403,7 @@ const Project = () => {
               </div>
 
               <div className="pt-4 border-t border-slate-50 flex items-center justify-end mt-auto">
-                <Link 
+                <Link
                   to={p.link.includes('?id=') ? p.link : `/anggaran?id=${p.id}`}
                   className="bg-emerald-50 text-emerald-750 hover:bg-emerald-100 px-4 py-2 rounded-lg text-[12.5px] font-bold shadow-2xs transition-all flex items-center gap-1 cursor-pointer"
                 >
@@ -416,11 +422,11 @@ const Project = () => {
       {showModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-lg w-full border border-slate-100 overflow-hidden relative">
-            
+
             {/* Modal Header */}
             <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
               <h2 className="text-[15px] font-bold text-slate-800 uppercase tracking-wide">Tambah Proyek Baru (DED)</h2>
-              <button 
+              <button
                 onClick={() => {
                   if (!isProcessing) setShowModal(false)
                 }}
@@ -476,13 +482,12 @@ const Project = () => {
                     const isCompleted = idx < activeStepIdx
                     const isActive = idx === activeStepIdx
                     return (
-                      <div key={idx} className={`flex items-start gap-3 p-2.5 rounded-lg border transition-all ${
-                        isActive 
-                          ? 'bg-emerald-50/40 border-emerald-200/85 shadow-2xs' 
-                          : isCompleted 
-                            ? 'bg-slate-50/30 border-slate-100 opacity-80' 
-                            : 'border-transparent opacity-40'
-                      }`}>
+                      <div key={idx} className={`flex items-start gap-3 p-2.5 rounded-lg border transition-all ${isActive
+                        ? 'bg-emerald-50/40 border-emerald-200/85 shadow-2xs'
+                        : isCompleted
+                          ? 'bg-slate-50/30 border-slate-100 opacity-80'
+                          : 'border-transparent opacity-40'
+                        }`}>
                         <div className="flex-shrink-0 mt-0.5">
                           {isCompleted ? (
                             <div className="w-5 h-5 rounded-full bg-emerald-600 flex items-center justify-center text-white">
@@ -541,7 +546,7 @@ const Project = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
                   </svg>
                 </div>
-                
+
                 {/* Render the human-friendly parser message */}
                 <div className="w-full border border-slate-100 rounded-xl p-4.5 bg-slate-50/40 mb-6 max-h-[300px] overflow-y-auto">
                   {getFriendlyErrorMessage(apiError)}
@@ -570,8 +575,8 @@ const Project = () => {
               <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[12.5px] font-semibold text-slate-600">Nama Proyek</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     name="name"
                     required
                     placeholder="Contoh: Pembangunan Kantor Cabang"
@@ -583,8 +588,8 @@ const Project = () => {
 
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[12.5px] font-semibold text-slate-600">Nama Klien / Perusahaan</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     name="client"
                     required
                     placeholder="Contoh: PT Beecons Nusantara"
@@ -597,10 +602,10 @@ const Project = () => {
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[12.5px] font-semibold text-slate-600">File Dokumen DED (Detail Engineering Design)</label>
                   <div className="relative border-2 border-dashed border-slate-200 rounded-lg hover:border-emerald-500 transition-colors p-6 flex flex-col items-center justify-center cursor-pointer bg-slate-50/50">
-                    <input 
-                      type="file" 
+                    <input
+                      type="file"
                       required
-                      accept=".pdf,.dwg,.dxf,.ifc,.rvt"
+                      accept=".pdf,.dwg,.dxf,.dwt,.dwf,.dwfx,.svg,.plt,.hpgl,.hpg,.ifc,.rvt,.rfa,.nwd,.nwc,.skp,.jpeg,.png,.jpg"
                       onChange={handleFileChange}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     />
@@ -611,20 +616,20 @@ const Project = () => {
                       {formData.file ? formData.file.name : 'Pilih file atau seret kemari'}
                     </span>
                     <span className="text-[10.5px] text-slate-400">
-                      Mendukung format 2D/3D: PDF, DWG, DXF, IFC, RVT (Maks. 500MB)
+                      Mendukung format 2D/3D & Gambar: PDF, DWG, DXF, DWT, DWF, DWFX, SVG, PLT, HPGL, IFC, RVT, RFA, NWD, NWC, SKP, JPEG, PNG, JPG (Maks. 500MB)
                     </span>
                   </div>
                 </div>
 
                 <div className="pt-3 border-t border-slate-50 flex items-center justify-end gap-2.5">
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={() => setShowModal(false)}
                     className="px-4 py-2 border border-slate-200 rounded-lg text-slate-650 hover:bg-slate-50 text-xs font-semibold transition-colors cursor-pointer"
                   >
                     Batal
                   </button>
-                  <button 
+                  <button
                     type="submit"
                     className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
                   >

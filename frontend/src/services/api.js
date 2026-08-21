@@ -24,18 +24,18 @@ export const mapToFrontendFormat = (projectName, clientName, llmData) => {
     F: { name: "PEKERJAAN INSTALASI & ELEKTRIKAL", items: [] },
     G: { name: "PEKERJAAN LAIN-LAIN / K3", items: [] }
   };
-  
+
   const items = llmData.items || [];
-  
+
   items.forEach(item => {
     const code = String(item.kode_ahsp || "").toUpperCase();
     const uraian = item.uraian || "";
     const satuan = item.satuan || "m2";
     let volume = parseFloat(item.volume_est || 1);
     if (isNaN(volume)) volume = 1;
-    
+
     const uraianLower = uraian.toLowerCase();
-    
+
     let targetSec = "G";
     if (code.startsWith("A") || ["bersih", "pagar", "ukur", "papan", "persiapan", "sondir", "hand boring"].some(kw => uraianLower.includes(kw))) {
       targetSec = "A";
@@ -50,31 +50,31 @@ export const mapToFrontendFormat = (projectName, clientName, llmData) => {
     } else if (code.startsWith("F") || ["pipa", "air", "septic", "biofil", "wastafel", "closet", "kran", "shower", "listrik", "stop kontak", "lampu", "mcb", "panel"].some(kw => uraianLower.includes(kw))) {
       targetSec = "F";
     }
-    
+
     sections[targetSec].items.push({
       name: uraian,
       volume: volume,
       unit: satuan
     });
   });
-  
+
   const anggaranRows = [];
-  
+
   ["A", "B", "C", "D", "E", "F", "G"].forEach(secCode => {
     const secInfo = sections[secCode];
     if (secInfo.items.length === 0) return;
-    
+
     anggaranRows.push({
       id: `sec-${secCode}`,
       type: "section",
       code: secCode,
       name: secInfo.name
     });
-    
+
     secInfo.items.forEach((item, itemIdx) => {
       const itemId = `item-${secCode}-${itemIdx}`;
       const vol = item.volume;
-      
+
       anggaranRows.push({
         id: itemId,
         type: "item",
@@ -86,7 +86,7 @@ export const mapToFrontendFormat = (projectName, clientName, llmData) => {
       });
     });
   });
-  
+
   return {
     project: {
       title: projectName,

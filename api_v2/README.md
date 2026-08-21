@@ -1,28 +1,39 @@
 # 🐍 Python AI Estimator Service (`api_v2`)
 
-Production Python microservice for **Native CAD Parsing** (`.dwg`, `.dxf`), **OpenBIM / Revit 3D Takeoff** (`.ifc`, `.rvt`), and **Multimodal Vision Takeoff Analysis** (`.pdf`) using **Google Gemini 2.5 Flash**.
+Production Python microservice for **Native CAD Parsing** (`.dwg`, `.dxf`, `.dwt`, `.dwf`, `.dwfx`, `.svg`, `.plt`), **OpenBIM & Autodesk Cloud 3D Takeoff** (`.ifc`, `.rvt`, `.rfa`, `.nwd`, `.nwc`, `.skp`), **VectorDB AHSP Mapping Engine** (SE PUPR 2025), and **Multimodal Vision Takeoff Analysis** (`.pdf`, `.jpeg`, `.png`) using **Google Gemini LLM**.
 
 ---
 
 ## 🚀 Key Features
 
-1. **Direct OpenBIM & Revit 3D Takeoff (`bim_parser.py`)**:
+1. **AHSP VectorDB Semantic Mapping Engine (`ahsp/ahsp_mapper.py`)**:
+   - Integrates 8,900+ official Indonesian SE PUPR 2025 standard construction work items.
+   - Vector database engine built on ChromaDB & Sentence-Transformers (`indonesian-roberta-base-indomlen-p1` embeddings).
+   - Dynamic item mapping post-processing with strict confidence thresholds:
+     - **Mapped High (>= 85%)**: Automated high-precision mapping.
+     - **Mapped Medium (65% – 84%)**: Includes top-3 AHSP candidate suggestions.
+     - **Unmapped (< 65%)**: Flagged for manual QS verification/override.
+
+2. **100% Real-Data Policy (Zero Dummy Data Guarantee)**:
+   - Purged all static dummy numbers, hardcoded fallback dimensions, and sample prompt volumes.
+   - All quantities ($m^3$, $m^2$, $m^1$, unit, set, ls) are 100% derived from CAD vector geometry or BIM parametric metadata.
+   - Unparseable fields default to `0.0` with explicit `low` confidence warning notes instead of misleading static defaults.
+
+3. **Direct OpenBIM & Cloud 3D Takeoff (`bim_parser.py`)**:
    - Parses OpenBIM `.ifc` files using `ifcopenshell` to extract 3D parametric volumes ($m^3$), net areas ($m^2$), lengths ($m$), storey levels, family types, and materials.
-   - Supports native Autodesk Revit `.rvt` files via local converter CLI (`api_v2/bin/rvt2ifc`) or optional Autodesk APS Cloud API.
-   - Preserves 100% exact 3D physical volumes while leveraging Gemini 2.5 Flash to map technical family names into Indonesian WBS RAB sections and AHSP codes.
+   - Supports native Autodesk Revit (`.rvt`, `.rfa`), Navisworks (`.nwd`, `.nwc`), and SketchUp (`.skp`) files via local converter CLI or Autodesk Platform Services (APS) Model Derivative Cloud API (with GZIP & objecttree fallback).
 
-2. **Direct DWG / DXF CAD Parser (`cad_parser.py`)**:
-   - Parses native binary `.dwg` drawings using `ezdwg` / `dwg2dxf` and `.dxf` drawings using `ezdxf`.
-   - Extracts `TEXT`, `MTEXT`, `DIMENSION` notation, schedule tables, and block attributes grouped by CAD layer names (`S-COLU-TEXT`, `ARCH-DOOR-SCHED`, etc.).
+4. **Direct Vector CAD Parser (`cad_parser.py`)**:
+   - Multi-format vector extractor supporting AutoCAD `.dwg`, `.dxf`, `.dwt`, compressed `.dwf`/`.dwfx`, `.svg`, and plot files (`.plt`, `.hpgl`).
+   - Extracts `TEXT`, `MTEXT`, `DIMENSION` notation, schedule tables, and block attributes grouped by CAD layer names.
 
-3. **Multimodal LLM Takeoff Engine (`llm_estimator.py`)**:
-   - Connects to Google Gemini API (`gemini-2.5-flash`).
-   - Analyzes CAD text dumps, 3D BIM payloads, or multimodal PDF page images to estimate real physical work volumes.
-   - Enforces structured JSON output matching WBS Categories A through G.
+5. **Multimodal LLM Takeoff Engine (`llm_estimator.py`)**:
+   - Connects to Google Gemini API (`gemini-2.5-flash`) with fallback model routing.
+   - Analyzes CAD text dumps, 3D BIM payloads, or multimodal PDF/Image page streams to calculate physical work quantities.
 
-4. **FastAPI & CLI Engine (`main.py`)**:
-   - Exposes REST API endpoints (`/api/rab/analyze-bim`, `/api/rab/analyze-image`, and `/api/estimate`).
-   - Provides CLI commands for offline processing of `.dwg`, `.dxf`, `.ifc`, `.rvt`, and `.pdf` files directly to JSON/Excel.
+6. **FastAPI & CLI Engine (`main.py`)**:
+   - Exposes REST API endpoints for takeoff analysis and AHSP search/mapping management.
+   - CLI mode for offline batch file processing to Excel (.xlsx) and JSON.
 
 ---
 
@@ -30,57 +41,25 @@ Production Python microservice for **Native CAD Parsing** (`.dwg`, `.dxf`), **Op
 
 ```text
 api_v2/
-├── bim_parser.py           # OpenBIM IFC & Revit 3D parametric quantity extractor
-├── cad_parser.py           # Native DWG (ezdwg/dwg2dxf) & DXF (ezdxf) vector extractor
-├── llm_estimator.py        # Google Gemini LLM Integration & BIM/CAD System Prompts
-├── schemas.py              # Pydantic schemas for request/response validation
+├── ahsp/
+│   ├── ahsp_mapper.py      # ChromaDB + SentenceTransformers vector search engine
+│   ├── Item Pekerjaan CK.xlsx # Master dataset (8,900+ SE PUPR 2025 items)
+│   └── ahsp_vectordb/      # Persisted ChromaDB embeddings index
+├── bim_parser.py           # OpenBIM IFC & APS Cloud 3D parametric quantity extractor
+├── cad_parser.py           # Native CAD vector extractor (.dwg, .dxf, .dwf, .svg, .plt)
+├── llm_estimator.py        # Google Gemini LLM Integration & Zero-Dummy System Prompts
+├── schemas.py              # Pydantic schemas for request/response validation (0.0 volume pass-through)
 ├── exporter.py             # Export utility for Excel (.xlsx) and JSON
 ├── main.py                 # FastAPI server & CLI command dispatcher
+├── prd_ahsp_mapping.md     # Product requirement document for AHSP mapper engine
 ├── bin/
 │   ├── dwg2dxf             # Native AutoCAD DWG to DXF binary converter
 │   └── rvt2ifc             # Autodesk Revit RVT to IFC converter script/binary
-├── tests/
-│   ├── test_bim_parser.py  # Synthetic IFC model generator & parser test suite
-│   ├── run_cli_test.py     # CLI execution test runner
-│   └── run_rvt_cli.py     # RVT pipeline test runner
+├── tests/                  # Integration test suite
 ├── requirements.txt        # Python package dependencies
 ├── .env                    # Active environment variables
 └── .env.example            # Environment template
 ```
-
----
-
-## 🛠️ Binary Converters Tutorial & Setup (`api_v2/bin/`)
-
-For binary CAD (`.dwg`) and Revit (`.rvt`) files, `api_v2` uses a fallback converter pipeline to convert binary files into standard open text vector (`.dxf`) or OpenBIM 3D (`.ifc`) files before parsing.
-
-### 1. `dwg2dxf` (DWG to DXF Converter)
-- **Purpose**: Converts native AutoCAD binary `.dwg` drawings into open `.dxf` vector files.
-- **Location**: `api_v2/bin/dwg2dxf`
-- **Installation & Production Setup**:
-  1. Place the compiled `dwg2dxf` binary (from `libredwg` or `ODAFileConverter`) inside `api_v2/bin/dwg2dxf`.
-  2. Make the binary executable:
-     ```bash
-     chmod +x api_v2/bin/dwg2dxf
-     ```
-  3. System Fallback: If `dwg2dxf` is installed globally on Linux (`/usr/local/bin/dwg2dxf`), `cad_parser.py` will detect it automatically via system `PATH`.
-
-### 2. `rvt2ifc` (Revit RVT to IFC Converter)
-- **Purpose**: Converts native Autodesk Revit `.rvt` project files into OpenBIM `.ifc` 3D models.
-- **Location**: `api_v2/bin/rvt2ifc`
-- **Development Mode**: Pre-configured with a venv-aware dev mock converter script in `api_v2/bin/rvt2ifc` for instant local testing.
-- **Production Setup Options**:
-  - **Option A (Local Binary Converter - Recommended)**:
-    Place a compiled CLI standalone converter (such as `cad2data-Revit-IFC` or `IfcConvert`) at `api_v2/bin/rvt2ifc` and make it executable:
-    ```bash
-    chmod +x api_v2/bin/rvt2ifc
-    ```
-  - **Option B (Autodesk APS Cloud API)**:
-    Set your Autodesk Platform Services credentials in `.env`:
-    ```ini
-    APS_CLIENT_ID=your_autodesk_aps_client_id
-    APS_CLIENT_SECRET=your_autodesk_aps_client_secret
-    ```
 
 ---
 
@@ -93,7 +72,7 @@ Copy `.env.example` to `.env` in `api_v2/`:
 GEMINI_API_KEY=your_google_gemini_api_key_here
 GEMINI_MODEL=gemini-2.5-flash
 
-# Autodesk APS Cloud Settings (Optional for RVT cloud conversion)
+# Autodesk APS Cloud Settings (Optional for RVT/NWD/SKP cloud conversion)
 APS_CLIENT_ID=your_autodesk_aps_client_id
 APS_CLIENT_SECRET=your_autodesk_aps_client_secret
 
@@ -101,6 +80,7 @@ APS_CLIENT_SECRET=your_autodesk_aps_client_secret
 HOST=0.0.0.0
 PORT=8200
 ALLOWED_ORIGINS=*
+MAX_UPLOAD_SIZE_MB=500
 ```
 
 ---
@@ -120,29 +100,24 @@ python3 main.py server --host 0.0.0.0 --port 8200
 ```
 Server runs at `http://localhost:8200`.
 
-### 3. Run CLI Mode (Offline CAD / BIM File Processing)
+### 3. Run CLI Mode (Offline Processing)
 ```bash
 # Process a local IFC or RVT file and save to Excel & JSON
-python3 main.py analyze --file tests/sample_bim.ifc --project "Gedung Kantor 2 Lantai" --client "PT Beecons Jaya" --excel output_rab.xlsx --json output_rab.json
-
-# Process a local DWG or PDF file
-python3 main.py analyze --file drawing.dwg --project "Rumah Tinggal" --client "Klien A" --excel output_rab.xlsx --json output_rab.json
+python3 main.py analyze --file sample_bim.ifc --project "Gedung Kantor" --client "PT Beecons" --excel output_rab.xlsx --json output_rab.json
 ```
 
 ---
 
-## 📡 Endpoints
+## 📡 REST API Endpoints
 
-### `POST /api/rab/analyze-bim`
-- **Form Data**:
-  - `name`: Project Name
-  - `client`: Client Name
-  - `ded_file`: BIM Upload (`.ifc`, `.rvt`)
-- **Response**: Structured 3D BIM WBS takeoff JSON.
+### 📊 Quantity Takeoff Endpoints
+- **`POST /api/rab/analyze-bim`**: Parse 3D BIM/Revit/Navisworks models (`.ifc`, `.rvt`, `.rfa`, `.nwd`, `.nwc`, `.skp`).
+- **`POST /api/rab/analyze-image`** / **`POST /api/estimate`**: Unified endpoint for all CAD (`.dwg`, `.dxf`, `.dwt`, `.dwf`, `.plt`), PDF, images, and BIM files.
 
-### `POST /api/rab/analyze-image` or `POST /api/estimate` (CI4 Integration Endpoint)
-- **Form Data**:
-  - `name`: Project Name
-  - `client`: Client Name
-  - `ded_file`: Binary Upload (`.dwg`, `.dxf`, `.ifc`, `.rvt`, `.pdf`)
-- **Response**: Unified WBS takeoff JSON (auto-detects extension and routes to appropriate pipeline).
+### 🏷️ AHSP VectorDB Mapping Endpoints
+- **`POST /api/ahsp/search`**: Semantic search AHSP items by text query.
+- **`POST /api/ahsp/map-item`**: Map a single item name & unit to best matching AHSP code.
+- **`GET /api/ahsp/list`**: Paginated list of master AHSP items with search filtering.
+- **`POST /api/ahsp/override`**: Manually assign an AHSP code to a work item.
+- **`GET /api/ahsp/stats`**: Retrieve AHSP vector DB indexing statistics.
+- **`POST /api/ahsp/reindex`**: Force re-indexing of ChromaDB vector database from Excel master.

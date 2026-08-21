@@ -1,17 +1,20 @@
 """
-AHSP Mapping Engine — Semantic Vector Search for Work Item → AHSP Code Mapping.
+AHSP Mapping Engine — Advanced Semantic & Keyword Vector Search for Work Item → AHSP Code Mapping.
 
-Uses ChromaDB (embedded vector database) + sentence-transformers to semantically
-match AI-generated work item names to standardized AHSP (Analisis Harga Satuan Pekerjaan)
-codes from the master Excel dataset (~2816 items).
-
-Architecture:
-  1. Startup: Load Excel → generate embeddings → index into ChromaDB
-  2. Runtime: For each AI work item, query ChromaDB for top-N similar AHSP items
-  3. Apply confidence thresholds → auto-map, suggest, or flag for manual mapping
+Uses ChromaDB (embedded vector database) + sentence-transformers with:
+  1. Text cleaning & normalization (stripping WBS prefixes, "1 m3/1 m2" quantity markers, verb canonicalization)
+  2. Strict unit matching & dimension penalty (m3 vs m2 vs kg)
+  3. Action & Material keyword reranking
+  4. Precise Cosine Similarity (S = 1 - distance)
+  5. Multi-tier confidence thresholding (mapped_high, mapped_medium, unmapped)
 """
 
 import os
+# Ensure offline mode so HuggingFace hub requests do not hang when network is unavailable
+os.environ["HF_HUB_OFFLINE"] = "1"
+os.environ["TRANSFORMERS_OFFLINE"] = "1"
+
+import re
 import json
 import hashlib
 import logging
@@ -33,13 +36,132 @@ COLLECTION_NAME = "ahsp_items_ck"
 # Embedding model — multilingual, supports Bahasa Indonesia
 EMBEDDING_MODEL_NAME = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
-# Confidence thresholds
+# Confidence thresholds (calibrated after reranking)
 THRESHOLD_HIGH = 0.85
 THRESHOLD_MEDIUM = 0.65
 
 # Number of candidates to return for medium confidence
 TOP_K_CANDIDATES = 3
 TOP_K_SEARCH_DEFAULT = 5
+TOP_K_VECTOR_RETRIEVAL = 20  # Retrieve 20 candidates for reranking
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Text & Unit Normalization Utilities
+# ─────────────────────────────────────────────────────────────────────
+
+ACTION_KEYWORDS = {
+    "pembongkaran": ["bongkar", "pembongkaran", "demolish", "demolisi"],
+    "penggalian": ["galian", "gali", "excavation", "digging", "penggalian"],
+    "pengurugan": ["urugan", "urug", "timbunan", "backfill", "fill", "pengurugan"],
+    "pemadatan": ["pemadatan", "padat", "compaction"],
+    "pengecoran": ["pengecoran", "cor", "pouring", "casting", "ready mixed", "readymix"],
+    "pemasangan": ["pemasangan", "pasang", "installation", "install", "pas."],
+    "plesteran": ["plesteran", "plester", "plastering"],
+    "acian": ["acian", "aci", "skimming"],
+    "pengecatan": ["pengecatan", "cat", "painting", "coating"],
+    "pembuatan": ["pembuatan", "buat", "fabrication", "bikin"],
+    "pembersihan": ["pembersihan", "bersih", "cleaning", "clearing"],
+    "penulangan": ["penulangan", "pembesian", "besi beton", "rebar", "wiremesh"],
+    "bekisting": ["bekisting", "formwork", "cetakan"],
+}
+
+MATERIAL_KEYWORDS = {
+    "beton": ["beton", "concrete"],
+    "bata": ["bata", "brick", "hebel", "batako", "bata ringan"],
+    "batu": ["batu kali", "batu belah", "batu gunung", "stone"],
+    "keramik": ["keramik", "granit", "homogeneous tile", "tile", "marmer"],
+    "gypsum": ["gypsum", "gipsum", "grc", "plafon"],
+    "kayu": ["kayu", "wood", "plywood", "kaso", "papan"],
+    "baja": ["baja", "steel", "wf", "hollow", "c75", "spandek", "siku"],
+    "pipa": ["pipa", "pipe", "pvc", "ppr"],
+    "cat": ["cat", "paint", "dulux", "catylac", "emulsi"],
+    "sanitair": ["closet", "kloset", "wastafel", "kran", "shower", "toto"],
+}
+
+
+def normalize_unit(unit_str: str) -> str:
+    """Normalize unit string into standard category for similarity checking."""
+    if not unit_str:
+        return ""
+    u = unit_str.strip().lower()
+    
+    # Volume (m3)
+    if any(x in u for x in ["m3", "m³", "kubik", "mtr3"]):
+        return "m3"
+    # Area (m2)
+    if any(x in u for x in ["m2", "m²", "persegi", "mtr2"]):
+        return "m2"
+    # Length (m)
+    if any(x in u for x in ["m1", "m'", "meter", "m '"]):
+        return "m"
+    if u == "m":
+        return "m"
+    # Mass (kg)
+    if any(x in u for x in ["kg", "kilo", "ton", "gram"]):
+        return "kg"
+    # Count / Unit
+    if any(x in u for x in ["buah", "bh", "unit", "set", "btg", "batang", "titik", "lbr", "lembar", "pcs", "paket", "pohon", "rit"]):
+        return "unit"
+    # Lumpsum / Time
+    if any(x in u for x in ["ls", "lot", "lumpsum", "bulan", "ruang", "hari"]):
+        return "ls"
+    
+    return u
+
+
+def clean_item_name(name: str) -> str:
+    """
+    Clean and normalize item name for accurate vector search & indexing.
+    Removes WBS prefixes, quantity numbers ("1 m3", "1 m2"), and normalizes verbs.
+    """
+    if not name:
+        return ""
+    
+    text = name.strip()
+    
+    # Strip leading WBS codes or numbering like "A.1 ", "1.2 ", "A.1. ", "1.", "PEKERJAAN 1 - "
+    text = re.sub(r'^(?:pekerjaan|seksi|item|bagian)?\s*(?:[a-z0-9]+\.)*[a-z0-9]+\s*[:\.-]?\s*', '', text, flags=re.IGNORECASE)
+    
+    # Strip standard AHSP quantity patterns inside master names like "1 m3", "1 m2", "1 m1", "1 kg", "1 buah", "1 m"
+    text = re.sub(r'\b1\s*(?:m3|m²|m2|m1|m\'|m|kg|buah|bh|set|unit|titik|ls|lbr|batang|pohon)\b', '', text, flags=re.IGNORECASE)
+    
+    # Remove specs notes in brackets if purely explanatory like (berdasarkan gambar), (1 kali)
+    text = re.sub(r'\((?:berdasarkan|sesuai|volume|kalkulasi|tanpa)[^)]*\)', '', text, flags=re.IGNORECASE)
+    
+    # Normalize construction verbs for exact semantic alignment:
+    # "galian" -> "penggalian", "urugan" -> "pengurugan", "pasang" -> "pemasangan", "cor" -> "pengecoran"
+    words = text.split()
+    normalized_words = []
+    for w in words:
+        wl = w.lower()
+        if wl in ["gali", "galian"]:
+            normalized_words.append("penggalian")
+        elif wl in ["urug", "urugan"]:
+            normalized_words.append("pengurugan")
+        elif wl in ["pasang", "pas."]:
+            normalized_words.append("pemasangan")
+        elif wl in ["cor", "readymix", "ready-mix"]:
+            normalized_words.append("pengecoran")
+        elif wl in ["bongkar"]:
+            normalized_words.append("pembongkaran")
+        elif wl in ["besi", "pembesian"]:
+            normalized_words.append("penulangan")
+        elif wl in ["buat", "bikin"]:
+            normalized_words.append("pembuatan")
+        else:
+            normalized_words.append(w)
+            
+    text = " ".join(normalized_words)
+    
+    # Normalize concrete grade notation (e.g., K-300, K300, Fc 25 MPa, fc' 25)
+    text = re.sub(r'\bf[c\']\s*(\d+)\s*(?:mpa)?\b', r'fc \1 mpa', text, flags=re.IGNORECASE)
+    text = re.sub(r'\bk\s*-\s*(\d+)\b', r'k-\1', text, flags=re.IGNORECASE)
+    text = re.sub(r'\bk(\d{3})\b', r'k-\1', text, flags=re.IGNORECASE)
+    
+    # Normalize spaces
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
 
 
 class AHSPItem:
@@ -61,20 +183,7 @@ class AHSPItem:
 
 class AHSPMapperEngine:
     """
-    Singleton-style AHSP Mapping Engine using ChromaDB + sentence-transformers.
-    
-    Usage:
-        engine = AHSPMapperEngine()
-        engine.initialize()  # Call once at startup
-        
-        # Search
-        results = engine.search("cor beton kolom", top_k=5)
-        
-        # Map single item
-        mapping = engine.map_single_item("Pengecoran Beton Kolom K1", "m3")
-        
-        # Bulk map entire takeoff response
-        enriched = engine.map_takeoff_response(takeoff_response)
+    Advanced AHSP Mapping Engine using ChromaDB vector search & hybrid reranking.
     """
 
     def __init__(self):
@@ -206,12 +315,14 @@ class AHSPMapperEngine:
             return []
 
     def _compute_excel_hash(self) -> str:
-        """Compute MD5 hash of the Excel file for change detection."""
+        """Compute MD5 hash of the Excel file + cleaner code version for change detection."""
         try:
             h = hashlib.md5()
             with open(AHSP_EXCEL_PATH, "rb") as f:
                 for chunk in iter(lambda: f.read(8192), b""):
                     h.update(chunk)
+            # Mix version tag to trigger rebuild when cleaner logic updates
+            h.update(b"_v3_verb_canonicalizer")
             return h.hexdigest()
         except Exception:
             return ""
@@ -235,31 +346,32 @@ class AHSPMapperEngine:
 
     def _build_vector_index(self):
         """
-        Build the ChromaDB vector index from AHSP items.
-        Deletes existing collection if present, then creates a new one.
+        Build the ChromaDB vector index from AHSP items using get_or_create_collection.
         """
-        # Delete existing collection if it exists
-        try:
-            self._chroma_client.delete_collection(COLLECTION_NAME)
-            logger.info(f"Deleted existing collection '{COLLECTION_NAME}'.")
-        except Exception:
-            pass  # Collection doesn't exist yet
-
-        # Create new collection
-        self._collection = self._chroma_client.create_collection(
+        self._collection = self._chroma_client.get_or_create_collection(
             name=COLLECTION_NAME,
             embedding_function=self._embedding_fn,
             metadata={"hnsw:space": "cosine"},
         )
 
-        # Prepare documents, IDs, and metadata
+        # Clear existing items safely if any
+        try:
+            count = self._collection.count()
+            if count > 0:
+                existing_data = self._collection.get()
+                if existing_data and existing_data.get("ids"):
+                    self._collection.delete(ids=existing_data["ids"])
+                    logger.info(f"Cleared {len(existing_data['ids'])} existing items from collection.")
+        except Exception as e:
+            logger.warning(f"Note on clearing collection: {e}")
+
         documents = []
         ids = []
         metadatas = []
 
         for idx, item in enumerate(self._ahsp_items):
-            # Combine nama + satuan for richer embedding context
-            doc_text = item.nama_pekerjaan
+            cleaned_nama = clean_item_name(item.nama_pekerjaan)
+            doc_text = cleaned_nama
             if item.satuan:
                 doc_text += f" ({item.satuan})"
 
@@ -272,7 +384,6 @@ class AHSPMapperEngine:
                 "index": idx,
             })
 
-        # ChromaDB has a batch limit (~41666 items), but our 2816 items are well within
         batch_size = 500
         total = len(documents)
         for i in range(0, total, batch_size):
@@ -286,51 +397,114 @@ class AHSPMapperEngine:
 
         logger.info(f"Vector index built successfully. Total items: {self._collection.count()}")
 
-    def search(self, query: str, top_k: int = TOP_K_SEARCH_DEFAULT) -> List[Dict[str, Any]]:
+    def _rerank_candidates(
+        self, query_text: str, query_unit: str, raw_candidates: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
         """
-        Perform semantic search for AHSP items matching the query.
-        
-        Returns list of dicts:
-        [
-            {
-                "id_pekerjaan": "2.2.1.6.6",
-                "nama_pekerjaan": "Pengecoran Beton ...",
-                "satuan": "m3",
-                "score": 0.89,
-                "rank": 1
-            },
-            ...
-        ]
+        Rerank vector search candidates using unit matching, action & material keyword logic.
+        """
+        cleaned_query = clean_item_name(query_text)
+        query_unit_norm = normalize_unit(query_unit)
+        query_lower = cleaned_query.lower()
+
+        reranked = []
+        for cand in raw_candidates:
+            base_sim = cand["base_score"]
+            cand_unit_norm = normalize_unit(cand["satuan"])
+            cand_lower = clean_item_name(cand["nama_pekerjaan"]).lower()
+
+            score = base_sim
+
+            # 1. Unit matching bonus / penalty
+            if query_unit_norm and cand_unit_norm:
+                if query_unit_norm == cand_unit_norm:
+                    score += 0.08  # Bonus for exact unit match
+                else:
+                    # Mismatched dimension (e.g. m3 vs m2, kg vs m3)
+                    if query_unit_norm in ["m3", "m2", "m", "kg"] and cand_unit_norm in ["m3", "m2", "m", "kg"]:
+                        score -= 0.35  # Heavy penalty
+                    else:
+                        score -= 0.20
+
+            # 2. Action verb match check
+            for action, keywords in ACTION_KEYWORDS.items():
+                q_has = any(k in query_lower for k in keywords)
+                c_has = any(k in cand_lower for k in keywords)
+                if q_has and c_has:
+                    score += 0.12  # Bonus for matching action
+                    break
+                elif q_has and not c_has:
+                    score -= 0.15  # Penalty if query specifies action but candidate lacks it
+                    break
+
+            # 3. Material match check
+            for mat, keywords in MATERIAL_KEYWORDS.items():
+                q_has = any(k in query_lower for k in keywords)
+                c_has = any(k in cand_lower for k in keywords)
+                if q_has and c_has:
+                    score += 0.10  # Bonus for matching material
+                    break
+
+            final_score = max(0.0, min(1.0, round(score, 4)))
+
+            reranked.append({
+                "id_pekerjaan": cand["id_pekerjaan"],
+                "nama_pekerjaan": cand["nama_pekerjaan"],
+                "satuan": cand["satuan"],
+                "score": final_score,
+                "base_score": base_sim,
+            })
+
+        # Sort by reranked final score descending
+        reranked.sort(key=lambda x: x["score"], reverse=True)
+
+        for rank, item in enumerate(reranked, 1):
+            item["rank"] = rank
+
+        return reranked
+
+    def search(self, query: str, top_k: int = TOP_K_SEARCH_DEFAULT, item_unit: str = "") -> List[Dict[str, Any]]:
+        """
+        Perform semantic search & reranking for AHSP items matching the query.
         """
         if not self._ready or not self._collection:
             logger.warning("AHSP Mapper not ready. Returning empty results.")
             return []
 
         try:
+            cleaned_q = clean_item_name(query)
+            if not cleaned_q:
+                cleaned_q = query
+
+            query_text = cleaned_q
+            if item_unit:
+                query_text += f" ({item_unit})"
+
+            retrieval_k = max(top_k, TOP_K_VECTOR_RETRIEVAL)
+
             results = self._collection.query(
-                query_texts=[query],
-                n_results=min(top_k, self._total_items),
+                query_texts=[query_text],
+                n_results=min(retrieval_k, self._total_items),
                 include=["metadatas", "distances"],
             )
 
-            output = []
+            raw_candidates = []
             if results and results["metadatas"] and results["distances"]:
-                for rank, (meta, distance) in enumerate(
-                    zip(results["metadatas"][0], results["distances"][0]), 1
-                ):
-                    # ChromaDB cosine distance: 0 = identical, 2 = opposite
-                    # Convert to similarity score: 1 - (distance / 2)
-                    similarity = 1.0 - (distance / 2.0)
+                for meta, distance in zip(results["metadatas"][0], results["distances"][0]):
+                    # ChromaDB cosine distance d = 1 - cosine_similarity
+                    # True cosine similarity = 1.0 - distance
+                    base_similarity = max(0.0, min(1.0, 1.0 - distance))
 
-                    output.append({
+                    raw_candidates.append({
                         "id_pekerjaan": meta["id_pekerjaan"],
                         "nama_pekerjaan": meta["nama_pekerjaan"],
                         "satuan": meta["satuan"],
-                        "score": round(similarity, 4),
-                        "rank": rank,
+                        "base_score": round(base_similarity, 4),
                     })
 
-            return output
+            # Apply hybrid reranking
+            reranked = self._rerank_candidates(query, item_unit, raw_candidates)
+            return reranked[:top_k]
 
         except Exception as e:
             logger.error(f"AHSP search error: {e}", exc_info=True)
@@ -341,16 +515,6 @@ class AHSPMapperEngine:
     ) -> Dict[str, Any]:
         """
         Map a single work item name to the best matching AHSP code.
-        
-        Returns:
-        {
-            "ahsp_code": "2.2.1.6.6" | None,
-            "ahsp_name": "Pengecoran Beton ..." | None,
-            "ahsp_unit": "m3" | None,
-            "ahsp_score": 0.89 | None,
-            "ahsp_status": "mapped_high" | "mapped_medium" | "unmapped",
-            "ahsp_candidates": [...] | None  (for medium confidence)
-        }
         """
         if not self._ready:
             return {
@@ -362,12 +526,7 @@ class AHSPMapperEngine:
                 "ahsp_candidates": None,
             }
 
-        # Build query with unit context for better matching
-        query = item_name
-        if item_unit:
-            query += f" ({item_unit})"
-
-        candidates = self.search(query, top_k=TOP_K_CANDIDATES + 2)
+        candidates = self.search(item_name, top_k=TOP_K_CANDIDATES + 2, item_unit=item_unit)
 
         if not candidates:
             return {
@@ -414,12 +573,6 @@ class AHSPMapperEngine:
         """
         Bulk map all work items in a DynamicTakeoffResponse to AHSP codes.
         Modifies items in-place and returns the enriched response.
-        
-        Args:
-            takeoff_response: DynamicTakeoffResponse instance
-            
-        Returns:
-            The same response with AHSP fields populated on each item.
         """
         if not self._ready:
             logger.warning("AHSP Mapper not ready. Skipping bulk mapping.")
@@ -441,6 +594,10 @@ class AHSPMapperEngine:
                 item.ahsp_score = mapping["ahsp_score"]
                 item.ahsp_status = mapping["ahsp_status"]
                 item.ahsp_candidates = mapping["ahsp_candidates"]
+
+                # Automatically assign high-confidence or medium-confidence AHSP code to item.code
+                if mapping["ahsp_code"] and mapping["ahsp_status"] in ["mapped_high", "mapped_medium"]:
+                    item.code = mapping["ahsp_code"]
 
                 if mapping["ahsp_status"] == "mapped_high":
                     mapped_high_count += 1
@@ -464,20 +621,9 @@ class AHSPMapperEngine:
     ) -> Dict[str, Any]:
         """
         Get paginated list of all AHSP items. Optionally filter by search query.
-        
-        Returns:
-        {
-            "items": [...],
-            "total": 2816,
-            "page": 1,
-            "limit": 50,
-            "total_pages": 57
-        }
         """
         if search_query.strip():
-            # Use vector search for filtered results
             results = self.search(search_query, top_k=min(limit * 2, 100))
-            # Apply pagination to search results
             start = (page - 1) * limit
             end = start + limit
             paged = results[start:end]
@@ -489,7 +635,6 @@ class AHSPMapperEngine:
                 "total_pages": max(1, (len(results) + limit - 1) // limit),
             }
         else:
-            # Return raw items with pagination
             start = (page - 1) * limit
             end = start + limit
             paged = self._ahsp_items[start:end]
@@ -504,23 +649,19 @@ class AHSPMapperEngine:
     def reindex(self) -> Dict[str, Any]:
         """
         Force re-index the vector database from the Excel file.
-        Useful when the Excel file has been updated.
         """
         try:
             start_time = time.time()
             logger.info("Force re-indexing AHSP Vector DB...")
 
-            # Reload Excel
             self._ahsp_items = self._load_ahsp_from_excel()
             self._total_items = len(self._ahsp_items)
 
             if self._total_items == 0:
                 return {"success": False, "error": "No items loaded from Excel."}
 
-            # Rebuild index
             self._build_vector_index()
 
-            # Update hash
             current_hash = self._compute_excel_hash()
             self._write_stored_hash(current_hash)
 
@@ -536,16 +677,11 @@ class AHSPMapperEngine:
             return {"success": False, "error": str(e)}
 
 
-# ─────────────────────────────────────────────────────────────────────
 # Module-level singleton instance
-# ─────────────────────────────────────────────────────────────────────
 mapper_engine = AHSPMapperEngine()
 
 
 def initialize_mapper():
-    """
-    Initialize the global mapper engine.
-    Call this once at application startup (e.g., in main.py lifespan event).
-    """
+    """Initialize the global mapper engine."""
     global mapper_engine
     mapper_engine.initialize()

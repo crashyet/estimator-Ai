@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from dotenv import load_dotenv
 
 from cad_parser import CADEntityExtractor
@@ -277,21 +278,30 @@ async def search_ahsp(
     }
 
 
+class MapItemRequest(BaseModel):
+    item_name: str
+    item_unit: Optional[str] = ""
+
+
 @app.post("/api/ahsp/map-item")
-async def map_item_to_ahsp(
-    item_name: str = Form(..., description="Work item name to map"),
-    item_unit: str = Form("", description="Unit of the work item (m2, m3, kg, etc.)"),
-):
+async def map_item_to_ahsp(req: MapItemRequest):
     """
     Map a single work item name to the best matching AHSP code.
+    Accepts JSON body: {"item_name": "...", "item_unit": "..."}
     Returns mapping result with confidence status.
     """
     if not AHSP_AVAILABLE or not mapper_engine or not mapper_engine.is_ready():
         raise HTTPException(status_code=503, detail="AHSP Mapping Engine is not available or not initialized.")
 
-    mapping = mapper_engine.map_single_item(item_name.strip(), item_unit.strip())
+    mapping = mapper_engine.map_single_item(req.item_name.strip(), (req.item_unit or "").strip())
     return {
-        "input": {"item_name": item_name, "item_unit": item_unit},
+        "input": {"item_name": req.item_name, "item_unit": req.item_unit},
+        "ahsp_code": mapping["ahsp_code"],
+        "ahsp_name": mapping["ahsp_name"],
+        "ahsp_unit": mapping["ahsp_unit"],
+        "ahsp_score": mapping["ahsp_score"],
+        "ahsp_status": mapping["ahsp_status"],
+        "ahsp_candidates": mapping["ahsp_candidates"],
         "mapping": mapping,
     }
 
