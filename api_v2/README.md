@@ -6,13 +6,15 @@ Production Python microservice for **Native CAD Parsing** (`.dwg`, `.dxf`, `.dwt
 
 ## 🚀 Key Features
 
-1. **AHSP VectorDB Semantic Mapping Engine (`ahsp/ahsp_mapper.py`)**:
+1. **AHSP VectorDB Semantic Mapping & Multi-Tier Rerank Engine (`ahsp/ahsp_mapper.py`)**:
    - Integrates 8,900+ official Indonesian SE PUPR 2025 standard construction work items.
-   - Vector database engine built on ChromaDB & Sentence-Transformers (`indonesian-roberta-base-indomlen-p1` embeddings).
-   - Dynamic item mapping post-processing with strict confidence thresholds:
-     - **Mapped High (>= 85%)**: Automated high-precision mapping.
-     - **Mapped Medium (65% – 84%)**: Includes top-3 AHSP candidate suggestions.
-     - **Unmapped (< 65%)**: Flagged for manual QS verification/override.
+   - Vector database search powered by ChromaDB & Sentence-Transformers (`paraphrase-multilingual-MiniLM-L12-v2`).
+   - **Local BGE-Reranker-v2-m3 (`BAAI/bge-reranker-v2-m3`)**: Primary local CrossEncoder model for 100% offline, zero-latency, rate-limit-free semantic reranking across Bahasa Indonesia construction terms.
+   - **Cohere Rerank API Integration (`rerank-v3.5`)**: Secondary cloud fallback if local model is disabled.
+   - Dynamic item mapping post-processing with calibrated confidence thresholds:
+     - **Mapped High (>= 70%)**: Automated high-precision mapping.
+     - **Mapped Medium (45% – 69%)**: Includes top-3 AHSP candidate suggestions.
+     - **Unmapped (< 45%)**: Flagged for manual QS verification/override.
 
 2. **100% Real-Data Policy (Zero Dummy Data Guarantee)**:
    - Purged all static dummy numbers, hardcoded fallback dimensions, and sample prompt volumes.
@@ -81,6 +83,10 @@ HOST=0.0.0.0
 PORT=8200
 ALLOWED_ORIGINS=*
 MAX_UPLOAD_SIZE_MB=500
+
+# Cohere Rerank API Settings
+COHERE_API_KEY=your_cohere_api_key_here
+COHERE_RERANK_MODEL=rerank-v3.5
 ```
 
 ---

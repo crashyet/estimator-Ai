@@ -207,8 +207,9 @@ class CADLLMEstimator:
             "   - EVERY WORK ITEM MUST HAVE A REALISTIC POSITIVE VOLUME (> 0.0). NEVER RETURN 0 OR 0.0 FOR VOLUME! "
             "   - Concrete/Foundation/Excavation (m3): length x width x depth. "
             "   - Area (m2): wall area, plastering, floor area, site area. "
-            "   - Separate PEKERJAAN TANAH (galian, urugan, pemadatan) from PEKERJAAN PONDASI (batu belah, footplat, pancang). "
-            "   - Put clear mathematical calculation steps in `warning_note` (e.g. 'Site footprint 6.0m x 10.0m = 60.0 m2'). "
+            "5. STANDARD AHSP WORK ITEM NAMING RULE: "
+            "   - ALWAYS prefix work item names with standard Indonesian AHSP action verbs: 'Pemasangan', 'Penggalian', 'Pengurugan', 'Pengecoran', 'Pembuatan', 'Pembersihan', 'Plesteran', 'Acian', 'Pengecatan'. "
+            "   - Example: Use 'Pemasangan Dinding Bata Merah' instead of 'Dinding Bata', 'Pengecoran Beton Sloof 15x20 cm' instead of 'Sloof', 'Pemasangan Lantai Keramik 60x60 cm' instead of 'Lantai Keramik'. "
             "Output JSON directly conforming to the DynamicTakeoffResponse schema."
         )
 
@@ -356,9 +357,9 @@ Tugas QS:
                     text_pages.append(f"--- HALAMAN {idx+1} ---\n{txt.strip()}")
             pdf_text = "\n\n".join(text_pages)
             logger.info(f"Extracted {len(pdf_text)} characters of text from {len(reader.pages)} PDF pages.")
-            if len(pdf_text) > 15000:
-                logger.info(f"Large PDF text detected ({len(pdf_text)} chars). Trimming to 15,000 chars to avoid Cloudflare 524 timeout.")
-                pdf_text = pdf_text[:15000] + "\n\n... [Sisa teks PDF dipotong untuk optimasi kecepatan AI]"
+            if len(pdf_text) > 100000:
+                logger.info(f"Very large PDF text detected ({len(pdf_text)} chars). Trimming to 100,000 chars for AI processing optimization.")
+                pdf_text = pdf_text[:100000] + "\n\n... [Sisa teks PDF dipotong untuk optimasi batas pemrosesan AI]"
         except Exception as pdf_err:
             logger.warning(f"pypdf text extraction skipped/failed: {pdf_err}")
 
@@ -504,9 +505,9 @@ Tugas QS:
             "4. ATOMIC VOLUME RULES: "
             "   - EVERY WORK ITEM MUST HAVE A REALISTIC POSITIVE VOLUME (> 0.0). NEVER RETURN 0 OR 0.0 FOR VOLUME! "
             "   - Concrete/Foundation/Excavation (m3): length x width x depth. "
-            "   - Area (m2): wall area, plastering, floor area, site area. "
-            "   - Separate PEKERJAAN TANAH (galian, urugan, pemadatan) from PEKERJAAN PONDASI (batu belah, footplat, pancang). "
-            "   - Put clear mathematical calculation steps in `warning_note` (e.g. 'Site footprint 6.0m x 10.0m = 60.0 m2'). "
+            "5. STANDARD AHSP WORK ITEM NAMING RULE: "
+            "   - ALWAYS prefix work item names with standard Indonesian AHSP action verbs: 'Pemasangan', 'Penggalian', 'Pengurugan', 'Pengecoran', 'Pembuatan', 'Pembersihan', 'Plesteran', 'Acian', 'Pengecatan'. "
+            "   - Example: Use 'Pemasangan Dinding Bata Merah' instead of 'Dinding Bata', 'Pengecoran Beton Sloof 15x20 cm' instead of 'Sloof', 'Pemasangan Lantai Keramik 60x60 cm' instead of 'Lantai Keramik'. "
             "Output JSON directly conforming to the DynamicTakeoffResponse schema."
         )
 
