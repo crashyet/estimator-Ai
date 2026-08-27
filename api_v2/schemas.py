@@ -1,6 +1,17 @@
 from typing import List, Optional
 from pydantic import BaseModel, Field, field_validator
 
+class AHSPCandidateItem(BaseModel):
+    id_pekerjaan: str = Field(default="", description="ID pekerjaan AHSP")
+    nama_pekerjaan: str = Field(default="", description="Nama pekerjaan AHSP")
+    satuan: str = Field(default="", description="Satuan AHSP")
+    score: float = Field(default=0.0, description="Similarity score")
+
+class CoverageAuditItem(BaseModel):
+    sheet: str = Field(..., description="Kode atau judul lembar gambar (misal: ARS-01, STR-02)")
+    produced_items: List[str] = Field(default_factory=list, description="Daftar item ID yang dihasilkan atau alasan jika 0 item")
+    status: str = Field(default="ok", description="Status audit")
+
 class ProjectInfo(BaseModel):
     title: str = Field(default="Analisis CAD DWG", description="Nama/Judul Proyek atau Gambar Teknik")
     client: str = Field(default="Client", description="Nama Klien")
@@ -24,10 +35,9 @@ class EstimateItem(BaseModel):
     ahsp_unit: Optional[str] = Field(default=None, description="Satuan standar dari AHSP")
     ahsp_score: Optional[float] = Field(default=None, description="Similarity score mapping (0.0-1.0)")
     ahsp_status: str = Field(default="unmapped", description="Status mapping: 'mapped_high', 'mapped_medium', 'unmapped'")
-    ahsp_candidates: Optional[list] = Field(default=None, description="Top-3 AHSP candidates untuk medium/low confidence")
+    ahsp_candidates: Optional[List[AHSPCandidateItem]] = Field(default=None, description="Top-3 AHSP candidates untuk medium/low confidence")
 
     @field_validator("volume", mode="before")
-
     def ensure_valid_volume(cls, v):
         """Pass through AI's exact volume value. Use 0.0 for unparseable values — never inject static defaults."""
         try:
@@ -50,6 +60,7 @@ class DynamicTakeoffResponse(BaseModel):
     project: ProjectInfo
     project_summary: str = Field(..., description="Ringkasan analisis kuantitas CAD oleh AI")
     wbs_sections: List[WBSSectionBlock] = Field(default_factory=list, description="Daftar seksi WBS murni beserta item pekerjaan dari AI")
+    coverage_audit: Optional[List[CoverageAuditItem]] = Field(default=None, description="Audit kelengkapan lembar gambar PDF vs item pekerjaan yang dihasilkan")
 
     def to_frontend_format(self) -> dict:
         """Flatten WBS sections and items into single flat array for CI4 / Frontend."""
@@ -61,5 +72,6 @@ class DynamicTakeoffResponse(BaseModel):
         return {
             "project": self.project.model_dump(),
             "items": flat_rows,
+            "coverage_audit": [c.model_dump() for c in self.coverage_audit] if self.coverage_audit else None,
             "raw_llm_response": self.model_dump()
         }

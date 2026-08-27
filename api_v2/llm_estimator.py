@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 # Default API key and settings from environment
 DEFAULT_GEMINI_KEY = os.getenv("GEMINI_API_KEY", "")
 DEFAULT_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-FALLBACK_MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-preview-05-20", "gemini-2.0-flash"]
+FALLBACK_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"]
 
 class CADLLMEstimator:
     """
@@ -31,9 +31,9 @@ class CADLLMEstimator:
         self.api_key = api_key or DEFAULT_GEMINI_KEY
         self.model = model or DEFAULT_MODEL
         
-        self.primary_api_base = os.getenv("PRIMARY_API_BASE", "https://bandelbanget.xyz/v1")
+        self.primary_api_base = os.getenv("PRIMARY_API_BASE", "")
         self.primary_api_key = os.getenv("PRIMARY_API_KEY", "")
-        self.primary_model = os.getenv("PRIMARY_MODEL", "gpt-5.6")
+        self.primary_model = os.getenv("PRIMARY_MODEL", "")
 
         if self.api_key:
             try:
@@ -195,10 +195,11 @@ class CADLLMEstimator:
             "Directly generate complete WBS (Work Breakdown Structure) sections and work items according to real Indonesian Civil Engineering standards. "
             "CRITICAL CAD SCALE & UNIT NORMALIZATION RULES: "
             "1. CAD UNIT NORMALIZATION: CAD drawings in Indonesia are drawn in Millimeters (mm) or Centimeters (cm). "
-            "   - If CAD dimensions say '6000' x '10000' or '600' x '1000', convert to METERS: 6.0m x 10.0m = 60.0 m2 plot area! "
+            "   - Convert millimeter dimensions to METERS by dividing by 1000 (e.g., 12000mm -> 12.0m). "
             "   - NEVER treat raw CAD millimeter or centimeter values directly as meters or m2! "
-            "2. SANITY CHECK ON AREA & FOOTPRINT: "
-            "   - 'Pembersihan Lapangan' & 'Bouwplank' MUST match the real building/site footprint area (typically 30 m2 to 500 m2 for residential/building drawings). "
+            "2. STRICT ACCURATE DIMENSION READOUT: "
+            "   - READ THE EXACT NUMBERS PRINTED ON THE DRAWING DIMENSION LINES. DO NOT GUESS, FABRICATE, OR DEFAULT TO ANY FIXED NUMBER NOT ON THE DRAWING. "
+            "   - 'Pembersihan Lapangan' & 'Bouwplank' MUST match the exact building/site footprint area read directly from the drawing dimensions. "
             "3. DIMENSION DERIVATION RULES: "
             "   - ALL structural dimensions (wall height, foundation depth, column size, beam size, slab thickness) MUST be derived ONLY from the actual drawing data. "
             "   - If a specific dimension is NOT explicitly stated in the drawing, write 'Dimensi tidak tertera pada gambar' in warning_note and set confidence to 'low'. "
@@ -313,14 +314,36 @@ SELURUH angka volume dan dimensi HARUS murni diekstrak dari gambar CAD — DILAR
         """
         system_prompt = (
             "You are a professional Senior Quantity Surveyor (QS) in Indonesia. "
-            "Analyze the provided PDF engineering/construction drawing document directly. "
-            "Directly generate complete WBS (Work Breakdown Structure) sections and work items according to real Indonesian Civil Engineering standards. "
+            "Analyze the ENTIRE provided PDF engineering/construction drawing document directly, page by page. "
+            "You must discover and generate the WBS (Work Breakdown Structure) sections and work items YOURSELF, "
+            "based purely on what disciplines and work scopes are actually present in the drawing set. "
+            "DO NOT rely on any fixed/predefined list of WBS section names — derive the sections organically from the content you find. "
+
+            "CRITICAL COMPLETENESS RULE (MOST IMPORTANT — READ FIRST): "
+            "1. Before extracting any work item, FIRST scan the ENTIRE document and build an internal inventory of every distinct drawing sheet "
+            "   (use the title block, drawing title, and the 'Daftar Gambar'/drawing index page if present — e.g. sheet codes like ARS-xx, STR-xx). "
+            "2. Indonesian residential DED sets TYPICALLY include drawing types across three disciplines. Use this only as a SCANNING CHECKLIST "
+            "   to make sure you don't skip any discipline — NOT as your output section list: "
+            "   - ARSITEKTUR: denah lantai, tampak (depan/belakang/samping), potongan, rencana pintu & jendela + detail pintu/jendela, "
+            "     rencana pola lantai (keramik), rencana plafond, rencana atap. "
+            "   - STRUKTUR: rencana pondasi + detail pondasi, rencana sloof + detail pembesian, rencana kolom + detail pembesian, "
+            "     rencana balok + detail pembesian, rencana plat lantai/dak, detail tangga, detail kuda-kuda. "
+            "   - MEP/UTILITAS: rencana titik lampu & instalasi listrik, rencana air bersih, rencana air kotor + detail bak kontrol/septictank/sumur resapan. "
+            "3. For EVERY sheet in your inventory that shows a distinct, quantifiable scope of work, you MUST produce AT LEAST ONE corresponding "
+            "   work item in the output. A drawing sheet existing with no matching work item is treated as a CRITICAL ERROR. "
+            "4. At the end of your output, include a `coverage_audit` field: a list of every sheet code/title you identified, each mapped to the "
+            "   item id(s) it produced. If a sheet produced zero items, explicitly state the reason (e.g. 'sheet is index/cover page, no quantifiable work'). "
+            "   Do not silently drop a sheet — every sheet must appear in `coverage_audit` with a stated outcome. "
+
             "CRITICAL CAD SCALE & UNIT NORMALIZATION RULES: "
             "1. CAD UNIT NORMALIZATION: CAD/DED drawings in Indonesia are drawn in Millimeters (mm) or Centimeters (cm). "
-            "   - If drawing dimensions say '6000' x '10000' or '600' x '1000', convert to METERS: 6.0m x 10.0m = 60.0 m2 plot area! "
+            "   - Convert millimeter dimensions to METERS by dividing by 1000 (e.g., 12000mm -> 12.0m). "
             "   - NEVER treat raw CAD millimeter or centimeter values directly as meters or m2! "
-            "2. SANITY CHECK ON AREA & FOOTPRINT: "
-            "   - 'Pembersihan Lapangan' & 'Bouwplank' MUST match the real building/site footprint area (typically 30 m2 to 500 m2 for residential/building drawings). "
+            "2. STRICT ACCURATE DIMENSION READOUT: "
+            "   - READ THE EXACT NUMBERS PRINTED ON THE DRAWING DIMENSION LINES. DO NOT GUESS, FABRICATE, OR DEFAULT TO ANY FIXED NUMBER NOT ON THE DRAWING. "
+            "   - 'Pembersihan Lapangan' & 'Bouwplank' MUST match the exact building/site footprint area read directly from the drawing dimensions. "
+            "   - For repeated elements (doors, windows, columns, footplates, etc.), COUNT every occurrence/label on every relevant floor plan "
+            "     (e.g. count P1, P2, P3, P4, J1, J2, J3, J4 separately on BOTH Lantai 1 and Lantai 2 plans, then sum per type). Do not estimate counts. "
             "3. DIMENSION DERIVATION RULES: "
             "   - ALL structural dimensions (wall height, foundation depth, column size, beam size, slab thickness) MUST be derived ONLY from the actual drawing data. "
             "   - If a specific dimension is NOT explicitly stated in the drawing, write 'Dimensi tidak tertera pada gambar' in warning_note and set confidence to 'low'. "
@@ -329,53 +352,39 @@ SELURUH angka volume dan dimensi HARUS murni diekstrak dari gambar CAD — DILAR
             "   - EVERY WORK ITEM MUST HAVE A REALISTIC POSITIVE VOLUME (> 0.0). NEVER RETURN 0 OR 0.0 FOR VOLUME! "
             "   - Concrete/Foundation/Excavation (m3): length x width x depth. "
             "   - Area (m2): wall area, plastering, floor area, site area. "
-            "   - Separate PEKERJAAN TANAH (galian, urugan, pemadatan) from PEKERJAAN PONDASI (batu belah, footplat, pancang). "
-            "   - Put clear mathematical calculation steps in `warning_note` (e.g. 'Site footprint 6.0m x 10.0m = 60.0 m2'). "
-            "Output JSON directly conforming to the DynamicTakeoffResponse schema."
+            "   - Separate PEKERJAAN TANAH (galian, urugan, pemadatan) from PEKERJAAN PONDASI (batu belah, footplat, pancang) as distinct sections — "
+            "     but you decide the exact section boundaries/names based on what you actually find. "
+            "   - Put clear mathematical calculation steps in `warning_note` with exact dimension values extracted directly from the drawing "
+            "     (e.g. 'Site footprint [L]m x [W]m = [Area] m2', 'Dihitung dari Lt.1: 1 unit + Lt.2: 3 unit = 4 unit'). "
+            "5. STANDARD AHSP WORK ITEM NAMING RULE: "
+            "   - ALWAYS prefix work item names with standard Indonesian AHSP action verbs: 'Pemasangan', 'Penggalian', 'Pengurugan', "
+            "     'Pengecoran', 'Pembuatan', 'Pembersihan', 'Plesteran', 'Acian', 'Pengecatan'. "
+            "   - Example: Use 'Pemasangan Bouwplank' (NOT 'Bouwplank dan Pengukuran'), 'Pemasangan Dinding Bata Merah', 'Pengecoran Beton Sloof 15x20 cm'. "
+            "Output JSON directly conforming to the DynamicTakeoffResponse schema, including the `coverage_audit` field."
         )
 
         prompt_content = f"""Judul Gambar PDF: '{project_name}' (File: {filename})
 Klien: '{client_name}'
 
-Tugas QS:
-1. Periksa notasi dimensi & denah dalam dokumen PDF ini, tentukan skala unit (mm atau cm ke meter).
-2. Lakukan Sanity Check Luas Tapak/Bangunan: Pastikan luas 'Pembersihan Lapangan' & 'Bouwplank' realistis sesuai ukuran tanah yang TERTERA pada gambar (jangan menggunakan asumsi statis).
-3. Lakukan Material Takeoff & Perhitungan Volume Kuantitas Riil untuk SETIAP item pekerjaan.
-4. Pisahkan seksi WBS secara spesifik (misal: Pekerjaan Tanah TERPISAH dari Pekerjaan Pondasi).
+Tugas QS (kerjakan berurutan, jangan lompat langkah):
+1. INVENTARISASI LEMBAR GAMBAR: Baca daftar gambar / title block di setiap halaman PDF. Catat SEMUA kode & judul lembar gambar 
+   yang ada (mis. ARS-01 s/d ARS-xx, STR-01 s/d STR-xx), termasuk lembar arsitektur, struktur, DAN utilitas/MEP (air bersih, 
+   air kotor, titik lampu) jika ada.
+2. TENTUKAN SKALA & UNIT: tentukan satuan gambar (mm/cm) dan konversi ke meter untuk semua perhitungan volume.
+3. SANITY CHECK LUAS TAPAK/BANGUNAN: pastikan luas 'Pembersihan Lapangan' & 'Bouwplank' sesuai ukuran yang TERTERA di gambar 
+   (bukan asumsi statis).
+4. EKSTRAKSI ITEM PEKERJAAN PER LEMBAR: untuk SETIAP lembar gambar yang sudah kamu inventarisasi di langkah 1, ekstrak item 
+   pekerjaan dan volume riil yang terkait dengannya — termasuk (tapi tidak terbatas pada) pekerjaan kusen/pintu/jendela, 
+   pekerjaan lantai/keramik, dan pekerjaan elektrikal/plumbing bila lembar tersebut tersedia di dokumen.
+5. SUSUN WBS SENDIRI: kelompokkan item-item di atas ke dalam section WBS yang menurutmu paling sesuai dengan disiplin 
+   pekerjaannya (kamu yang menentukan nama & jumlah section, tidak perlu mengikuti daftar section tertentu).
+6. AUDIT KELENGKAPAN: sebelum selesai, cocokkan kembali daftar lembar gambar dari langkah 1 terhadap item-item yang kamu hasilkan. 
+   Isi field `coverage_audit` untuk memastikan tidak ada satupun lembar gambar yang terlewat tanpa penjelasan.
 """
 
-        # Extract text & dimension annotations directly from PDF using pypdf (No image conversion)
-        pdf_text = ""
-        try:
-            import io
-            import pypdf
-            reader = pypdf.PdfReader(io.BytesIO(pdf_bytes))
-            text_pages = []
-            for idx, page in enumerate(reader.pages):
-                txt = page.extract_text() or ""
-                if txt.strip():
-                    text_pages.append(f"--- HALAMAN {idx+1} ---\n{txt.strip()}")
-            pdf_text = "\n\n".join(text_pages)
-            logger.info(f"Extracted {len(pdf_text)} characters of text from {len(reader.pages)} PDF pages.")
-            if len(pdf_text) > 100000:
-                logger.info(f"Very large PDF text detected ({len(pdf_text)} chars). Trimming to 100,000 chars for AI processing optimization.")
-                pdf_text = pdf_text[:100000] + "\n\n... [Sisa teks PDF dipotong untuk optimasi batas pemrosesan AI]"
-        except Exception as pdf_err:
-            logger.warning(f"pypdf text extraction skipped/failed: {pdf_err}")
+        logger.info(f"Processing PDF document '{filename}' ({len(pdf_bytes)} bytes) directly via Gemini Multimodal Native PDF engine...")
 
-        full_prompt = prompt_content
-        if pdf_text:
-            full_prompt += f"\n\n[DATA TEKS & ANOTASI DIMENSI PDF]:\n{pdf_text}"
-
-        # 1. Try Primary API (combo-code) first with PDF text payload
-        primary_res = self._analyze_via_primary_api(full_prompt, system_prompt, project_name, client_name)
-        if primary_res:
-            logger.info("Successfully obtained PDF takeoff estimation from Primary API (combo-code).")
-            return primary_res
-
-        logger.warning("Primary API failed or skipped for PDF. Falling back to Gemini API.")
-
-        # 2. SDK Call via google-genai using Files API for reliable large PDF upload
+        # 1. SDK Call via google-genai using Files API for reliable large PDF upload
         if self.client:
             import tempfile
             with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp_pdf:
@@ -425,13 +434,15 @@ Tugas QS:
                         pass
 
         # 2. Direct REST Call Fallback with inlineData
-        return self._analyze_pdf_via_rest(pdf_bytes, filename, project_name, client_name)
+        return self._analyze_pdf_via_rest(pdf_bytes, filename, prompt_content, system_prompt)
 
-    def _analyze_pdf_via_rest(self, pdf_bytes: bytes, filename: str = "document.pdf", project_name: str = "Proyek CAD PDF", client_name: str = "Client") -> DynamicTakeoffResponse:
+    def _analyze_pdf_via_rest(self, pdf_bytes: bytes, filename: str = "document.pdf", prompt_content: str = "", system_prompt: str = "") -> DynamicTakeoffResponse:
         """Fallback REST request to Gemini API with direct PDF inlineData and model fallback."""
         pdf_b64 = base64.b64encode(pdf_bytes).decode("utf-8")
-        prompt_content = f"Judul Gambar PDF: '{project_name}' (File: {filename})\nKlien: '{client_name}'"
-        system_prompt = "You are a professional Senior Quantity Surveyor (QS) in Indonesia."
+        if not prompt_content:
+            prompt_content = f"Judul Gambar PDF: (File: {filename})"
+        if not system_prompt:
+            system_prompt = "You are a professional Senior Quantity Surveyor (QS) in Indonesia."
 
         for model_name in self._get_model_candidates():
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={self.api_key}"
@@ -494,10 +505,11 @@ Tugas QS:
             "Directly generate complete WBS (Work Breakdown Structure) sections and work items according to real Indonesian Civil Engineering standards. "
             "CRITICAL CAD/DRAWING SCALE & UNIT NORMALIZATION RULES: "
             "1. DRAWING UNIT NORMALIZATION: Construction drawings in Indonesia are drawn in Millimeters (mm) or Centimeters (cm). "
-            "   - If drawing dimensions say '6000' x '10000' or '600' x '1000', convert to METERS: 6.0m x 10.0m = 60.0 m2 plot area! "
+            "   - Convert millimeter dimensions to METERS by dividing by 1000 (e.g., 12000mm -> 12.0m). "
             "   - NEVER treat raw millimeter or centimeter values directly as meters or m2! "
-            "2. SANITY CHECK ON AREA & FOOTPRINT: "
-            "   - 'Pembersihan Lapangan' & 'Bouwplank' MUST match the real building/site footprint area (typically 30 m2 to 500 m2 for residential/building drawings). "
+            "2. STRICT ACCURATE DIMENSION READOUT: "
+            "   - READ THE EXACT NUMBERS PRINTED ON THE DRAWING DIMENSION LINES. DO NOT GUESS, FABRICATE, OR DEFAULT TO ANY FIXED NUMBER NOT ON THE DRAWING. "
+            "   - 'Pembersihan Lapangan' & 'Bouwplank' MUST match the exact building/site footprint area read directly from the drawing dimensions. "
             "3. DIMENSION DERIVATION RULES: "
             "   - ALL structural dimensions (wall height, foundation depth, column size, beam size, slab thickness) MUST be derived ONLY from the actual drawing data. "
             "   - If a specific dimension is NOT explicitly stated in the drawing, write 'Dimensi tidak tertera pada gambar' in warning_note and set confidence to 'low'. "
@@ -653,9 +665,9 @@ Tugas QS:
             "\n       - Estimate rebar weight using standard ratio: 80-120 kg/m3 of concrete for columns, 100-150 kg/m3 for beams, 60-80 kg/m3 for slabs. "
             "\n       - Unit = 'kg'. "
             "\n    E. PEKERJAAN FINISHING: "
-            "\n       - Plesteran Dinding: 2 x total_area_m2 of IfcWall (both sides). "
-            "\n       - Acian Dinding: Same as plesteran area. "
-            "\n       - Pengecatan Dinding: Same as plesteran area. "
+            "\n       - Plesteran Dinding: Calculate Net Wall Area = (Total IfcWall area - Door/Window opening area). Multiply by 2 for both sides (e.g. 2 x Net Area). Explicitly state deduction of openings in warning_note. "
+            "\n       - Acian Dinding: Same as net plesteran area. "
+            "\n       - Pengecatan Dinding: Same as net plesteran area. "
             "\n       - Plesteran & Acian Plafon: Use IfcSlab/IfcCovering ceiling area. "
             "\n       - Pengecatan Plafon: Same as ceiling plaster area. "
             "\n    F. PEKERJAAN LANTAI: "
@@ -667,9 +679,12 @@ Tugas QS:
             "\n2. For TIER 1 items: Use exact BIM values. Set confidence = 'high'. "
             "\n3. For TIER 2 items: Show calculation formula in `warning_note` (e.g., 'Derived: 2 x IfcWall area 150.5 m2 = 301.0 m2 plesteran'). Set confidence = 'medium' or 'low'. "
             "\n4. Convert technical BIM names to standard Indonesian AHSP RAB descriptions. "
-            "\n5. Group items into proper WBS sections (minimum 6-8 sections for a complete building). "
-            "\n6. State Level/Lantai in description or warning_note. "
-            "\n7. Aim for 30-60 total work items for a typical building project. "
+            "\n5. CRITICAL WBS SECTION RULE: Group items into separate WBS sections (Section A: PEKERJAAN PERSIAPAN, Section B: PEKERJAAN TANAH, Section C: PEKERJAAN STRUKTUR BETON, Section D: PEKERJAAN BEKISTING, Section E: PEKERJAAN PEMBESIAN, Section F: PEKERJAAN DINDING & FINISHING, Section G: PEKERJAAN PLAFON, Section H: PEKERJAAN LANTAI, Section I: PEKERJAAN PINTU & JENDELA, Section J: PEKERJAAN ATAP, Section K: PEKERJAAN SANITASI & MEP). NEVER lump all items into a single section 'A'! "
+            "\n6. ITEM NAMING: Do NOT prefix item names with the section title (use 'Pembersihan Lapangan', NOT 'PEKERJAAN PERSIAPAN - Pembersihan Lapangan'). "
+            "\n7. State Level/Lantai in description or warning_note. "
+            "\n8. Aim for 30-60 total work items for a typical building project. "
+            "\n9. NO DIAGNOSTIC / MISSING DATA ITEMS: NEVER output JSON work items with volume = 0.0 or names like 'No footing data available in BIM model'. If an element type is absent in the BIM file, DO NOT generate a JSON item for it! "
+            "\n10. VALID WORK NAMES ONLY: `name` must be a clean, professional construction item name in Indonesian (e.g. 'Galian Tanah Pondasi', 'Plesteran Dinding 1:4'). NEVER put 'Derived', 'Estimated', or diagnostic sentence as the `name`. "
             "\nOutput JSON directly conforming to the DynamicTakeoffResponse schema."
         )
 

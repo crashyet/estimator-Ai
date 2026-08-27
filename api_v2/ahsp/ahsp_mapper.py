@@ -23,7 +23,12 @@ logger = logging.getLogger(__name__)
 
 # Paths
 AHSP_DIR = Path(__file__).parent
-AHSP_EXCEL_PATH = AHSP_DIR / "Item Pekerjaan CK.xlsx"
+_env_excel_path = os.getenv("AHSP_EXCEL_PATH")
+if _env_excel_path:
+    _p = Path(_env_excel_path)
+    AHSP_EXCEL_PATH = _p if _p.is_absolute() else (AHSP_DIR.parent / _env_excel_path).resolve()
+else:
+    AHSP_EXCEL_PATH = AHSP_DIR / "Item Pekerjaan CK.xlsx"
 AHSP_VECTORDB_DIR = AHSP_DIR / "ahsp_vectordb"
 AHSP_HASH_FILE = AHSP_VECTORDB_DIR / ".excel_hash"
 
@@ -132,6 +137,14 @@ def clean_item_name(name: str) -> str:
     # Clean slashes with spaces (e.g. "Bata Ringan / Bata Merah" -> "Bata Ringan Bata Merah")
     text = re.sub(r'\s*/\s*', ' ', text)
 
+    # Strip noisy filler suffixes or prefixes like "dan pengukuran", "dan uitzet", "pengukuran dan"
+    text = re.sub(r'\s+dan\s+(?:pengukuran|uitzet|perataan|pembersihan)\b', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'^(?:pengukuran\s+dan\s+|uitzet\s+dan\s+)', '', text, flags=re.IGNORECASE)
+
+    # Normalize construction terms & common typos
+    text = re.sub(r'\bbowplank\b', 'bouwplank', text, flags=re.IGNORECASE)
+    text = re.sub(r'\buitzet\b', 'bouwplank', text, flags=re.IGNORECASE)
+
     # Normalize construction verbs for exact semantic alignment:
     # "galian" -> "penggalian", "urugan" -> "pengurugan", "pasang" -> "pemasangan", "cor" -> "pengecoran"
     words = text.split()
@@ -142,7 +155,7 @@ def clean_item_name(name: str) -> str:
             normalized_words.append("penggalian")
         elif wl in ["urug", "urugan"]:
             normalized_words.append("pengurugan")
-        elif wl in ["pasang", "pas."]:
+        elif wl in ["pasang", "pas.", "pasangan"]:
             normalized_words.append("pemasangan")
         elif wl in ["cor", "readymix", "ready-mix"]:
             normalized_words.append("pengecoran")
@@ -851,7 +864,27 @@ class AHSPMapperEngine:
         """
         Map a single work item name to the best matching AHSP code.
         """
-        if not self._ready:
+        if not self._ready or not item_name or not item_name.strip():
+            return {
+                "ahsp_code": None,
+                "ahsp_name": None,
+                "ahsp_unit": None,
+                "ahsp_score": None,
+                "ahsp_status": "unmapped",
+                "ahsp_candidates": None,
+            }
+
+        cleaned_q = clean_item_name(item_name)
+        low_item = item_name.lower()
+        # Guard against dummy / placeholder / diagnostic item names that cause false vector matches
+        is_dummy = (
+            not cleaned_q 
+            or "nama tidak terdeteksi" in low_item
+            or "no " in low_item and ("available" in low_item or "data" in low_item or "found" in low_item or "footing" in low_item or "column" in low_item or "beam" in low_item or "sloof" in low_item or "roof" in low_item)
+            or low_item in ["derived", "estimated", "unnamed", "none", "n/a", "pekerjaan", "item", "wbs", "task"]
+            or cleaned_q in ["pekerjaan", "item", "wbs", "task", "derived", "estimated"]
+        )
+        if is_dummy:
             return {
                 "ahsp_code": None,
                 "ahsp_name": None,
@@ -903,6 +936,139 @@ class AHSPMapperEngine:
                 "ahsp_status": "unmapped",
                 "ahsp_candidates": candidates[:TOP_K_CANDIDATES],
             }
+
+    def inspect_single_item(
+        self, item_name: str, item_unit: str = "", top_k: int = 5
+    ) -> Dict[str, Any]:
+        """
+        Inspect full raw pipeline step-by-step for a single work item:
+        1. Query & normalization
+        2. Raw VectorDB candidates (ChromaDB cosine similarity before reranking)
+        3. Raw Reranked candidates (Scores after CrossEncoder BGE-M3 / Cohere / Heuristic)
+        4. Final mapping decision (mapped_high, mapped_medium, unmapped)
+        """
+        if not self._ready or not self._collection:
+            return {"error": "AHSP Mapper Engine is not ready or not initialized."}
+
+        cleaned_q = clean_item_name(item_name) or item_name
+        query_text = cleaned_q
+        if item_unit:
+            query_text += f" ({item_unit})"
+
+        retrieval_k = max(top_k, TOP_K_VECTOR_RETRIEVAL)
+
+        results = self._collection.query(
+            query_texts=[query_text],
+            n_results=min(retrieval_k, self._total_items),
+            include=["metadatas", "distances"],
+        )
+
+        raw_vectordb = []
+        if results and results["metadatas"] and results["distances"]:
+            for v_rank, (meta, distance) in enumerate(zip(results["metadatas"][0], results["distances"][0]), 1):
+                base_sim = max(0.0, min(1.0, 1.0 - distance))
+                raw_vectordb.append({
+                    "vector_rank": v_rank,
+                    "id_pekerjaan": meta["id_pekerjaan"],
+                    "nama_pekerjaan": meta["nama_pekerjaan"],
+                    "satuan": meta["satuan"],
+                    "base_score": round(base_sim, 4),
+                })
+
+        reranked = self._rerank_candidates(item_name, item_unit, raw_vectordb)
+        mapping_decision = self.map_single_item(item_name, item_unit)
+
+        # Build comparison step
+        reranked_summary = []
+        for r_item in reranked[:top_k]:
+            b_score = r_item.get("base_score", 0.0)
+            f_score = r_item.get("score", 0.0)
+            delta = round(f_score - b_score, 4)
+            reranked_summary.append({
+                "rank": r_item.get("rank"),
+                "id_pekerjaan": r_item.get("id_pekerjaan"),
+                "nama_pekerjaan": r_item.get("nama_pekerjaan"),
+                "satuan": r_item.get("satuan"),
+                "reranked_score": f_score,
+                "base_vector_score": b_score,
+                "score_delta": f"+{delta}" if delta > 0 else str(delta),
+                "reranker_used": r_item.get("reranker"),
+            })
+
+        return {
+            "query": {
+                "input_name": item_name,
+                "input_unit": item_unit,
+                "cleaned_name": cleaned_q,
+            },
+            "stats": self.get_stats(),
+            "raw_vectordb_candidates": raw_vectordb[:top_k],
+            "raw_reranked_candidates": reranked_summary,
+            "final_mapping": mapping_decision,
+        }
+
+    def inspect_takeoff_response(self, takeoff_response) -> Dict[str, Any]:
+        """
+        Inspect full raw pipeline step-by-step for an entire DynamicTakeoffResponse.
+        Returns a complete evaluation dictionary containing:
+        - Raw AI Output (Takeoff JSON)
+        - VectorDB Raw Search Output per item
+        - Reranked Raw Output per item
+        - Final Mapped Output & Statistics
+        """
+        if not self._ready:
+            return {"error": "AHSP Mapper Engine not ready."}
+
+        raw_ai_dict = takeoff_response.model_dump() if hasattr(takeoff_response, "model_dump") else takeoff_response.dict()
+        
+        items_inspection = []
+        high_cnt = 0
+        med_cnt = 0
+        unmap_cnt = 0
+
+        for sec in takeoff_response.wbs_sections:
+            for item in sec.items:
+                item_insp = self.inspect_single_item(item.name, item.unit or "", top_k=5)
+                
+                final_map = item_insp.get("final_mapping", {})
+                status = final_map.get("ahsp_status", "unmapped")
+                if status == "mapped_high":
+                    high_cnt += 1
+                elif status == "mapped_medium":
+                    med_cnt += 1
+                else:
+                    unmap_cnt += 1
+
+                items_inspection.append({
+                    "section_code": sec.section.code,
+                    "section_name": sec.section.name,
+                    "item_id": item.id,
+                    "ai_raw_item": {
+                        "name": item.name,
+                        "volume": item.volume,
+                        "unit": item.unit,
+                        "confidence": item.confidence,
+                        "warning_note": item.warning_note,
+                    },
+                    "raw_vectordb_candidates": item_insp.get("raw_vectordb_candidates", []),
+                    "raw_reranked_candidates": item_insp.get("raw_reranked_candidates", []),
+                    "final_mapping": final_map,
+                })
+
+        total = len(items_inspection)
+        return {
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "engine_stats": self.get_stats(),
+            "summary": {
+                "total_items": total,
+                "mapped_high": high_cnt,
+                "mapped_medium": med_cnt,
+                "unmapped": unmap_cnt,
+                "high_ratio": f"{(high_cnt/total*100):.1f}%" if total > 0 else "0%",
+            },
+            "raw_ai_output": raw_ai_dict,
+            "items_pipeline_breakdown": items_inspection,
+        }
 
     def map_takeoff_response(self, takeoff_response) -> Any:
         """

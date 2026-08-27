@@ -1,4 +1,5 @@
 import os
+import re
 import argparse
 import logging
 from typing import Optional
@@ -33,14 +34,74 @@ except ImportError as _ahsp_err:
     AHSP_AVAILABLE = False
 
 
-def _apply_ahsp_mapping(takeoff_result: DynamicTakeoffResponse) -> DynamicTakeoffResponse:
-    """Apply AHSP mapping post-processing to a takeoff response if engine is ready."""
+import json
+import time
+from typing import Tuple, Dict, Any
+
+def _apply_ahsp_mapping(takeoff_result: DynamicTakeoffResponse) -> Tuple[DynamicTakeoffResponse, Optional[Dict[str, Any]]]:
+    """
+    Apply AHSP mapping post-processing to a takeoff response if engine is ready.
+    Generates step-by-step raw pipeline inspection, outputs live terminal debug logs,
+    and auto-saves debug log to 'debug_logs/latest_raw_pipeline.json'.
+    """
+    inspection_report = None
     if AHSP_AVAILABLE and mapper_engine and mapper_engine.is_ready():
         try:
-            return mapper_engine.map_takeoff_response(takeoff_result)
+            # 1. Generate step-by-step raw pipeline inspection (Raw AI, VectorDB raw, Reranked raw)
+            inspection_report = mapper_engine.inspect_takeoff_response(takeoff_result)
+
+            # 2. Map takeoff_result in-place
+            takeoff_result = mapper_engine.map_takeoff_response(takeoff_result)
+
+            # 3. Print Live Terminal Inspection Log
+            total_items = inspection_report.get("summary", {}).get("total_items", 0)
+            high_cnt = inspection_report.get("summary", {}).get("mapped_high", 0)
+            med_cnt = inspection_report.get("summary", {}).get("mapped_medium", 0)
+            unmap_cnt = inspection_report.get("summary", {}).get("unmapped", 0)
+
+            logger.info("=" * 85)
+            logger.info(f"🔍 LIVE RAW PIPELINE INSPECTION FOR FRONTEND REQUEST: '{takeoff_result.project.title}'")
+            logger.info(f"Summary: {total_items} items → Mapped High: {high_cnt}, Medium: {med_cnt}, Unmapped: {unmap_cnt}")
+            logger.info("-" * 85)
+
+            for idx, item_insp in enumerate(inspection_report.get("items_pipeline_breakdown", []), 1):
+                ai_item = item_insp["ai_raw_item"]
+                final_map = item_insp["final_mapping"]
+                v_top = item_insp.get("raw_vectordb_candidates", [{}])[0] if item_insp.get("raw_vectordb_candidates") else {}
+                r_top = item_insp.get("raw_reranked_candidates", [{}])[0] if item_insp.get("raw_reranked_candidates") else {}
+
+                v_str = f"[{v_top.get('id_pekerjaan', 'None')}] (score {v_top.get('base_score', 0.0)})" if v_top else "N/A"
+                r_str = f"[{r_top.get('id_pekerjaan', 'None')}] (score {r_top.get('reranked_score', 0.0)}, delta {r_top.get('score_delta', '0')})" if r_top else "N/A"
+
+                logger.info(
+                    f"Item #{idx}: '{ai_item['name']}' ({ai_item['volume']} {ai_item['unit']}) "
+                    f"| VectorDB Top-1: {v_str} "
+                    f"| Reranked Top-1: {r_str} "
+                    f"| STATUS: {final_map.get('ahsp_status', 'unmapped').upper()}"
+                )
+
+            logger.info("=" * 85)
+
+            # 4. Auto-save debug JSON to debug_logs directory
+            try:
+                os.makedirs("debug_logs", exist_ok=True)
+                latest_path = os.path.join("debug_logs", "latest_raw_pipeline.json")
+                timestamp_path = os.path.join("debug_logs", f"raw_pipeline_{int(time.time())}.json")
+
+                with open(latest_path, "w", encoding="utf-8") as f:
+                    json.dump(inspection_report, f, indent=2, ensure_ascii=False)
+
+                with open(timestamp_path, "w", encoding="utf-8") as f:
+                    json.dump(inspection_report, f, indent=2, ensure_ascii=False)
+
+                logger.info(f"💾 Auto-saved raw pipeline debug inspection log to '{latest_path}'")
+            except Exception as log_err:
+                logger.warning(f"Could not auto-save debug log file: {log_err}")
+
         except Exception as e:
             logger.warning(f"AHSP mapping post-processing failed: {e}")
-    return takeoff_result
+
+    return takeoff_result, inspection_report
 
 
 @asynccontextmanager
@@ -57,6 +118,7 @@ async def lifespan(app: FastAPI):
         logger.info("AHSP Mapper skipped (dependencies not installed).")
     yield  # App runs
     logger.info("Application shutting down.")
+
 
 
 app = FastAPI(
@@ -153,11 +215,13 @@ async def analyze_bim_endpoint(
             bim_payload, project_name=name, client_name=client
         )
 
-        # Apply AHSP mapping post-processing
-        takeoff_result = _apply_ahsp_mapping(takeoff_result)
+        # Apply AHSP mapping post-processing & generate raw pipeline inspection
+        takeoff_result, inspection_report = _apply_ahsp_mapping(takeoff_result)
 
         response_data = takeoff_result.to_frontend_format()
         response_data["processing_mode"] = f"native_{ext.replace('.', '')}_bim_3d"
+        if inspection_report:
+            response_data["raw_pipeline_inspection"] = inspection_report
 
         total_work_items = sum(len(wbs.items) for wbs in takeoff_result.wbs_sections)
         logger.info(f"BIM Analysis complete for '{name}'. Generated {len(takeoff_result.wbs_sections)} WBS sections and {total_work_items} work items.")
@@ -239,12 +303,14 @@ async def analyze_image_endpoint(
             )
             processing_mode = "direct_pdf_multimodal"
 
-        # Apply AHSP mapping post-processing
-        takeoff_result = _apply_ahsp_mapping(takeoff_result)
+        # Apply AHSP mapping post-processing & generate raw pipeline inspection
+        takeoff_result, inspection_report = _apply_ahsp_mapping(takeoff_result)
 
         # Convert directly to frontend response format
         response_data = takeoff_result.to_frontend_format()
         response_data["processing_mode"] = processing_mode
+        if inspection_report:
+            response_data["raw_pipeline_inspection"] = inspection_report
 
         total_work_items = sum(len(wbs.items) for wbs in takeoff_result.wbs_sections)
         logger.info(f"Analysis complete for '{name}'. Generated {len(takeoff_result.wbs_sections)} WBS sections and {total_work_items} work items.")
@@ -304,6 +370,19 @@ async def map_item_to_ahsp(req: MapItemRequest):
         "ahsp_candidates": mapping["ahsp_candidates"],
         "mapping": mapping,
     }
+
+
+@app.post("/api/ahsp/inspect-item")
+async def inspect_ahsp_item(req: MapItemRequest):
+    """
+    Inspect raw pipeline steps for a single item (VectorDB raw + Reranked raw + Final mapping).
+    Accepts JSON body: {"item_name": "...", "item_unit": "..."}
+    """
+    if not AHSP_AVAILABLE or not mapper_engine or not mapper_engine.is_ready():
+        raise HTTPException(status_code=503, detail="AHSP Mapping Engine is not available or not initialized.")
+
+    return mapper_engine.inspect_single_item(req.item_name.strip(), (req.item_unit or "").strip(), top_k=5)
+
 
 
 @app.get("/api/ahsp/list")
@@ -386,6 +465,129 @@ async def reindex_ahsp():
         return result
     else:
         raise HTTPException(status_code=500, detail=result.get("error", "Re-index failed."))
+
+
+def parse_ahsp_code_key(code_str: str):
+    """
+    Parses AHSP code like '1.2.1.1.2' or 'A.2.1.10' into a tuple of integers/strings
+    for natural numerical sorting (e.g. 1.2.1.1.2 comes before 1.2.1.1.10).
+    """
+    if not code_str:
+        return ()
+    parts = re.split(r'[\.\-\/\s]+', str(code_str).strip())
+    key = []
+    for p in parts:
+        if p.isdigit():
+            key.append((0, int(p)))
+        else:
+            key.append((1, p.lower()))
+    return tuple(key)
+
+
+def manual_keyword_search(items: list, query: str, limit: int = 50, sort_by_code: bool = True) -> list:
+    """
+    Perform direct manual keyword matching against AHSP items without VectorDB / Reranker.
+    Sorts matches by AHSP code number.
+    """
+    if not query or not query.strip():
+        items_list = [item.to_dict() for item in items]
+        if sort_by_code:
+            items_list.sort(key=lambda x: parse_ahsp_code_key(x.get("id_pekerjaan", "")))
+        return items_list[:limit]
+
+    query_clean = query.strip().lower()
+    keywords = [k for k in query_clean.split() if k]
+
+    exact_matches = []
+    all_keywords_matches = []
+    partial_keywords_matches = []
+
+    for item in items:
+        name_lower = item.nama_pekerjaan.lower()
+        code_lower = item.id_pekerjaan.lower()
+        item_dict = item.to_dict()
+
+        if query_clean in name_lower or query_clean in code_lower:
+            exact_matches.append(item_dict)
+            continue
+
+        if len(keywords) > 1 and all(kw in name_lower or kw in code_lower for kw in keywords):
+            all_keywords_matches.append(item_dict)
+            continue
+
+        if any(kw in name_lower or kw in code_lower for kw in keywords):
+            partial_keywords_matches.append(item_dict)
+
+    if sort_by_code:
+        exact_matches.sort(key=lambda x: parse_ahsp_code_key(x.get("id_pekerjaan", "")))
+        all_keywords_matches.sort(key=lambda x: parse_ahsp_code_key(x.get("id_pekerjaan", "")))
+        partial_keywords_matches.sort(key=lambda x: parse_ahsp_code_key(x.get("id_pekerjaan", "")))
+
+    combined = exact_matches + all_keywords_matches + partial_keywords_matches
+    return combined[:limit]
+
+
+def extract_core_keywords(query: str) -> str:
+    """
+    Strips noise & filler verbs/words (pemasangan, pengukuran, dan, uitzet, pembuatan, dll)
+    to isolate the core material / work object (e.g., 'Pengukuran dan Pemasangan Bouwplank' -> 'Bouwplank').
+    """
+    text = query.strip()
+    noise_pattern = r'\b(?:pengukuran|pemasangan|penggalian|pengurugan|pengecoran|pembuatan|pembersihan|plesteran|acian|pengecatan|pembongkaran|penulangan|bekisting|uitzet|perataan|dan|pekerjaan|pasang|gali|urug|cor|buat)\b'
+    cleaned = re.sub(noise_pattern, '', text, flags=re.IGNORECASE).strip()
+    cleaned = re.sub(r'\s+', ' ', cleaned)
+    return cleaned if len(cleaned) >= 2 else text
+
+
+@app.get("/api/ahsp/search")
+async def search_ahsp(q: str = Query(..., description="Nama item pekerjaan AI untuk dicari"), limit: int = Query(20, ge=1, le=100)):
+    """
+    Opsi 2: Manual Keyword Search based on AI item name.
+    Strips filler action verbs to isolate core work object, then performs pure text string matching against master AHSP items.
+    (VectorDB & Reranker are exclusively reserved for Opsi 1).
+    """
+    if not AHSP_AVAILABLE or not mapper_engine or not mapper_engine.is_ready():
+        raise HTTPException(status_code=503, detail="AHSP Mapping Engine is not available.")
+
+    raw_q = q.strip()
+    core_q = extract_core_keywords(raw_q)
+
+    results = manual_keyword_search(mapper_engine._ahsp_items, core_q, limit=limit)
+    if not results and core_q != raw_q:
+        results = manual_keyword_search(mapper_engine._ahsp_items, raw_q, limit=limit)
+
+    return {
+        "query": raw_q,
+        "core_query": core_q,
+        "total_results": len(results),
+        "items": results
+    }
+
+
+@app.get("/api/ahsp/items")
+async def get_all_ahsp_items(search: Optional[str] = Query(None, description="Free text search"), limit: int = Query(500, ge=1, le=5000)):
+    """
+    Opsi 3: Global AHSP Master Database endpoint with pagination & manual text search.
+    (VectorDB & Reranker are exclusively reserved for Opsi 1).
+    """
+    if not AHSP_AVAILABLE or not mapper_engine or not mapper_engine.is_ready():
+        raise HTTPException(status_code=503, detail="AHSP Mapping Engine is not available.")
+
+    if search and search.strip():
+        results = manual_keyword_search(mapper_engine._ahsp_items, search.strip(), limit=limit)
+        return {
+            "search": search.strip(),
+            "total_results": len(results),
+            "items": results
+        }
+
+    all_items = [item.to_dict() for item in mapper_engine._ahsp_items[:limit]]
+    return {
+        "total_items": len(mapper_engine._ahsp_items),
+        "returned": len(all_items),
+        "items": all_items
+    }
+
 
 
 def main_cli():
