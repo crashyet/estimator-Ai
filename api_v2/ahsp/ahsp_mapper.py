@@ -10,10 +10,7 @@ Uses ChromaDB (embedded vector database) + sentence-transformers with:
 """
 
 import os
-# Ensure offline mode so HuggingFace hub requests do not hang when network is unavailable
-os.environ["HF_HUB_OFFLINE"] = "1"
-os.environ["TRANSFORMERS_OFFLINE"] = "1"
-
+import math
 import re
 import json
 import hashlib
@@ -26,7 +23,12 @@ logger = logging.getLogger(__name__)
 
 # Paths
 AHSP_DIR = Path(__file__).parent
-AHSP_EXCEL_PATH = AHSP_DIR / "Item Pekerjaan CK.xlsx"
+_env_excel_path = os.getenv("AHSP_EXCEL_PATH")
+if _env_excel_path:
+    _p = Path(_env_excel_path)
+    AHSP_EXCEL_PATH = _p if _p.is_absolute() else (AHSP_DIR.parent / _env_excel_path).resolve()
+else:
+    AHSP_EXCEL_PATH = AHSP_DIR / "Item Pekerjaan CK.xlsx"
 AHSP_VECTORDB_DIR = AHSP_DIR / "ahsp_vectordb"
 AHSP_HASH_FILE = AHSP_VECTORDB_DIR / ".excel_hash"
 
@@ -35,10 +37,11 @@ COLLECTION_NAME = "ahsp_items_ck"
 
 # Embedding model — multilingual, supports Bahasa Indonesia
 EMBEDDING_MODEL_NAME = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+BGE_RERANKER_MODEL_NAME = "BAAI/bge-reranker-v2-m3"
 
-# Confidence thresholds (calibrated after reranking)
-THRESHOLD_HIGH = 0.85
-THRESHOLD_MEDIUM = 0.65
+# Confidence thresholds (calibrated after hybrid reranking)
+THRESHOLD_HIGH = 0.60
+THRESHOLD_MEDIUM = 0.40
 
 # Number of candidates to return for medium confidence
 TOP_K_CANDIDATES = 3
@@ -61,22 +64,25 @@ ACTION_KEYWORDS = {
     "acian": ["acian", "aci", "skimming"],
     "pengecatan": ["pengecatan", "cat", "painting", "coating"],
     "pembuatan": ["pembuatan", "buat", "fabrication", "bikin"],
-    "pembersihan": ["pembersihan", "bersih", "cleaning", "clearing"],
+    "pembersihan": ["pembersihan", "bersih", "cleaning", "clearing", "penebasan"],
     "penulangan": ["penulangan", "pembesian", "besi beton", "rebar", "wiremesh"],
     "bekisting": ["bekisting", "formwork", "cetakan"],
 }
 
 MATERIAL_KEYWORDS = {
-    "beton": ["beton", "concrete"],
+    "beton": ["beton", "concrete", "fc"],
     "bata": ["bata", "brick", "hebel", "batako", "bata ringan"],
     "batu": ["batu kali", "batu belah", "batu gunung", "stone"],
-    "keramik": ["keramik", "granit", "homogeneous tile", "tile", "marmer"],
-    "gypsum": ["gypsum", "gipsum", "grc", "plafon"],
+    "keramik": ["keramik", "granit", "tile", "marmer"],
+    "gypsum": ["gypsum", "gipsum", "grc", "plafon", "plafond"],
     "kayu": ["kayu", "wood", "plywood", "kaso", "papan"],
-    "baja": ["baja", "steel", "wf", "hollow", "c75", "spandek", "siku"],
+    "baja": ["baja", "steel", "wf", "hollow", "c75", "spandek", "siku", "atap baja"],
+    "genteng": ["genteng", "roof tile", "atap genteng", "genting"],
+    "pasir": ["pasir", "sand", "urugan pasir"],
+    "aluminium": ["aluminium", "alumunium", "kusen aluminium"],
     "pipa": ["pipa", "pipe", "pvc", "ppr"],
     "cat": ["cat", "paint", "dulux", "catylac", "emulsi"],
-    "sanitair": ["closet", "kloset", "wastafel", "kran", "shower", "toto"],
+    "sanitair": ["closet", "kloset", "wastafel", "kran", "shower", "toto", "septic tank", "resapan"],
 }
 
 
@@ -126,9 +132,19 @@ def clean_item_name(name: str) -> str:
     # Strip standard AHSP quantity patterns inside master names like "1 m3", "1 m2", "1 m1", "1 kg", "1 buah", "1 m"
     text = re.sub(r'\b1\s*(?:m3|m²|m2|m1|m\'|m|kg|buah|bh|set|unit|titik|ls|lbr|batang|pohon)\b', '', text, flags=re.IGNORECASE)
     
-    # Remove specs notes in brackets if purely explanatory like (berdasarkan gambar), (1 kali)
-    text = re.sub(r'\((?:berdasarkan|sesuai|volume|kalkulasi|tanpa)[^)]*\)', '', text, flags=re.IGNORECASE)
-    
+    # Remove specs notes & structural member codes in brackets like (K1, K2, Kp), (B1, B2, B3), (Lantai 1 & 2), (berdasarkan gambar)
+    text = re.sub(r'\((?:berdasarkan|sesuai|volume|kalkulasi|tanpa|lantai|k\d|b\d|s\d|kp|p\d)[^)]*\)', '', text, flags=re.IGNORECASE)
+    # Clean slashes with spaces (e.g. "Bata Ringan / Bata Merah" -> "Bata Ringan Bata Merah")
+    text = re.sub(r'\s*/\s*', ' ', text)
+
+    # Strip noisy filler suffixes or prefixes like "dan pengukuran", "dan uitzet", "pengukuran dan"
+    text = re.sub(r'\s+dan\s+(?:pengukuran|uitzet|perataan|pembersihan)\b', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'^(?:pengukuran\s+dan\s+|uitzet\s+dan\s+)', '', text, flags=re.IGNORECASE)
+
+    # Normalize construction terms & common typos
+    text = re.sub(r'\bbowplank\b', 'bouwplank', text, flags=re.IGNORECASE)
+    text = re.sub(r'\buitzet\b', 'bouwplank', text, flags=re.IGNORECASE)
+
     # Normalize construction verbs for exact semantic alignment:
     # "galian" -> "penggalian", "urugan" -> "pengurugan", "pasang" -> "pemasangan", "cor" -> "pengecoran"
     words = text.split()
@@ -139,7 +155,7 @@ def clean_item_name(name: str) -> str:
             normalized_words.append("penggalian")
         elif wl in ["urug", "urugan"]:
             normalized_words.append("pengurugan")
-        elif wl in ["pasang", "pas."]:
+        elif wl in ["pasang", "pas.", "pasangan"]:
             normalized_words.append("pemasangan")
         elif wl in ["cor", "readymix", "ready-mix"]:
             normalized_words.append("pengecoran")
@@ -191,8 +207,13 @@ class AHSPMapperEngine:
         self._collection = None
         self._chroma_client = None
         self._embedding_fn = None
+        self._bge_reranker = None
+        self._bge_failed = False
         self._ahsp_items: List[AHSPItem] = []
         self._total_items = 0
+        self._rerank_cache: Dict[Tuple, List[Dict[str, Any]]] = {}
+        self._cohere_disabled_until = 0.0
+        self._last_cohere_call_time = 0.0
 
     def is_ready(self) -> bool:
         """Check if the engine is initialized and ready for queries."""
@@ -200,10 +221,25 @@ class AHSPMapperEngine:
 
     def get_stats(self) -> dict:
         """Return engine statistics."""
+        cohere_key = os.getenv("COHERE_API_KEY", "").strip()
+        in_cooldown = time.time() < self._cohere_disabled_until
+        
+        active_reranker = "local_heuristic"
+        if self._bge_reranker is not None:
+            active_reranker = f"bge-reranker-v2-m3 ({BGE_RERANKER_MODEL_NAME})"
+        elif cohere_key and not in_cooldown:
+            active_reranker = f"cohere ({os.getenv('COHERE_RERANK_MODEL', 'rerank-v3.5')})"
+
         return {
             "ready": self._ready,
             "total_indexed_items": self._total_items,
             "embedding_model": EMBEDDING_MODEL_NAME,
+            "bge_reranker_model": BGE_RERANKER_MODEL_NAME,
+            "bge_reranker_loaded": self._bge_reranker is not None,
+            "active_reranker": active_reranker,
+            "cohere_rerank_enabled": bool(cohere_key),
+            "cohere_in_cooldown": in_cooldown,
+            "cache_entries": len(self._rerank_cache),
             "vector_db": "ChromaDB (embedded)",
             "collection_name": COLLECTION_NAME,
             "thresholds": {
@@ -397,11 +433,292 @@ class AHSPMapperEngine:
 
         logger.info(f"Vector index built successfully. Total items: {self._collection.count()}")
 
-    def _rerank_candidates(
+    def _get_bge_reranker(self):
+        """Lazy load local BAAI/bge-reranker-v2-m3 model once."""
+        if self._bge_reranker is not None:
+            return self._bge_reranker
+        if self._bge_failed:
+            return None
+
+        try:
+            logger.info(f"Loading local BGE Reranker model: '{BGE_RERANKER_MODEL_NAME}'...")
+            from sentence_transformers import CrossEncoder
+            import torch
+
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            self._bge_reranker = CrossEncoder(BGE_RERANKER_MODEL_NAME, max_length=512, device=device)
+            logger.info(f"✅ BGE Reranker model '{BGE_RERANKER_MODEL_NAME}' successfully loaded on {device}.")
+            return self._bge_reranker
+        except Exception as e:
+            logger.warning(f"BGE Reranker loading skipped/failed ({e}). Will use Cohere/Local Heuristic fallback.")
+            self._bge_failed = True
+            self._bge_reranker = None
+            return None
+
+    def _rerank_with_bge(
+        self, query_text: str, query_unit: str, raw_candidates: List[Dict[str, Any]]
+    ) -> Optional[List[Dict[str, Any]]]:
+        """
+        Rerank candidates locally using Hugging Face BAAI/bge-reranker-v2-m3 CrossEncoder model.
+        Returns None if model fails to load or infer.
+        """
+        reranker = self._get_bge_reranker()
+        if reranker is None or not raw_candidates:
+            return None
+
+        cleaned_query = clean_item_name(query_text)
+        if not cleaned_query:
+            cleaned_query = query_text
+
+        query_unit_norm = normalize_unit(query_unit)
+        query_lower = cleaned_query.lower()
+
+        cache_key = (
+            cleaned_query.lower(),
+            query_unit_norm,
+            "bge-m3",
+            tuple(c["id_pekerjaan"] for c in raw_candidates)
+        )
+        if cache_key in self._rerank_cache:
+            return self._rerank_cache[cache_key]
+
+        try:
+            pairs = [[cleaned_query, clean_item_name(cand["nama_pekerjaan"])] for cand in raw_candidates]
+            raw_scores = reranker.predict(pairs)
+
+            reranked = []
+            for idx, raw_sc in enumerate(raw_scores):
+                cand = raw_candidates[idx]
+                cand_unit_norm = normalize_unit(cand.get("satuan", ""))
+                cand_lower = clean_item_name(cand["nama_pekerjaan"]).lower()
+                base_sim = cand.get("base_score", 0.0)
+
+                # Convert cross-encoder logit to sigmoid probability score [0.0, 1.0]
+                sig_score = 1.0 / (1.0 + math.exp(-float(raw_sc)))
+                score = sig_score
+
+                # 1. Local strict unit matching check (satuan logic)
+                if query_unit_norm and cand_unit_norm:
+                    if query_unit_norm == cand_unit_norm:
+                        score += 0.08  # Bonus for exact unit match
+                    else:
+                        if query_unit_norm in ["m3", "m2", "m", "kg"] and cand_unit_norm in ["m3", "m2", "m", "kg"]:
+                            score -= 0.35  # Heavy penalty for unit dimension mismatch
+                        else:
+                            score -= 0.15
+
+                # 2. Local action verb match check
+                for action, keywords in ACTION_KEYWORDS.items():
+                    q_has = any(k in query_lower for k in keywords)
+                    c_has = any(k in cand_lower for k in keywords)
+                    if q_has and c_has:
+                        score += 0.08  # Bonus for matching action verb
+                        break
+                    elif q_has and not c_has:
+                        score -= 0.12  # Penalty if query specifies action verb but candidate lacks it
+                        break
+
+                # 3. Local material match check
+                for mat, keywords in MATERIAL_KEYWORDS.items():
+                    q_has = any(k in query_lower for k in keywords)
+                    c_has = any(k in cand_lower for k in keywords)
+                    if q_has and c_has:
+                        score += 0.10  # Bonus for matching material
+                        break
+
+                final_score = max(0.0, min(1.0, round(score, 4)))
+
+                reranked.append({
+                    "id_pekerjaan": cand["id_pekerjaan"],
+                    "nama_pekerjaan": cand["nama_pekerjaan"],
+                    "satuan": cand["satuan"],
+                    "score": final_score,
+                    "bge_score": round(sig_score, 4),
+                    "base_score": base_sim,
+                    "reranker": "bge_m3_hybrid"
+                })
+
+            reranked.sort(key=lambda x: x["score"], reverse=True)
+            for rank, item in enumerate(reranked, 1):
+                item["rank"] = rank
+
+            logger.info(f"BGE-Reranker-v2-m3 successfully reranked {len(reranked)} candidates for query '{query_text}'.")
+
+            if len(self._rerank_cache) > 1000:
+                self._rerank_cache.clear()
+            self._rerank_cache[cache_key] = reranked
+
+            return reranked
+        except Exception as e:
+            logger.warning(f"BGE Reranker inference error ({e}). Falling back to Cohere/Local Heuristic.")
+            return None
+
+    def _rerank_with_cohere(
+        self, query_text: str, query_unit: str, raw_candidates: List[Dict[str, Any]]
+    ) -> Optional[List[Dict[str, Any]]]:
+        """
+        Rerank candidates using Cohere Rerank API (v2) with cache, throttling & circuit breaker.
+        Returns None if API key is missing, rate-limited, or request fails.
+        """
+        cohere_key = os.getenv("COHERE_API_KEY", "").strip()
+        if not cohere_key or not raw_candidates:
+            return None
+
+        # Check circuit breaker cooldown
+        now = time.time()
+        if now < self._cohere_disabled_until:
+            return None  # Cohere API is in cooldown after 429 rate limit
+
+        cleaned_query = clean_item_name(query_text)
+        if not cleaned_query:
+            cleaned_query = query_text
+
+        # Check cache (exact match for query + unit + candidates)
+        cache_key = (
+            cleaned_query.lower(),
+            query_unit.strip().lower(),
+            tuple(c["id_pekerjaan"] for c in raw_candidates)
+        )
+        if cache_key in self._rerank_cache:
+            return self._rerank_cache[cache_key]
+
+        # Inter-request throttle: min 450ms gap between consecutive Cohere API calls to stay within free tier rate limits
+        time_since_last = now - self._last_cohere_call_time
+        if time_since_last < 0.45:
+            time.sleep(0.45 - time_since_last)
+
+        cohere_model = os.getenv("COHERE_RERANK_MODEL", "rerank-v3.5").strip()
+
+        # Send pure item names to Cohere Rerank for maximum name semantic accuracy
+        doc_texts = [clean_item_name(cand["nama_pekerjaan"]) for cand in raw_candidates]
+
+        payload = {
+            "model": cohere_model,
+            "query": cleaned_query,
+            "documents": doc_texts,
+            "top_n": len(raw_candidates)
+        }
+
+        url = "https://api.cohere.com/v2/rerank"
+        headers = {
+            "Authorization": f"Bearer {cohere_key}",
+            "Content-Type": "application/json",
+            "User-Agent": "Estimator-AHSP-Reranker/2.0"
+        }
+
+        import urllib.request
+        import urllib.error
+
+        max_attempts = 2
+        for attempt in range(max_attempts):
+            try:
+                self._last_cohere_call_time = time.time()
+                req = urllib.request.Request(
+                    url,
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers=headers,
+                    method="POST"
+                )
+                with urllib.request.urlopen(req, timeout=6.0) as resp:
+                    res_data = json.loads(resp.read().decode("utf-8"))
+
+                results = res_data.get("results", [])
+                if not results:
+                    logger.warning("Cohere Rerank API returned no results.")
+                    return None
+
+                query_unit_norm = normalize_unit(query_unit)
+                query_lower = cleaned_query.lower()
+                reranked = []
+
+                for item in results:
+                    idx = item.get("index")
+                    rel_score = item.get("relevance_score", 0.0)
+                    if idx is None or idx < 0 or idx >= len(raw_candidates):
+                        continue
+
+                    cand = raw_candidates[idx]
+                    cand_unit_norm = normalize_unit(cand.get("satuan", ""))
+                    cand_lower = clean_item_name(cand["nama_pekerjaan"]).lower()
+                    base_sim = cand.get("base_score", 0.0)
+
+                    # 1. Pure Cohere item name semantic score
+                    score = rel_score
+
+                    # 2. Local strict unit matching check (satuan logic)
+                    if query_unit_norm and cand_unit_norm:
+                        if query_unit_norm == cand_unit_norm:
+                            score += 0.05  # Bonus for exact unit match
+                        else:
+                            # Mismatched dimension (e.g. m3 vs m2, kg vs m3)
+                            if query_unit_norm in ["m3", "m2", "m", "kg"] and cand_unit_norm in ["m3", "m2", "m", "kg"]:
+                                score -= 0.35  # Heavy penalty for unit dimension mismatch
+                            else:
+                                score -= 0.15
+
+                    # 3. Local action verb match check (verb logic)
+                    for action, keywords in ACTION_KEYWORDS.items():
+                        q_has = any(k in query_lower for k in keywords)
+                        c_has = any(k in cand_lower for k in keywords)
+                        if q_has and c_has:
+                            score += 0.05  # Bonus for matching action verb
+                            break
+                        elif q_has and not c_has:
+                            score -= 0.12  # Penalty if query specifies action verb but candidate lacks it
+                            break
+
+                    final_score = max(0.0, min(1.0, round(score, 4)))
+
+                    reranked.append({
+                        "id_pekerjaan": cand["id_pekerjaan"],
+                        "nama_pekerjaan": cand["nama_pekerjaan"],
+                        "satuan": cand["satuan"],
+                        "score": final_score,
+                        "cohere_score": round(rel_score, 4),
+                        "base_score": base_sim,
+                        "reranker": "cohere_hybrid"
+                    })
+
+                reranked.sort(key=lambda x: x["score"], reverse=True)
+                for rank, item in enumerate(reranked, 1):
+                    item["rank"] = rank
+
+                logger.info(f"Cohere Rerank ({cohere_model}) successfully reranked {len(reranked)} candidates for query '{query_text}'.")
+
+                # Store in cache (cap at 1000 items)
+                if len(self._rerank_cache) > 1000:
+                    self._rerank_cache.clear()
+                self._rerank_cache[cache_key] = reranked
+
+                return reranked
+
+            except urllib.error.HTTPError as http_err:
+                if http_err.code == 429:
+                    if attempt < max_attempts - 1:
+                        logger.warning(f"Cohere Rerank API rate limited (429). Waiting 3.5s for rate limit recovery (attempt {attempt + 1}/{max_attempts})...")
+                        time.sleep(3.5)
+                        continue
+                    else:
+                        logger.warning(
+                            "Cohere Rerank API rate limit (429 Too Many Requests) hit. "
+                            "Activating 12s cooldown; automatically using local heuristic reranker."
+                        )
+                        self._cohere_disabled_until = time.time() + 12.0
+                        return None
+                else:
+                    logger.warning(f"Cohere Rerank HTTP Error ({http_err.code}). Falling back to local heuristic reranker.")
+                    return None
+            except Exception as e:
+                logger.warning(f"Cohere Rerank API error ({e}). Falling back to local heuristic reranker.")
+                return None
+
+        return None
+
+    def _rerank_candidates_local(
         self, query_text: str, query_unit: str, raw_candidates: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
         """
-        Rerank vector search candidates using unit matching, action & material keyword logic.
+        Rerank vector search candidates using local unit matching, action & material keyword logic.
         """
         cleaned_query = clean_item_name(query_text)
         query_unit_norm = normalize_unit(query_unit)
@@ -453,6 +770,7 @@ class AHSPMapperEngine:
                 "satuan": cand["satuan"],
                 "score": final_score,
                 "base_score": base_sim,
+                "reranker": "local_heuristic"
             })
 
         # Sort by reranked final score descending
@@ -462,6 +780,36 @@ class AHSPMapperEngine:
             item["rank"] = rank
 
         return reranked
+
+    def _rerank_candidates(
+        self, query_text: str, query_unit: str, raw_candidates: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """
+        Rerank vector search candidates using multi-tier rerankers:
+        1. Local Hugging Face BAAI/bge-reranker-v2-m3 (Fast, offline, 0 API limits)
+        2. Cohere Rerank API (v2)
+        3. Local Heuristic Reranker (Fallback)
+        """
+        engine_mode = os.getenv("RERANK_ENGINE", "bge").strip().lower()
+
+        # If user explicitly wants Cohere primary
+        if engine_mode == "cohere":
+            cohere_results = self._rerank_with_cohere(query_text, query_unit, raw_candidates)
+            if cohere_results is not None:
+                return cohere_results
+            bge_results = self._rerank_with_bge(query_text, query_unit, raw_candidates)
+            if bge_results is not None:
+                return bge_results
+        else:
+            # Default: BGE-m3 primary with Cohere secondary fallback
+            bge_results = self._rerank_with_bge(query_text, query_unit, raw_candidates)
+            if bge_results is not None:
+                return bge_results
+            cohere_results = self._rerank_with_cohere(query_text, query_unit, raw_candidates)
+            if cohere_results is not None:
+                return cohere_results
+
+        return self._rerank_candidates_local(query_text, query_unit, raw_candidates)
 
     def search(self, query: str, top_k: int = TOP_K_SEARCH_DEFAULT, item_unit: str = "") -> List[Dict[str, Any]]:
         """
@@ -516,7 +864,27 @@ class AHSPMapperEngine:
         """
         Map a single work item name to the best matching AHSP code.
         """
-        if not self._ready:
+        if not self._ready or not item_name or not item_name.strip():
+            return {
+                "ahsp_code": None,
+                "ahsp_name": None,
+                "ahsp_unit": None,
+                "ahsp_score": None,
+                "ahsp_status": "unmapped",
+                "ahsp_candidates": None,
+            }
+
+        cleaned_q = clean_item_name(item_name)
+        low_item = item_name.lower()
+        # Guard against dummy / placeholder / diagnostic item names that cause false vector matches
+        is_dummy = (
+            not cleaned_q 
+            or "nama tidak terdeteksi" in low_item
+            or "no " in low_item and ("available" in low_item or "data" in low_item or "found" in low_item or "footing" in low_item or "column" in low_item or "beam" in low_item or "sloof" in low_item or "roof" in low_item)
+            or low_item in ["derived", "estimated", "unnamed", "none", "n/a", "pekerjaan", "item", "wbs", "task"]
+            or cleaned_q in ["pekerjaan", "item", "wbs", "task", "derived", "estimated"]
+        )
+        if is_dummy:
             return {
                 "ahsp_code": None,
                 "ahsp_name": None,
@@ -568,6 +936,139 @@ class AHSPMapperEngine:
                 "ahsp_status": "unmapped",
                 "ahsp_candidates": candidates[:TOP_K_CANDIDATES],
             }
+
+    def inspect_single_item(
+        self, item_name: str, item_unit: str = "", top_k: int = 5
+    ) -> Dict[str, Any]:
+        """
+        Inspect full raw pipeline step-by-step for a single work item:
+        1. Query & normalization
+        2. Raw VectorDB candidates (ChromaDB cosine similarity before reranking)
+        3. Raw Reranked candidates (Scores after CrossEncoder BGE-M3 / Cohere / Heuristic)
+        4. Final mapping decision (mapped_high, mapped_medium, unmapped)
+        """
+        if not self._ready or not self._collection:
+            return {"error": "AHSP Mapper Engine is not ready or not initialized."}
+
+        cleaned_q = clean_item_name(item_name) or item_name
+        query_text = cleaned_q
+        if item_unit:
+            query_text += f" ({item_unit})"
+
+        retrieval_k = max(top_k, TOP_K_VECTOR_RETRIEVAL)
+
+        results = self._collection.query(
+            query_texts=[query_text],
+            n_results=min(retrieval_k, self._total_items),
+            include=["metadatas", "distances"],
+        )
+
+        raw_vectordb = []
+        if results and results["metadatas"] and results["distances"]:
+            for v_rank, (meta, distance) in enumerate(zip(results["metadatas"][0], results["distances"][0]), 1):
+                base_sim = max(0.0, min(1.0, 1.0 - distance))
+                raw_vectordb.append({
+                    "vector_rank": v_rank,
+                    "id_pekerjaan": meta["id_pekerjaan"],
+                    "nama_pekerjaan": meta["nama_pekerjaan"],
+                    "satuan": meta["satuan"],
+                    "base_score": round(base_sim, 4),
+                })
+
+        reranked = self._rerank_candidates(item_name, item_unit, raw_vectordb)
+        mapping_decision = self.map_single_item(item_name, item_unit)
+
+        # Build comparison step
+        reranked_summary = []
+        for r_item in reranked[:top_k]:
+            b_score = r_item.get("base_score", 0.0)
+            f_score = r_item.get("score", 0.0)
+            delta = round(f_score - b_score, 4)
+            reranked_summary.append({
+                "rank": r_item.get("rank"),
+                "id_pekerjaan": r_item.get("id_pekerjaan"),
+                "nama_pekerjaan": r_item.get("nama_pekerjaan"),
+                "satuan": r_item.get("satuan"),
+                "reranked_score": f_score,
+                "base_vector_score": b_score,
+                "score_delta": f"+{delta}" if delta > 0 else str(delta),
+                "reranker_used": r_item.get("reranker"),
+            })
+
+        return {
+            "query": {
+                "input_name": item_name,
+                "input_unit": item_unit,
+                "cleaned_name": cleaned_q,
+            },
+            "stats": self.get_stats(),
+            "raw_vectordb_candidates": raw_vectordb[:top_k],
+            "raw_reranked_candidates": reranked_summary,
+            "final_mapping": mapping_decision,
+        }
+
+    def inspect_takeoff_response(self, takeoff_response) -> Dict[str, Any]:
+        """
+        Inspect full raw pipeline step-by-step for an entire DynamicTakeoffResponse.
+        Returns a complete evaluation dictionary containing:
+        - Raw AI Output (Takeoff JSON)
+        - VectorDB Raw Search Output per item
+        - Reranked Raw Output per item
+        - Final Mapped Output & Statistics
+        """
+        if not self._ready:
+            return {"error": "AHSP Mapper Engine not ready."}
+
+        raw_ai_dict = takeoff_response.model_dump() if hasattr(takeoff_response, "model_dump") else takeoff_response.dict()
+        
+        items_inspection = []
+        high_cnt = 0
+        med_cnt = 0
+        unmap_cnt = 0
+
+        for sec in takeoff_response.wbs_sections:
+            for item in sec.items:
+                item_insp = self.inspect_single_item(item.name, item.unit or "", top_k=5)
+                
+                final_map = item_insp.get("final_mapping", {})
+                status = final_map.get("ahsp_status", "unmapped")
+                if status == "mapped_high":
+                    high_cnt += 1
+                elif status == "mapped_medium":
+                    med_cnt += 1
+                else:
+                    unmap_cnt += 1
+
+                items_inspection.append({
+                    "section_code": sec.section.code,
+                    "section_name": sec.section.name,
+                    "item_id": item.id,
+                    "ai_raw_item": {
+                        "name": item.name,
+                        "volume": item.volume,
+                        "unit": item.unit,
+                        "confidence": item.confidence,
+                        "warning_note": item.warning_note,
+                    },
+                    "raw_vectordb_candidates": item_insp.get("raw_vectordb_candidates", []),
+                    "raw_reranked_candidates": item_insp.get("raw_reranked_candidates", []),
+                    "final_mapping": final_map,
+                })
+
+        total = len(items_inspection)
+        return {
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "engine_stats": self.get_stats(),
+            "summary": {
+                "total_items": total,
+                "mapped_high": high_cnt,
+                "mapped_medium": med_cnt,
+                "unmapped": unmap_cnt,
+                "high_ratio": f"{(high_cnt/total*100):.1f}%" if total > 0 else "0%",
+            },
+            "raw_ai_output": raw_ai_dict,
+            "items_pipeline_breakdown": items_inspection,
+        }
 
     def map_takeoff_response(self, takeoff_response) -> Any:
         """

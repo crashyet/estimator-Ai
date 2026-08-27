@@ -69,7 +69,7 @@ Configure the backend proxy or API endpoint in `frontend/.env`:
 
 ```ini
 # API Service URL (Points to CodeIgniter 4 Backend or Python FastAPI direct)
-VITE_API_URL=http://localhost:8080/api/rab/analyze-image
+VITE_BACKEND_API_URL=http://localhost:8080/api/rab/analyze-image
 ```
 
 ---

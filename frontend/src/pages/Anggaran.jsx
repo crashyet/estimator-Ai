@@ -233,6 +233,8 @@ const Anggaran = () => {
   const [ahspTargetRow, setAhspTargetRow] = useState(null);
   const [ahspSearchQuery, setAhspSearchQuery] = useState("");
   const [ahspSearchResults, setAhspSearchResults] = useState([]);
+  const [ahspCoreQuery, setAhspCoreQuery] = useState("");
+  const [ahspActiveTab, setAhspActiveTab] = useState("rekomendasi"); // 'rekomendasi', 'terkait', 'semua'
   const [isSearchingAhsp, setIsSearchingAhsp] = useState(false);
   const [isMappingBatch, setIsMappingBatch] = useState(false);
 
@@ -301,22 +303,49 @@ const Anggaran = () => {
   const handleOpenAhspModal = (row) => {
     setAhspTargetRow(row);
     setAhspSearchQuery(row.name);
+    setAhspCoreQuery(row.name);
+    const initialTab = (row.ahsp_candidates && row.ahsp_candidates.length > 0) ? 'rekomendasi' : 'terkait';
+    setAhspActiveTab(initialTab);
     setShowAhspModal(true);
-    searchAhspItems(row.name, row.unit);
+    fetchAhspRelated(row.name);
   };
 
-  const searchAhspItems = async (query, unit = "") => {
+  const fetchAhspRelated = async (query) => {
     setIsSearchingAhsp(true);
+    const PYTHON_API_BASE = typeof window !== 'undefined' ? `http://${window.location.hostname}:8200` : (import.meta.env.VITE_PYTHON_API_URL || 'http://localhost:8200');
     try {
-      const res = await fetch(`http://localhost:8200/api/ahsp/search?q=${encodeURIComponent(query)}&top_k=15`);
+      const res = await fetch(`${PYTHON_API_BASE}/api/ahsp/search?q=${encodeURIComponent(query)}&limit=20`);
       if (res.ok) {
         const data = await res.json();
-        setAhspSearchResults(data.results || []);
+        setAhspSearchResults(data.items || []);
+        setAhspCoreQuery(data.core_query || query);
       } else {
         setAhspSearchResults([]);
       }
     } catch (err) {
-      console.error("Error searching AHSP:", err);
+      console.error("Error fetching related AHSP:", err);
+      setAhspSearchResults([]);
+    } finally {
+      setIsSearchingAhsp(false);
+    }
+  };
+
+  const fetchAhspAll = async (query = "") => {
+    setIsSearchingAhsp(true);
+    const PYTHON_API_BASE = typeof window !== 'undefined' ? `http://${window.location.hostname}:8200` : (import.meta.env.VITE_PYTHON_API_URL || 'http://localhost:8200');
+    try {
+      const url = query.trim()
+        ? `${PYTHON_API_BASE}/api/ahsp/items?search=${encodeURIComponent(query)}&limit=500`
+        : `${PYTHON_API_BASE}/api/ahsp/items?limit=500`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        setAhspSearchResults(data.items || []);
+      } else {
+        setAhspSearchResults([]);
+      }
+    } catch (err) {
+      console.error("Error fetching all AHSP items:", err);
       setAhspSearchResults([]);
     } finally {
       setIsSearchingAhsp(false);
@@ -353,6 +382,7 @@ const Anggaran = () => {
   const handleBatchAhspMap = async () => {
     setIsMappingBatch(true);
     triggerToast("Proses pemetaan otomatis AHSP sedang berjalan...", "success");
+    const PYTHON_API_BASE = typeof window !== 'undefined' ? `http://${window.location.hostname}:8200` : (import.meta.env.VITE_PYTHON_API_URL || 'http://localhost:8200');
 
     try {
       let mappedCount = 0;
@@ -361,7 +391,7 @@ const Anggaran = () => {
           if (r.type !== 'item') return r;
 
           try {
-            const res = await fetch('http://localhost:8200/api/ahsp/map-item', {
+            const res = await fetch(`${PYTHON_API_BASE}/api/ahsp/map-item`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ item_name: r.name, item_unit: r.unit || '' })
@@ -587,17 +617,6 @@ const Anggaran = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            {/* Batch AHSP AI Mapping Button */}
-            <button
-              onClick={handleBatchAhspMap}
-              disabled={isMappingBatch}
-              className="bg-emerald-800 hover:bg-emerald-900 disabled:opacity-50 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1.5"
-              title="Petakan semua item secara otomatis ke AHSP standar Indonesia menggunakan Vector DB"
-            >
-              <Icons.Sparkles className="w-3.5 h-3.5 text-emerald-300 animate-pulse" />
-              {isMappingBatch ? 'Memetakan...' : 'Standardkan AHSP (AI)'}
-            </button>
-
             {/* Export Excel (CSV) Button */}
             <button
               onClick={handleExportCSV}
@@ -605,17 +624,6 @@ const Anggaran = () => {
             >
               <Icons.Grid className="w-3.5 h-3.5" />
               Ekspor CSV
-            </button>
-
-            {/* Print/PDF Button */}
-            <button
-              onClick={() => window.print()}
-              className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 px-3.5 py-2 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1.5"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5 text-slate-500">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.82l-.24-2.58a.75.75 0 01.69-.81H16.8a.75.75 0 01.69.81l-.24 2.58m-10.53 0H16.8M4.5 18.75h15a2.25 2.25 0 002.25-2.25V9.75A2.25 2.25 0 0019.5 7.5h-15A2.25 2.25 0 002.25 9.75v6.75a2.25 2.25 0 002.25 2.25z" />
-              </svg>
-              Cetak
             </button>
           </div>
         </div>
@@ -699,24 +707,7 @@ const Anggaran = () => {
                           <td colSpan={3} className="py-3 px-4 uppercase tracking-wide text-[12.5px] text-emerald-950">
                             {row.name}
                           </td>
-                          <td className="py-3 px-4 text-center">
-                            <div className="inline-flex items-center gap-1.5 bg-[#c9f0cc] px-2.5 py-1 rounded-full shadow-2xs">
-                              <button
-                                onClick={() => handleOpenAddModal(row.code)}
-                                className="w-6 h-6 rounded-full bg-[#009624] hover:bg-emerald-700 text-white flex items-center justify-center transition-transform hover:scale-105"
-                                title={`Tambah pekerjaan ke Bagian ${row.code}`}
-                              >
-                                <Icons.Plus className="w-3.5 h-3.5 stroke-[3]" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteSection(row)}
-                                className="w-6 h-6 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center transition-transform hover:scale-105"
-                                title={`Hapus seluruh Bagian ${row.code}`}
-                              >
-                                <Icons.Trash className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </td>
+                          <td className="py-3 px-4 text-center"></td>
                         </tr>
                       );
                     }
@@ -788,46 +779,20 @@ const Anggaran = () => {
                         <td className="py-3 px-4 text-center">
                           <div className="inline-flex items-center gap-1.5 bg-[#d2f3d5] px-2.5 py-1 rounded-full shadow-3xs group-hover:bg-[#c3eec7] transition-all">
                             <button
-                              onClick={() => handleOpenEditModal(row)}
+                              onClick={() => handleOpenAhspModal(row)}
                               className="w-6 h-6 rounded-full bg-[#009624] hover:bg-emerald-700 text-white flex items-center justify-center transition-transform hover:scale-105"
-                              title="Ubah detail pekerjaan"
+                              title="Pilih Kode AHSP Standar"
                             >
-                              <Icons.Edit className="w-3.5 h-3.5" />
+                              <Icons.Sparkles className="w-3.5 h-3.5" />
                             </button>
 
-                            <div className="relative group/dropdown">
-                              <button
-                                className="w-9 h-6 rounded-full bg-[#009624] hover:bg-emerald-700 text-white flex items-center justify-center gap-0.5 px-1.5 transition-transform hover:scale-105"
-                                title="Opsi lainnya"
-                              >
-                                <Icons.Grid className="w-3 h-3" />
-                                <Icons.ChevronDown className="w-2.5 h-2.5" />
-                              </button>
-
-                              <div className="absolute right-0 bottom-full mb-2 w-44 bg-white border border-slate-150 rounded-lg shadow-lg py-1 z-30 hidden group-hover/dropdown:block origin-bottom-right transition-all">
-                                <button
-                                  onClick={() => handleOpenAhspModal(row)}
-                                  className="w-full text-left px-3.5 py-2 hover:bg-emerald-50 flex items-center gap-2 text-[12.5px] text-emerald-800 font-medium"
-                                >
-                                  <Icons.Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                                  Pilih Kode AHSP
-                                </button>
-                                <button
-                                  onClick={() => handleOpenEditModal(row)}
-                                  className="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2 text-[12.5px] text-slate-700 font-medium"
-                                >
-                                  <Icons.Edit className="w-3.5 h-3.5 text-slate-600" />
-                                  Edit Item
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteItem(row)}
-                                  className="w-full text-left px-3.5 py-2 hover:bg-red-50 text-red-600 flex items-center gap-2 text-[12.5px] font-semibold border-t border-slate-50"
-                                >
-                                  <Icons.Trash className="w-3.5 h-3.5" />
-                                  Hapus Item
-                                </button>
-                              </div>
-                            </div>
+                            <button
+                              onClick={() => handleDeleteItem(row)}
+                              className="w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center transition-transform hover:scale-105"
+                              title="Hapus Item Pekerjaan"
+                            >
+                              <Icons.Trash className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -902,14 +867,14 @@ const Anggaran = () => {
         </div>
       )}
 
-      {/* Modal - AHSP Selection & Search */}
+      {/* Modal - AHSP Selection & Search (3 Tabs) */}
       {showAhspModal && ahspTargetRow && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-fade-in">
           <div className="bg-white rounded-xl shadow-2xl border border-slate-100 max-w-2xl w-full overflow-hidden transform scale-100 transition-all">
-            <div className="bg-emerald-700 text-white px-5 py-4 flex items-center justify-between">
+            <div className="bg-emerald-800 text-white px-5 py-4 flex items-center justify-between">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-800/80 px-2 py-0.5 rounded">
-                  Pencarian AHSP Standar (2.816 Master Data)
+                <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-900/80 px-2 py-0.5 rounded text-emerald-200">
+                  Penyesuaian Kode AHSP Standar (2.816 Master Data)
                 </span>
                 <h3 className="font-bold text-[14.5px] mt-1">
                   Pilih Kode AHSP untuk: "{ahspTargetRow.name}"
@@ -920,104 +885,252 @@ const Anggaran = () => {
                   setShowAhspModal(false);
                   setAhspTargetRow(null);
                 }}
-                className="p-1 rounded-full hover:bg-emerald-800 text-emerald-100 hover:text-white transition-colors"
+                className="p-1 rounded-full hover:bg-emerald-700 text-emerald-100 hover:text-white transition-colors"
               >
                 <Icons.X />
               </button>
             </div>
 
-            <div className="p-5 space-y-4">
-              {/* Search Bar */}
-              <div>
-                <label className="block text-[12px] font-semibold text-slate-600 mb-1">
-                  Kata Kunci Pencarian Vector DB:
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={ahspSearchQuery}
-                    onChange={(e) => setAhspSearchQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && searchAhspItems(ahspSearchQuery, ahspTargetRow.unit)}
-                    placeholder="Masukan nama pekerjaan (contoh: Pengecoran Beton Fc 25)..."
-                    className="flex-1 bg-white border border-slate-200 rounded-md py-2 px-3 text-[13px] text-slate-700 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-                  />
-                  <button
-                    onClick={() => searchAhspItems(ahspSearchQuery, ahspTargetRow.unit)}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-md text-[12.5px] font-bold transition-colors cursor-pointer"
-                  >
-                    {isSearchingAhsp ? 'Mencari...' : 'Cari'}
-                  </button>
-                </div>
-              </div>
-
-              {/* AI Candidates List */}
-              {ahspTargetRow.ahsp_candidates && ahspTargetRow.ahsp_candidates.length > 0 && (
-                <div className="bg-amber-50/70 border border-amber-200 rounded-lg p-3">
-                  <span className="text-[11.5px] font-bold text-amber-800 block mb-2">
-                    💡 Rekomendasi Kandidat Teratas AI:
+            {/* 3 Tab Header Navigation */}
+            <div className="flex border-b border-slate-200 bg-slate-50/80 px-5 pt-3 gap-2">
+              <button
+                onClick={() => setAhspActiveTab('rekomendasi')}
+                className={`pb-2.5 px-3 text-[12.5px] font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
+                  ahspActiveTab === 'rekomendasi'
+                    ? 'border-emerald-600 text-emerald-800 bg-white rounded-t-lg shadow-2xs'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <span className="flex items-center gap-1.5">
+                  <Icons.Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                  1. Rekomendasi AI
+                </span>
+                {ahspTargetRow.ahsp_candidates && ahspTargetRow.ahsp_candidates.length > 0 && (
+                  <span className="bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0.2 rounded-full font-extrabold">
+                    {ahspTargetRow.ahsp_candidates.length}
                   </span>
-                  <div className="space-y-1.5">
-                    {ahspTargetRow.ahsp_candidates.map((cand) => (
-                      <div
-                        key={cand.id_pekerjaan}
-                        onClick={() => handleSelectAhspItem(cand)}
-                        className="flex items-center justify-between p-2 rounded bg-white border border-amber-150 hover:border-emerald-500 hover:bg-emerald-50/50 cursor-pointer transition-all text-[12.5px]"
-                      >
-                        <div>
-                          <span className="font-bold text-emerald-900 mr-2">{cand.id_pekerjaan}</span>
-                          <span className="text-slate-700">{cand.nama_pekerjaan}</span>
-                          <span className="text-slate-400 ml-1">({cand.satuan})</span>
+                )}
+              </button>
+
+              <button
+                onClick={() => {
+                  setAhspActiveTab('terkait');
+                  fetchAhspRelated(ahspTargetRow.name);
+                }}
+                className={`pb-2.5 px-3 text-[12.5px] font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
+                  ahspActiveTab === 'terkait'
+                    ? 'border-emerald-600 text-emerald-800 bg-white rounded-t-lg shadow-2xs'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <span className="flex items-center gap-1.5">
+                  <Icons.Search className="w-3.5 h-3.5 text-blue-600" />
+                  2. Sesuai Penamaan AI
+                </span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setAhspActiveTab('semua');
+                  setAhspSearchQuery('');
+                  fetchAhspAll('');
+                }}
+                className={`pb-2.5 px-3 text-[12.5px] font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
+                  ahspActiveTab === 'semua'
+                    ? 'border-emerald-600 text-emerald-800 bg-white rounded-t-lg shadow-2xs'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <span className="flex items-center gap-1.5">
+                  <Icons.Book className="w-3.5 h-3.5 text-amber-600" />
+                  3. Seluruh AHSP
+                </span>
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {/* TAB 1: REKOMENDASI AI */}
+              {ahspActiveTab === 'rekomendasi' && (
+                <div className="space-y-3">
+                  <div className="bg-emerald-50/70 border border-emerald-200 rounded-lg p-3">
+                    <span className="text-[12px] font-bold text-emerald-800 flex items-center gap-1.5 mb-1">
+                      <Icons.Lightbulb className="w-3.5 h-3.5 text-emerald-600" />
+                      Rekomendasi Teratas AI untuk Pekerjaan Ini:
+                    </span>
+                    <p className="text-[11.5px] text-emerald-700">
+                      Opsi di bawah ini adalah kandidat paling akurat yang disarankan oleh mesin Vector DB AI.
+                    </p>
+                  </div>
+
+                  {ahspTargetRow.ahsp_candidates && ahspTargetRow.ahsp_candidates.length > 0 ? (
+                    <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                      {ahspTargetRow.ahsp_candidates.map((cand) => (
+                        <div
+                          key={cand.id_pekerjaan}
+                          onClick={() => handleSelectAhspItem(cand)}
+                          className="flex items-center justify-between p-3 rounded-lg bg-white border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/40 cursor-pointer transition-all shadow-3xs group"
+                        >
+                          <div className="flex-1 pr-3">
+                            <div className="flex items-center gap-2">
+                              <span className="font-extrabold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded text-[11.5px]">
+                                {cand.id_pekerjaan}
+                              </span>
+                              <span className="font-semibold text-slate-800 text-[13px]">{cand.nama_pekerjaan}</span>
+                            </div>
+                            <div className="text-[11px] text-slate-400 mt-1">
+                              Satuan: <span className="font-medium text-slate-600">{cand.satuan}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100/80 px-2.5 py-1 rounded-full">
+                              Kecocokan: {(cand.score * 100).toFixed(0)}%
+                            </span>
+                            <button className="bg-emerald-600 group-hover:bg-emerald-700 text-white px-3 py-1.5 rounded-md text-[12px] font-bold transition-all shadow-2xs">
+                              Pilih
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                            Score: {(cand.score * 100).toFixed(0)}%
-                          </span>
-                          <button className="text-[11.5px] bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded font-semibold">
-                            Pilih
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-8 text-center bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                      <p className="text-[13px] text-slate-500 font-medium mb-2">Tidak ada daftar rekomendasi otomatis tersimpan.</p>
+                      <button
+                        onClick={() => {
+                          setAhspActiveTab('terkait');
+                          fetchAhspRelated(ahspTargetRow.name);
+                        }}
+                        className="text-[12px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-md transition-colors"
+                      >
+                        Cari Berdasarkan Penamaan AI →
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 2: SESUAI PENAMAAN AI (TERKAIT) */}
+              {ahspActiveTab === 'terkait' && (
+                <div className="space-y-3">
+                  <div className="bg-blue-50/70 border border-blue-200 rounded-lg p-3 flex items-start justify-between gap-3">
+                    <div>
+                      <span className="text-[12px] font-bold text-blue-900 flex items-center gap-1.5 mb-0.5">
+                        <Icons.Search className="w-3.5 h-3.5 text-blue-600" />
+                        Pencarian Berbasis Penamaan AI
+                      </span>
+                      <p className="text-[11.5px] text-blue-700">
+                        Kata Kunci Inti (tanpa kata kerja awal): <span className="font-bold underline">{ahspCoreQuery || ahspTargetRow.name}</span>
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => fetchAhspRelated(ahspTargetRow.name)}
+                      className="text-[11px] font-bold bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1 rounded shadow-3xs cursor-pointer whitespace-nowrap"
+                    >
+                      Refresh Hasil
+                    </button>
+                  </div>
+
+                  <div className="border border-slate-200 rounded-lg overflow-hidden max-h-72 overflow-y-auto divide-y divide-slate-100">
+                    {isSearchingAhsp ? (
+                      <div className="py-8 text-center text-slate-400 text-[13px]">
+                        Menyaring database AHSP berdasarkan penamaan AI...
+                      </div>
+                    ) : ahspSearchResults.length === 0 ? (
+                      <div className="py-8 text-center text-slate-400 text-[13px]">
+                        Tidak ada item AHSP yang cocok dengan kata kunci "{ahspCoreQuery}".
+                      </div>
+                    ) : (
+                      ahspSearchResults.map((item) => (
+                        <div
+                          key={item.id_pekerjaan}
+                          onClick={() => handleSelectAhspItem(item)}
+                          className="p-3 hover:bg-emerald-50/60 cursor-pointer transition-colors flex items-center justify-between text-[12.5px] group"
+                        >
+                          <div className="flex-1 pr-4">
+                            <div className="flex items-center gap-2">
+                              <span className="font-extrabold text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded text-[11.5px]">
+                                {item.id_pekerjaan}
+                              </span>
+                              <span className="font-semibold text-slate-800">{item.nama_pekerjaan}</span>
+                            </div>
+                            <div className="text-[11px] text-slate-400 mt-0.5">
+                              Satuan: <span className="font-medium text-slate-600">{item.satuan}</span>
+                            </div>
+                          </div>
+                          <button className="bg-white border border-slate-200 group-hover:bg-emerald-600 group-hover:text-white text-slate-700 px-3 py-1 rounded text-[12px] font-bold transition-all shadow-2xs">
+                            Gunakan
                           </button>
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 </div>
               )}
 
-              {/* Search Results List */}
-              <div className="border border-slate-200 rounded-lg overflow-hidden max-h-64 overflow-y-auto divide-y divide-slate-100">
-                {isSearchingAhsp ? (
-                  <div className="py-8 text-center text-slate-400 text-[13px]">
-                    Sedang mencari kandidat di Vector DB...
-                  </div>
-                ) : ahspSearchResults.length === 0 ? (
-                  <div className="py-8 text-center text-slate-400 text-[13px]">
-                    Tidak ada kode AHSP yang cocok dengan pencarian.
-                  </div>
-                ) : (
-                  ahspSearchResults.map((item) => (
-                    <div
-                      key={item.id_pekerjaan}
-                      onClick={() => handleSelectAhspItem(item)}
-                      className="p-3 hover:bg-emerald-50/60 cursor-pointer transition-colors flex items-center justify-between text-[12.5px] group"
-                    >
-                      <div className="flex-1 pr-4">
-                        <div className="flex items-center gap-2">
-                          <span className="font-extrabold text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded text-[11.5px]">
-                            {item.id_pekerjaan}
-                          </span>
-                          <span className="font-semibold text-slate-800">{item.nama_pekerjaan}</span>
-                        </div>
-                        <div className="text-[11px] text-slate-400 mt-0.5">
-                          Satuan: <span className="font-medium text-slate-600">{item.satuan}</span>
-                        </div>
-                      </div>
-                      <button className="bg-white border border-slate-200 group-hover:bg-emerald-600 group-hover:text-white text-slate-700 px-3 py-1 rounded text-[12px] font-bold transition-all shadow-2xs">
-                        Gunakan
+              {/* TAB 3: SELURUH AHSP (GLOBAL SEARCH) */}
+              {ahspActiveTab === 'semua' && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-[12px] font-semibold text-slate-600 mb-1">
+                      Cari Bebas di 2.816 Master Data AHSP:
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={ahspSearchQuery}
+                        onChange={(e) => setAhspSearchQuery(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && fetchAhspAll(ahspSearchQuery)}
+                        placeholder="Ketik kode atau uraian pekerjaan bebas (misal: 2.2.1.6.6 atau Bata Merah)..."
+                        className="flex-1 bg-white border border-slate-200 rounded-md py-2 px-3 text-[13px] text-slate-700 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                      />
+                      <button
+                        onClick={() => fetchAhspAll(ahspSearchQuery)}
+                        className="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-md text-[12.5px] font-bold transition-colors cursor-pointer"
+                      >
+                        {isSearchingAhsp ? 'Mencari...' : 'Cari'}
                       </button>
                     </div>
-                  ))
-                )}
-              </div>
+                  </div>
 
+                  <div className="border border-slate-200 rounded-lg overflow-hidden max-h-64 overflow-y-auto divide-y divide-slate-100">
+                    {isSearchingAhsp ? (
+                      <div className="py-8 text-center text-slate-400 text-[13px]">
+                        Sedang mencari di 2.816 master data AHSP...
+                      </div>
+                    ) : ahspSearchResults.length === 0 ? (
+                      <div className="py-8 text-center text-slate-400 text-[13px]">
+                        Tidak ada kode AHSP yang cocok dengan kata kunci ini.
+                      </div>
+                    ) : (
+                      ahspSearchResults.map((item) => (
+                        <div
+                          key={item.id_pekerjaan}
+                          onClick={() => handleSelectAhspItem(item)}
+                          className="p-3 hover:bg-emerald-50/60 cursor-pointer transition-colors flex items-center justify-between text-[12.5px] group"
+                        >
+                          <div className="flex-1 pr-4">
+                            <div className="flex items-center gap-2">
+                              <span className="font-extrabold text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded text-[11.5px]">
+                                {item.id_pekerjaan}
+                              </span>
+                              <span className="font-semibold text-slate-800">{item.nama_pekerjaan}</span>
+                            </div>
+                            <div className="text-[11px] text-slate-400 mt-0.5">
+                              Satuan: <span className="font-medium text-slate-600">{item.satuan}</span>
+                            </div>
+                          </div>
+                          <button className="bg-white border border-slate-200 group-hover:bg-emerald-600 group-hover:text-white text-slate-700 px-3 py-1 rounded text-[12px] font-bold transition-all shadow-2xs">
+                            Gunakan
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Modal Footer */}
               <div className="pt-3 border-t border-slate-100 flex justify-end">
                 <button
                   onClick={() => {
