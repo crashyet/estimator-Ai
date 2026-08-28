@@ -540,7 +540,7 @@ def extract_core_keywords(query: str) -> str:
 
 
 @app.get("/api/ahsp/search")
-async def search_ahsp(q: str = Query(..., description="Nama item pekerjaan AI untuk dicari"), limit: int = Query(20, ge=1, le=100)):
+async def search_ahsp(q: str = Query(..., description="Nama item pekerjaan AI untuk dicari"), limit: int = Query(100, ge=1, le=500)):
     """
     Opsi 2: Manual Keyword Search based on AI item name.
     Strips filler action verbs to isolate core work object, then performs pure text string matching against master AHSP items.
