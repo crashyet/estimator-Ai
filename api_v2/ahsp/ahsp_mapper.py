@@ -35,18 +35,19 @@ AHSP_HASH_FILE = AHSP_VECTORDB_DIR / ".excel_hash"
 # ChromaDB collection name
 COLLECTION_NAME = "ahsp_items_ck"
 
-# Embedding model — multilingual, supports Bahasa Indonesia
-EMBEDDING_MODEL_NAME = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+# Embedding model — BAAI/bge-m3: retrieval-focused, 1024-dim, 170+ languages including Bahasa Indonesia
+# Consistent with BGE reranker for end-to-end representation alignment
+EMBEDDING_MODEL_NAME = "BAAI/bge-m3"
 BGE_RERANKER_MODEL_NAME = "BAAI/bge-reranker-v2-m3"
 
 # Confidence thresholds (calibrated after hybrid reranking)
-THRESHOLD_HIGH = 0.60
-THRESHOLD_MEDIUM = 0.40
+THRESHOLD_HIGH = 0.65
+THRESHOLD_MEDIUM = 0.50
 
 # Number of candidates to return for medium confidence
 TOP_K_CANDIDATES = 3
 TOP_K_SEARCH_DEFAULT = 5
-TOP_K_VECTOR_RETRIEVAL = 20  # Retrieve 20 candidates for reranking
+TOP_K_VECTOR_RETRIEVAL = 50  # Retrieve 50 candidates for reranking
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -126,16 +127,39 @@ def clean_item_name(name: str) -> str:
     
     text = name.strip()
     
-    # Strip leading WBS codes or numbering like "A.1 ", "1.2 ", "A.1. ", "1.", "PEKERJAAN 1 - "
-    text = re.sub(r'^(?:pekerjaan|seksi|item|bagian)?\s*(?:[a-z0-9]+\.)*[a-z0-9]+\s*[:\.-]?\s*', '', text, flags=re.IGNORECASE)
+    # Strip leading prefix labels like "PEKERJAAN", "SEKSI", "ITEM", "BAGIAN"
+    text = re.sub(r'^(?:pekerjaan|seksi|item|bagian)\s+', '', text, flags=re.IGNORECASE)
+    # Strip leading WBS codes that contain at least one dot: "A.1 ", "1.2.3 ", "A.1. "
+    text = re.sub(r'^(?:[a-z0-9]+\.)+[a-z0-9]*\s*[:\.-]?\s*', '', text, flags=re.IGNORECASE)
+    # Strip standalone single-char/number prefix with separator: "A- ", "1: "
+    text = re.sub(r'^[a-z0-9]{1,2}\s*[:\.-]\s+', '', text, flags=re.IGNORECASE)
     
     # Strip standard AHSP quantity patterns inside master names like "1 m3", "1 m2", "1 m1", "1 kg", "1 buah", "1 m"
     text = re.sub(r'\b1\s*(?:m3|m²|m2|m1|m\'|m|kg|buah|bh|set|unit|titik|ls|lbr|batang|pohon)\b', '', text, flags=re.IGNORECASE)
     
-    # Remove specs notes & structural member codes in brackets like (K1, K2, Kp), (B1, B2, B3), (Lantai 1 & 2), (berdasarkan gambar)
-    text = re.sub(r'\((?:berdasarkan|sesuai|volume|kalkulasi|tanpa|lantai|k\d|b\d|s\d|kp|p\d)[^)]*\)', '', text, flags=re.IGNORECASE)
+    # Remove specs notes & structural member codes in brackets like (PJ1), (K1, K2, Kp), (B1, B2, B3, BL),
+    # (FP1-FP4), (J1-J4), (S1), (Lantai 1 & 2), (berdasarkan gambar), (15x20 cm), etc.
+    # Pattern: any bracket content starting with 1-3 letters + digit (catches PJ1, FP1, K1, B1, J1, etc.)
+    # OR starting with descriptive/specification words
+    text = re.sub(
+        r'\((?:'
+        r'[a-z]{1,3}\d'                  # Structural codes: PJ1, FP1, K1, B1, S1, P1, J1, BL1, etc.
+        r'|berdasarkan|sesuai|volume|kalkulasi|tanpa|lantai|kp'
+        r'|\d+\s*[x×]\s*\d+'            # Dimension specs: (15x20 cm), (1.2x1.2m)
+        r')[^)]*\)',
+        '', text, flags=re.IGNORECASE
+    )
     # Clean slashes with spaces (e.g. "Bata Ringan / Bata Merah" -> "Bata Ringan Bata Merah")
     text = re.sub(r'\s*/\s*', ' ', text)
+
+    # Strip unbracketed drawing/structural member codes like "P1 & P2", "J1, J2, J3, J4", "P1, P2, P3", "FP1 s/d FP4", "B1 - B4", "K1 & K2"
+    _code_tok = r'\b[a-z]{1,3}\d{1,3}\b'
+    _code_list_pat = rf'{_code_tok}(?:\s*(?:[,&/-]|s/d|dan|\+)\s*{_code_tok})+'
+    text = re.sub(_code_list_pat, '', text, flags=re.IGNORECASE)
+    text = re.sub(rf'\s+{_code_tok}\s*$', '', text, flags=re.IGNORECASE)
+
+    # Strip room/location qualifiers after door/window terms (e.g. "Pintu Utama" -> "Pintu", "Pintu Kamar Mandi" -> "Pintu")
+    text = re.sub(r'\b(pintu|jendela)\s+(?:utama|kamar\s+mandi|km/wc|km|wc|depan|belakang|samping|balkon|teras|service)\b', r'\1', text, flags=re.IGNORECASE)
 
     # Strip noisy filler suffixes or prefixes like "dan pengukuran", "dan uitzet", "pengukuran dan"
     text = re.sub(r'\s+dan\s+(?:pengukuran|uitzet|perataan|pembersihan)\b', '', text, flags=re.IGNORECASE)
@@ -171,13 +195,38 @@ def clean_item_name(name: str) -> str:
     text = " ".join(normalized_words)
     
     # Normalize concrete grade notation (e.g., K-300, K300, Fc 25 MPa, fc' 25)
-    text = re.sub(r'\bf[c\']\s*(\d+)\s*(?:mpa)?\b', r'fc \1 mpa', text, flags=re.IGNORECASE)
-    text = re.sub(r'\bk\s*-\s*(\d+)\b', r'k-\1', text, flags=re.IGNORECASE)
-    text = re.sub(r'\bk(\d{3})\b', r'k-\1', text, flags=re.IGNORECASE)
-    
     # Normalize spaces
     text = re.sub(r'\s+', ' ', text).strip()
     return text
+
+
+def manual_keyword_search(ahsp_items: List[Any], search_query: str, limit: int = 5000) -> List[Dict[str, Any]]:
+    """
+    Perform multi-word keyword filtering on AHSP items.
+    Matches all query terms against nama_pekerjaan or id_pekerjaan.
+    """
+    if not search_query:
+        return [item.to_dict() if hasattr(item, "to_dict") else item for item in ahsp_items[:limit]]
+    
+    query_terms = [t.lower() for t in search_query.strip().split() if t.strip()]
+    matched = []
+    
+    for item in ahsp_items:
+        if isinstance(item, dict):
+            nama = item.get("nama_pekerjaan", "").lower()
+            code = item.get("id_pekerjaan", "").lower()
+            dict_item = item
+        else:
+            nama = getattr(item, "nama_pekerjaan", "").lower()
+            code = getattr(item, "id_pekerjaan", "").lower()
+            dict_item = item.to_dict() if hasattr(item, "to_dict") else dict(item)
+        
+        if all(term in nama or term in code for term in query_terms):
+            matched.append(dict_item)
+            if len(matched) >= limit:
+                break
+                
+    return matched
 
 
 class AHSPItem:
@@ -358,7 +407,7 @@ class AHSPMapperEngine:
                 for chunk in iter(lambda: f.read(8192), b""):
                     h.update(chunk)
             # Mix version tag to trigger rebuild when cleaner logic updates
-            h.update(b"_v3_verb_canonicalizer")
+            h.update(b"_v9_unbracketed_codes_risha_penalty_depth50")
             return h.hexdigest()
         except Exception:
             return ""
@@ -382,24 +431,21 @@ class AHSPMapperEngine:
 
     def _build_vector_index(self):
         """
-        Build the ChromaDB vector index from AHSP items using get_or_create_collection.
+        Build the ChromaDB vector index from AHSP items.
+        Deletes old collection first to handle embedding dimension changes cleanly.
         """
-        self._collection = self._chroma_client.get_or_create_collection(
+        # Delete old collection if it exists (required when embedding model/dimension changes)
+        try:
+            self._chroma_client.delete_collection(name=COLLECTION_NAME)
+            logger.info(f"Deleted old ChromaDB collection '{COLLECTION_NAME}' for fresh rebuild.")
+        except Exception:
+            pass  # Collection didn't exist yet, that's fine
+
+        self._collection = self._chroma_client.create_collection(
             name=COLLECTION_NAME,
             embedding_function=self._embedding_fn,
             metadata={"hnsw:space": "cosine"},
         )
-
-        # Clear existing items safely if any
-        try:
-            count = self._collection.count()
-            if count > 0:
-                existing_data = self._collection.get()
-                if existing_data and existing_data.get("ids"):
-                    self._collection.delete(ids=existing_data["ids"])
-                    logger.info(f"Cleared {len(existing_data['ids'])} existing items from collection.")
-        except Exception as e:
-            logger.warning(f"Note on clearing collection: {e}")
 
         documents = []
         ids = []
@@ -497,26 +543,36 @@ class AHSPMapperEngine:
                 sig_score = 1.0 / (1.0 + math.exp(-float(raw_sc)))
                 score = sig_score
 
-                # 1. Local strict unit matching check (satuan logic)
+                # 1. Flexible unit matching check
                 if query_unit_norm and cand_unit_norm:
                     if query_unit_norm == cand_unit_norm:
-                        score += 0.08  # Bonus for exact unit match
+                        score += 0.05  # Small bonus for exact unit match
                     else:
-                        if query_unit_norm in ["m3", "m2", "m", "kg"] and cand_unit_norm in ["m3", "m2", "m", "kg"]:
-                            score -= 0.35  # Heavy penalty for unit dimension mismatch
-                        else:
-                            score -= 0.15
+                        # Only apply mild penalty if BOTH are dimensional units and they mismatch (e.g. m3 vs m2, kg vs m3)
+                        # Do NOT penalize discrete units (unit, buah, bh, set, ls) vs dimensional units (m2, m3, m)
+                        dim_units = {"m3", "m2", "m", "kg"}
+                        if query_unit_norm in dim_units and cand_unit_norm in dim_units:
+                            score -= 0.12
 
                 # 2. Local action verb match check
-                for action, keywords in ACTION_KEYWORDS.items():
-                    q_has = any(k in query_lower for k in keywords)
-                    c_has = any(k in cand_lower for k in keywords)
-                    if q_has and c_has:
+                q_actions = {action for action, keywords in ACTION_KEYWORDS.items() if any(k in query_lower for k in keywords)}
+                c_actions = {action for action, keywords in ACTION_KEYWORDS.items() if any(k in cand_lower for k in keywords)}
+
+                if q_actions and c_actions:
+                    common_actions = q_actions.intersection(c_actions)
+                    if common_actions:
                         score += 0.08  # Bonus for matching action verb
-                        break
-                    elif q_has and not c_has:
-                        score -= 0.12  # Penalty if query specifies action verb but candidate lacks it
-                        break
+                    else:
+                        has_demolish_conflict = ("pembongkaran" in q_actions and "pemasangan" in c_actions) or ("pembongkaran" in c_actions and "pemasangan" in q_actions)
+                        has_dig_fill_conflict = ("penggalian" in q_actions and "pengurugan" in c_actions) or ("pengurugan" in q_actions and "penggalian" in c_actions)
+                        has_clean_install_conflict = ("pembersihan" in q_actions and "pemasangan" in c_actions) or ("pembersihan" in c_actions and "pemasangan" in q_actions)
+
+                        if has_demolish_conflict or has_dig_fill_conflict or has_clean_install_conflict:
+                            score -= 0.35  # Heavy penalty for direct opposing actions
+                        else:
+                            score -= 0.12  # Mild penalty for non-matching actions
+                elif q_actions and not c_actions:
+                    score -= 0.15  # Penalty if query specifies action verb but candidate lacks it
 
                 # 3. Local material match check
                 for mat, keywords in MATERIAL_KEYWORDS.items():
@@ -525,6 +581,23 @@ class AHSPMapperEngine:
                     if q_has and c_has:
                         score += 0.10  # Bonus for matching material
                         break
+
+                # 4. Domain Section Alignment Check (PUPR Standards)
+                cand_id = str(cand.get("id_pekerjaan", "")).strip()
+                civil_arch_keywords = {"pintu", "jendela", "beton", "bata", "plesteran", "acian", "bekisting", "penulangan", "atap", "kusen", "keramik", "lantai", "cat", "fondasi", "galian", "urugan"}
+                q_is_civil = any(k in query_lower for k in civil_arch_keywords)
+
+                if cand_id.startswith("5.") and q_is_civil:
+                    score -= 0.25  # Heavy penalty for matching MEP/Electrical items (Section 5) to Civil/Arch queries
+
+                if cand_id.startswith("3.11.4"):
+                    hardware_words = {"engsel", "kunci", "grendel", "slot", "door closer", "door holder", "door stop", "rel", "hak angin", "kait angin"}
+                    q_has_hw_word = any(hw in query_lower for hw in hardware_words)
+                    if not q_has_hw_word and ("pintu" in query_lower or "jendela" in query_lower):
+                        score -= 0.15  # Penalty for matching hardware fittings when query asks for main assembly
+
+                if "risha" in cand_lower and "risha" not in query_lower:
+                    score -= 0.30  # Heavy penalty for RISHA precast components when query is standard construction
 
                 final_score = max(0.0, min(1.0, round(score, 4)))
 
@@ -645,27 +718,51 @@ class AHSPMapperEngine:
                     # 1. Pure Cohere item name semantic score
                     score = rel_score
 
-                    # 2. Local strict unit matching check (satuan logic)
+                    # 2. Flexible unit matching check
                     if query_unit_norm and cand_unit_norm:
                         if query_unit_norm == cand_unit_norm:
-                            score += 0.05  # Bonus for exact unit match
+                            score += 0.05  # Small bonus for exact unit match
                         else:
-                            # Mismatched dimension (e.g. m3 vs m2, kg vs m3)
-                            if query_unit_norm in ["m3", "m2", "m", "kg"] and cand_unit_norm in ["m3", "m2", "m", "kg"]:
-                                score -= 0.35  # Heavy penalty for unit dimension mismatch
-                            else:
-                                score -= 0.15
+                            dim_units = {"m3", "m2", "m", "kg"}
+                            if query_unit_norm in dim_units and cand_unit_norm in dim_units:
+                                score -= 0.12
 
                     # 3. Local action verb match check (verb logic)
-                    for action, keywords in ACTION_KEYWORDS.items():
-                        q_has = any(k in query_lower for k in keywords)
-                        c_has = any(k in cand_lower for k in keywords)
-                        if q_has and c_has:
+                    q_actions = {action for action, keywords in ACTION_KEYWORDS.items() if any(k in query_lower for k in keywords)}
+                    c_actions = {action for action, keywords in ACTION_KEYWORDS.items() if any(k in cand_lower for k in keywords)}
+
+                    if q_actions and c_actions:
+                        common_actions = q_actions.intersection(c_actions)
+                        if common_actions:
                             score += 0.05  # Bonus for matching action verb
-                            break
-                        elif q_has and not c_has:
-                            score -= 0.12  # Penalty if query specifies action verb but candidate lacks it
-                            break
+                        else:
+                            has_demolish_conflict = ("pembongkaran" in q_actions and "pemasangan" in c_actions) or ("pembongkaran" in c_actions and "pemasangan" in q_actions)
+                            has_dig_fill_conflict = ("penggalian" in q_actions and "pengurugan" in c_actions) or ("pengurugan" in q_actions and "penggalian" in c_actions)
+                            has_clean_install_conflict = ("pembersihan" in q_actions and "pemasangan" in c_actions) or ("pembersihan" in c_actions and "pemasangan" in q_actions)
+
+                            if has_demolish_conflict or has_dig_fill_conflict or has_clean_install_conflict:
+                                score -= 0.30
+                            else:
+                                score -= 0.10
+                    elif q_actions and not c_actions:
+                        score -= 0.12
+
+                    # 4. Domain Section Alignment Check (PUPR Standards)
+                    cand_id = str(cand.get("id_pekerjaan", "")).strip()
+                    civil_arch_keywords = {"pintu", "jendela", "beton", "bata", "plesteran", "acian", "bekisting", "penulangan", "atap", "kusen", "keramik", "lantai", "cat", "fondasi", "galian", "urugan"}
+                    q_is_civil = any(k in query_lower for k in civil_arch_keywords)
+
+                    if cand_id.startswith("5.") and q_is_civil:
+                        score -= 0.25  # Heavy penalty for matching MEP/Electrical items (Section 5) to Civil/Arch queries
+
+                    if cand_id.startswith("3.11.4"):
+                        hardware_words = {"engsel", "kunci", "grendel", "slot", "door closer", "door holder", "door stop", "rel", "hak angin", "kait angin"}
+                        q_has_hw_word = any(hw in query_lower for hw in hardware_words)
+                        if not q_has_hw_word and ("pintu" in query_lower or "jendela" in query_lower):
+                            score -= 0.15  # Penalty for matching hardware fittings when query asks for main assembly
+
+                    if "risha" in cand_lower and "risha" not in query_lower:
+                        score -= 0.30  # Heavy penalty for RISHA precast components when query is standard construction
 
                     final_score = max(0.0, min(1.0, round(score, 4)))
 
@@ -732,27 +829,34 @@ class AHSPMapperEngine:
 
             score = base_sim
 
-            # 1. Unit matching bonus / penalty
+            # 1. Flexible unit matching check
             if query_unit_norm and cand_unit_norm:
                 if query_unit_norm == cand_unit_norm:
-                    score += 0.08  # Bonus for exact unit match
+                    score += 0.05  # Small bonus for exact unit match
                 else:
-                    # Mismatched dimension (e.g. m3 vs m2, kg vs m3)
-                    if query_unit_norm in ["m3", "m2", "m", "kg"] and cand_unit_norm in ["m3", "m2", "m", "kg"]:
-                        score -= 0.35  # Heavy penalty
-                    else:
-                        score -= 0.20
+                    dim_units = {"m3", "m2", "m", "kg"}
+                    if query_unit_norm in dim_units and cand_unit_norm in dim_units:
+                        score -= 0.12
 
             # 2. Action verb match check
-            for action, keywords in ACTION_KEYWORDS.items():
-                q_has = any(k in query_lower for k in keywords)
-                c_has = any(k in cand_lower for k in keywords)
-                if q_has and c_has:
+            q_actions = {action for action, keywords in ACTION_KEYWORDS.items() if any(k in query_lower for k in keywords)}
+            c_actions = {action for action, keywords in ACTION_KEYWORDS.items() if any(k in cand_lower for k in keywords)}
+
+            if q_actions and c_actions:
+                common_actions = q_actions.intersection(c_actions)
+                if common_actions:
                     score += 0.12  # Bonus for matching action
-                    break
-                elif q_has and not c_has:
-                    score -= 0.15  # Penalty if query specifies action but candidate lacks it
-                    break
+                else:
+                    has_demolish_conflict = ("pembongkaran" in q_actions and "pemasangan" in c_actions) or ("pembongkaran" in c_actions and "pemasangan" in q_actions)
+                    has_dig_fill_conflict = ("penggalian" in q_actions and "pengurugan" in c_actions) or ("pengurugan" in q_actions and "penggalian" in c_actions)
+                    has_clean_install_conflict = ("pembersihan" in q_actions and "pemasangan" in c_actions) or ("pembersihan" in c_actions and "pemasangan" in q_actions)
+
+                    if has_demolish_conflict or has_dig_fill_conflict or has_clean_install_conflict:
+                        score -= 0.35
+                    else:
+                        score -= 0.12
+            elif q_actions and not c_actions:
+                score -= 0.15
 
             # 3. Material match check
             for mat, keywords in MATERIAL_KEYWORDS.items():
@@ -761,6 +865,23 @@ class AHSPMapperEngine:
                 if q_has and c_has:
                     score += 0.10  # Bonus for matching material
                     break
+
+            # 4. Domain Section Alignment Check (PUPR Standards)
+            cand_id = str(cand.get("id_pekerjaan", "")).strip()
+            civil_arch_keywords = {"pintu", "jendela", "beton", "bata", "plesteran", "acian", "bekisting", "penulangan", "atap", "kusen", "keramik", "lantai", "cat", "fondasi", "galian", "urugan"}
+            q_is_civil = any(k in query_lower for k in civil_arch_keywords)
+
+            if cand_id.startswith("5.") and q_is_civil:
+                score -= 0.25  # Heavy penalty for matching MEP/Electrical items (Section 5) to Civil/Arch queries
+
+            if cand_id.startswith("3.11.4"):
+                hardware_words = {"engsel", "kunci", "grendel", "slot", "door closer", "door holder", "door stop", "rel", "hak angin", "kait angin"}
+                q_has_hw_word = any(hw in query_lower for hw in hardware_words)
+                if not q_has_hw_word and ("pintu" in query_lower or "jendela" in query_lower):
+                    score -= 0.15  # Penalty for matching hardware fittings when query asks for main assembly
+
+            if "risha" in cand_lower and "risha" not in query_lower:
+                score -= 0.30  # Heavy penalty for RISHA precast components when query is standard construction
 
             final_score = max(0.0, min(1.0, round(score, 4)))
 
@@ -825,8 +946,13 @@ class AHSPMapperEngine:
                 cleaned_q = query
 
             query_text = cleaned_q
+            # Only append unit to query for dimensional units (m3, m2, m, kg).
+            # Discrete units (unit, buah, set, ls) are too generic and would
+            # bias ChromaDB retrieval towards unrelated items (e.g. electrical accessories).
             if item_unit:
-                query_text += f" ({item_unit})"
+                unit_norm = normalize_unit(item_unit)
+                if unit_norm in ("m3", "m2", "m", "kg"):
+                    query_text += f" ({item_unit})"
 
             retrieval_k = max(top_k, TOP_K_VECTOR_RETRIEVAL)
 
@@ -916,7 +1042,7 @@ class AHSPMapperEngine:
                 "ahsp_unit": best["satuan"],
                 "ahsp_score": score,
                 "ahsp_status": "mapped_high",
-                "ahsp_candidates": None,
+                "ahsp_candidates": candidates[:TOP_K_CANDIDATES],
             }
         elif score >= THRESHOLD_MEDIUM:
             return {
@@ -952,8 +1078,11 @@ class AHSPMapperEngine:
 
         cleaned_q = clean_item_name(item_name) or item_name
         query_text = cleaned_q
+        # Only append unit for dimensional units (same logic as search())
         if item_unit:
-            query_text += f" ({item_unit})"
+            unit_norm = normalize_unit(item_unit)
+            if unit_norm in ("m3", "m2", "m", "kg"):
+                query_text += f" ({item_unit})"
 
         retrieval_k = max(top_k, TOP_K_VECTOR_RETRIEVAL)
 
@@ -1121,30 +1250,33 @@ class AHSPMapperEngine:
         self, page: int = 1, limit: int = 50, search_query: str = ""
     ) -> Dict[str, Any]:
         """
-        Get paginated list of all AHSP items. Optionally filter by search query.
+        Get paginated list of all AHSP items with server-side scripting.
+        Optionally filter by search query.
         """
         if search_query.strip():
-            results = self.search(search_query, top_k=min(limit * 2, 100))
+            matched_items = manual_keyword_search(self._ahsp_items, search_query.strip(), limit=5000)
+            total = len(matched_items)
             start = (page - 1) * limit
             end = start + limit
-            paged = results[start:end]
+            paged = matched_items[start:end]
             return {
                 "items": paged,
-                "total": len(results),
+                "total": total,
                 "page": page,
                 "limit": limit,
-                "total_pages": max(1, (len(results) + limit - 1) // limit),
+                "total_pages": max(1, (total + limit - 1) // limit),
             }
         else:
+            total = self._total_items
             start = (page - 1) * limit
             end = start + limit
             paged = self._ahsp_items[start:end]
             return {
                 "items": [item.to_dict() for item in paged],
-                "total": self._total_items,
+                "total": total,
                 "page": page,
                 "limit": limit,
-                "total_pages": max(1, (self._total_items + limit - 1) // limit),
+                "total_pages": max(1, (total + limit - 1) // limit),
             }
 
     def reindex(self) -> Dict[str, Any]:

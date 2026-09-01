@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { Icons, Logo, BusinessAvatar } from '../components/Icons';
@@ -18,168 +18,383 @@ const formatNumber = (value) => {
   });
 };
 
-// Generates initial sections of data
+// Generates initial sections of data based strictly on latest_raw_pipeline.json (Rumah Tinggal Bpk. Heri Hidayat)
 const getInitialData = () => {
-  const sectionA = {
-    code: 'A',
-    name: 'PEKERJAAN PERSIAPAN',
-    items: [
-      { name: 'Pembersihan lapangan dan perataan', volume: 139.52, unit: 'm2', unitPrice: 13965 },
-      { name: 'Pembuatan pagar sementara dari seng gelombang tinggi 2 meter', volume: 48.00, unit: 'm2', unitPrice: 212496.38 },
-      { name: 'Pengukuran dan pemasangan Bouwplank', volume: 117.80, unit: 'm1', unitPrice: 77364 },
-      { name: 'Penggalian tanah biasa sedalam 2 m', volume: 99.90, unit: 'm3', unitPrice: 80608.50 },
-      { name: 'Pengurugan kembali galian tanah', volume: 27.66, unit: 'm3', unitPrice: 47565 },
-      { name: 'Pembuatan gudang semen dan peralatan', volume: 9.00, unit: 'm2', unitPrice: 567606.38 },
-      { name: 'Mengangkut tanah sisa galian', volume: 72.24, unit: 'm3', unitPrice: 17913 },
-      { name: 'Pemadatan tanah tanah (per 20 cm)', volume: 32.40, unit: 'm3', unitPrice: 47565 },
-      { name: 'Uji sondir dan hand boring', volume: 1.00, unit: 'paket', unitPrice: 3150000 }
-    ]
-  };
-
-  const rawSectionsBToU = [
+  return [
     {
-      code: 'B',
-      name: 'PEKERJAAN TANAH DAN PONDASI',
-      items: [
-        { name: 'Galian tanah pondasi menerus', volume: 120.00, unit: 'm3', unitPrice: 75000 },
-        { name: 'Urugan pasir di bawah pondasi t=10cm', volume: 15.50, unit: 'm3', unitPrice: 180000 },
-        { name: 'Pondasi batu belah 1:4', volume: 85.00, unit: 'm3', unitPrice: 850000 },
-        { name: 'Pondasi bored pile dia. 30cm', volume: 160.00, unit: 'm1', unitPrice: 280000 },
-        { name: 'Urugan tanah kembali bekas galian', volume: 40.00, unit: 'm3', unitPrice: 35000 },
-        { name: 'Cerucuk bambu dia. 8-10cm L=3m', volume: 150.00, unit: 'batang', unitPrice: 25000 },
-        { name: 'Lantai kerja beton tumbuk t=5cm', volume: 8.50, unit: 'm3', unitPrice: 950000 },
-        { name: 'Urugan sirtu di bawah lantai padat', volume: 35.00, unit: 'm3', unitPrice: 220000 },
-        { name: 'Pemadatan tanah area pondasi', volume: 120.00, unit: 'm2', unitPrice: 18000 }
+      id: "sec-A",
+      type: "section",
+      code: "A",
+      name: "PEKERJAAN PERSIAPAN & TANAH"
+    },
+    {
+      id: "item-A-1",
+      type: "item",
+      sectionCode: "A",
+      no: 1,
+      code: "A.1",
+      name: "Pembersihan Lapangan",
+      volume: 96.0,
+      unit: "m2",
+      unitPrice: 15000,
+      ahsp_code: null,
+      ahsp_name: null,
+      ahsp_unit: null,
+      ahsp_status: "unmapped",
+      ahsp_score: 0.2827,
+      ahsp_candidates: []
+    },
+    {
+      id: "item-A-2",
+      type: "item",
+      sectionCode: "A",
+      no: 2,
+      code: "A.2",
+      name: "Pemasangan Bouwplank",
+      volume: 40.0,
+      unit: "m1",
+      unitPrice: 77364,
+      ahsp_code: "1.1.4.2",
+      ahsp_name: "Pasangan Bouwplank",
+      ahsp_unit: "m1",
+      ahsp_status: "mapped_high",
+      ahsp_score: 0.811,
+      ahsp_candidates: [
+        { id_pekerjaan: "1.1.4.2", nama_pekerjaan: "Pasangan Bouwplank", satuan: "m1", score: 0.811 }
       ]
     },
     {
-      code: 'C',
-      name: 'PEKERJAAN STRUKTUR BETON LANTAI 1',
-      items: [
-        { name: 'Sloof beton bertulang 15/20 K-250', volume: 12.50, unit: 'm3', unitPrice: 4200000 },
-        { name: 'Kolom beton bertulang 30/30 K-300', volume: 8.40, unit: 'm3', unitPrice: 4500000 },
-        { name: 'Balok beton bertulang 20/40 K-300', volume: 10.20, unit: 'm3', unitPrice: 4500000 },
-        { name: 'Plat lantai beton bertulang t=12cm K-300', volume: 18.50, unit: 'm3', unitPrice: 4800000 },
-        { name: 'Kolom praktis 15/15 K-175', volume: 4.80, unit: 'm3', unitPrice: 3500000 },
-        { name: 'Ring balk 15/20 K-175', volume: 5.20, unit: 'm3', unitPrice: 3800000 },
-        { name: 'Tangga beton bertulang K-250', volume: 3.50, unit: 'm3', unitPrice: 4300000 },
-        { name: 'Bekisting kayu kruing untuk sloof', volume: 45.00, unit: 'm2', unitPrice: 180000 },
-        { name: 'Kawat beton / bendrat', volume: 85.00, unit: 'kg', unitPrice: 22000 }
+      id: "item-A-3",
+      type: "item",
+      sectionCode: "A",
+      no: 3,
+      code: "A.3",
+      name: "Penggalian Tanah Pondasi Footplate",
+      volume: 42.12,
+      unit: "m3",
+      unitPrice: 80608.5,
+      ahsp_code: null,
+      ahsp_name: null,
+      ahsp_unit: null,
+      ahsp_status: "unmapped",
+      ahsp_score: 0.3501,
+      ahsp_candidates: [
+        { id_pekerjaan: "A.2.1", nama_pekerjaan: "Tebas tebang pohon/tumbuhan Ø > 75 cm (diameter diukur 1m diatas permukaan tanah)", satuan: "batang", score: 0.3501 },
+        { id_pekerjaan: "A.2.2", nama_pekerjaan: "Pemasangan Tangki Toren Kap. 3 m3", satuan: "buah", score: 0.3501 },
+        { id_pekerjaan: "A.2.3", nama_pekerjaan: "Pemasangan Tangki Toren Kap. 4 m3", satuan: "buah", score: 0.3501 }
       ]
     },
     {
-      code: 'D',
-      name: 'PEKERJAAN STRUKTUR BETON LANTAI 2',
-      items: [
-        { name: 'Kolom beton bertulang 30/30 K-300', volume: 7.20, unit: 'm3', unitPrice: 4600000 },
-        { name: 'Balok beton bertulang 20/40 K-300', volume: 9.80, unit: 'm3', unitPrice: 4600000 },
-        { name: 'Plat lantai beton bertulang t=12cm K-300', volume: 16.50, unit: 'm3', unitPrice: 4900000 },
-        { name: 'Kolom praktis 15/15 K-175', volume: 4.20, unit: 'm3', unitPrice: 3600000 },
-        { name: 'Ring balk 15/20 K-175', volume: 4.80, unit: 'm3', unitPrice: 3900000 },
-        { name: 'Bekisting plywood 9mm untuk balok', volume: 120.00, unit: 'm2', unitPrice: 165000 },
-        { name: 'Bekisting plywood 9mm untuk plat', volume: 150.00, unit: 'm2', unitPrice: 175000 },
-        { name: 'Besi beton ulir D13', volume: 850.00, unit: 'kg', unitPrice: 16500 },
-        { name: 'Besi beton polos d8', volume: 420.00, unit: 'kg', unitPrice: 15500 }
+      id: "sec-B",
+      type: "section",
+      code: "B",
+      name: "PEKERJAAN STRUKTUR & PONDASI BETON BERTULANG"
+    },
+    {
+      id: "item-B-1",
+      type: "item",
+      sectionCode: "B",
+      no: 1,
+      code: "B.1",
+      name: "Pengecoran Lantai Kerja Footplate (t=10cm)",
+      volume: 3.02,
+      unit: "m3",
+      unitPrice: 950000,
+      ahsp_code: null,
+      ahsp_name: null,
+      ahsp_unit: null,
+      ahsp_status: "unmapped",
+      ahsp_score: 0.3509,
+      ahsp_candidates: []
+    },
+    {
+      id: "item-B-2",
+      type: "item",
+      sectionCode: "B",
+      no: 2,
+      code: "B.2",
+      name: "Pengecoran Footplate Beton Bertulang",
+      volume: 7.56,
+      unit: "m3",
+      unitPrice: 4200000,
+      ahsp_code: null,
+      ahsp_name: null,
+      ahsp_unit: null,
+      ahsp_status: "unmapped",
+      ahsp_score: 0.3502,
+      ahsp_candidates: []
+    },
+    {
+      id: "item-B-3",
+      type: "item",
+      sectionCode: "B",
+      no: 3,
+      code: "B.3",
+      name: "Pengecoran Sloof Beton 15x20 cm (S1)",
+      volume: 1.2,
+      unit: "m3",
+      unitPrice: 4200000,
+      ahsp_code: null,
+      ahsp_name: null,
+      ahsp_unit: null,
+      ahsp_status: "unmapped",
+      ahsp_score: 0.3501,
+      ahsp_candidates: []
+    },
+    {
+      id: "item-B-4",
+      type: "item",
+      sectionCode: "B",
+      no: 4,
+      code: "B.4",
+      name: "Pengecoran Kolom Utama Lt. 1 & 2 (K1, K2, Kp)",
+      volume: 3.42,
+      unit: "m3",
+      unitPrice: 4500000,
+      ahsp_code: "2.2.2.1.3",
+      ahsp_name: "Pemasangan Fondasi Batu Belah Mortar Tipe M (17,5 MPa) setara 1 SP : 2 PP, cara semi mekanis",
+      ahsp_unit: "m3",
+      ahsp_status: "mapped_medium",
+      ahsp_score: 0.5801,
+      ahsp_candidates: [
+        { id_pekerjaan: "2.2.2.1.3", nama_pekerjaan: "Pemasangan Fondasi Batu Belah Mortar Tipe M (17,5 MPa) setara 1 SP : 2 PP, cara semi mekanis", satuan: "m3", score: 0.5801 },
+        { id_pekerjaan: "2.2.2.1.11", nama_pekerjaan: "Pemasangan Fondasi Batu Belah campuran 1 SP : 6 PP, cara semi mekanis", satuan: "m3", score: 0.5801 },
+        { id_pekerjaan: "2.2.2.1.7", nama_pekerjaan: "Pemasangan Fondasi Batu Belah Mortar Tipe N (5,2 MPa) setara 1 SP : 4 PP, cara semi mekanis", satuan: "m3", score: 0.58 }
       ]
     },
     {
-      code: 'E',
-      name: 'PEKERJAAN STRUKTUR BETON LANTAI 3',
-      items: [
-        { name: 'Kolom beton bertulang 25/25 K-300', volume: 5.40, unit: 'm3', unitPrice: 4700000 },
-        { name: 'Balok beton bertulang 20/35 K-300', volume: 8.20, unit: 'm3', unitPrice: 4700000 },
-        { name: 'Plat atap beton bertulang t=10cm K-300', volume: 12.00, unit: 'm3', unitPrice: 5000000 },
-        { name: 'Kolom praktis 15/15 K-175', volume: 3.60, unit: 'm3', unitPrice: 3700000 },
-        { name: 'Ring balk 15/20 K-175', volume: 4.20, unit: 'm3', unitPrice: 4000000 },
-        { name: 'Bekisting plywood 9mm untuk kolom', volume: 85.00, unit: 'm2', unitPrice: 185000 },
-        { name: 'Besi beton ulir D13', volume: 680.00, unit: 'kg', unitPrice: 16500 },
-        { name: 'Besi beton polos d8', volume: 310.00, unit: 'kg', unitPrice: 15500 },
-        { name: 'Pekerjaan curing beton plat atap', volume: 1.00, unit: 'ls', unitPrice: 1200000 }
+      id: "item-B-5",
+      type: "item",
+      sectionCode: "B",
+      no: 5,
+      code: "B.5",
+      name: "Pengecoran Balok Struktur Lt. 1 & 2 (B1, B2, B3)",
+      volume: 2.88,
+      unit: "m3",
+      unitPrice: 4500000,
+      ahsp_code: "2.2.2.1.3",
+      ahsp_name: "Pemasangan Fondasi Batu Belah Mortar Tipe M (17,5 MPa) setara 1 SP : 2 PP, cara semi mekanis",
+      ahsp_unit: "m3",
+      ahsp_status: "mapped_medium",
+      ahsp_score: 0.5803,
+      ahsp_candidates: [
+        { id_pekerjaan: "2.2.2.1.3", nama_pekerjaan: "Pemasangan Fondasi Batu Belah Mortar Tipe M (17,5 MPa) setara 1 SP : 2 PP, cara semi mekanis", satuan: "m3", score: 0.5803 },
+        { id_pekerjaan: "2.2.2.1.11", nama_pekerjaan: "Pemasangan Fondasi Batu Belah campuran 1 SP : 6 PP, cara semi mekanis", satuan: "m3", score: 0.5802 }
       ]
     },
     {
-      code: 'F',
-      name: 'PEKERJAAN DINDING DAN PLESTERAN',
-      items: [
-        { name: 'Pasang dinding bata merah tebal 1/2 bata 1:4', volume: 480.00, unit: 'm2', unitPrice: 115000 },
-        { name: 'Pasang dinding bata merah tebal 1/2 bata 1:2', volume: 95.00, unit: 'm2', unitPrice: 125000 },
-        { name: 'Plesteran dinding tebal 15mm 1:4', volume: 960.00, unit: 'm2', unitPrice: 65000 },
-        { name: 'Plesteran dinding tebal 15mm 1:2', volume: 190.00, unit: 'm2', unitPrice: 72000 },
-        { name: 'Acian dinding plesteran interior', volume: 960.00, unit: 'm2', unitPrice: 38000 },
-        { name: 'Acian dinding plesteran eksterior', volume: 190.00, unit: 'm2', unitPrice: 42000 },
-        { name: 'Pasangan roster semen 20x20', volume: 85.00, unit: 'unit', unitPrice: 35000 },
-        { name: 'Pasangan glass block 20x20', volume: 40.00, unit: 'unit', unitPrice: 65000 },
-        { name: 'Pekerjaan tali air plesteran', volume: 180.00, unit: 'm1', unitPrice: 15000 }
+      id: "item-B-6",
+      type: "item",
+      sectionCode: "B",
+      no: 6,
+      code: "B.6",
+      name: "Pengecoran Plat Lantai 2 & Atap Dak",
+      volume: 14.4,
+      unit: "m3",
+      unitPrice: 4800000,
+      ahsp_code: "2.2.2.1.11",
+      ahsp_name: "Pemasangan Fondasi Batu Belah campuran 1 SP : 6 PP, cara semi mekanis",
+      ahsp_unit: "m3",
+      ahsp_status: "mapped_medium",
+      ahsp_score: 0.5801,
+      ahsp_candidates: [
+        { id_pekerjaan: "2.2.2.1.11", nama_pekerjaan: "Pemasangan Fondasi Batu Belah campuran 1 SP : 6 PP, cara semi mekanis", satuan: "m3", score: 0.5801 }
+      ]
+    },
+    {
+      id: "sec-C",
+      type: "section",
+      code: "C",
+      name: "PEKERJAAN ARSITEKTUR & FINISHING"
+    },
+    {
+      id: "item-C-1",
+      type: "item",
+      sectionCode: "C",
+      no: 1,
+      code: "C.1",
+      name: "Pemasangan Dinding Bata Merah / Ringan",
+      volume: 320.0,
+      unit: "m2",
+      unitPrice: 115000,
+      ahsp_code: "3.6.4.2",
+      ahsp_name: "Pemasangan Dinding Bata Ringan Tebal 10 cm dengan Mortar Siap Pakai",
+      ahsp_unit: "m2",
+      ahsp_status: "mapped_high",
+      ahsp_score: 0.8182,
+      ahsp_candidates: [
+        { id_pekerjaan: "3.6.4.2", nama_pekerjaan: "Pemasangan Dinding Bata Ringan Tebal 10 cm dengan Mortar Siap Pakai", satuan: "m2", score: 0.8182 },
+        { id_pekerjaan: "3.6.4.1", nama_pekerjaan: "Pemasangan Dinding Bata Ringan Tebal 7,5 cm dengan Mortar Siap Pakai", satuan: "m2", score: 0.8168 },
+        { id_pekerjaan: "3.6.4.3", nama_pekerjaan: "Pemasangan Dinding Bata Ringan Tebal 20 cm dengan Mortar Siap Pakai", satuan: "m2", score: 0.8104 }
+      ]
+    },
+    {
+      id: "item-C-2",
+      type: "item",
+      sectionCode: "C",
+      no: 2,
+      code: "C.2",
+      name: "Pemasangan Keramik Lantai 60x60 cm & 30x30 cm",
+      volume: 150.0,
+      unit: "m2",
+      unitPrice: 185000,
+      ahsp_code: "3.9.8.5",
+      ahsp_name: "Pemasangan Lantai Keramik Ukuran 30 cm x 60 cm (1SP:2PP), Polished",
+      ahsp_unit: "m2",
+      ahsp_status: "mapped_high",
+      ahsp_score: 0.9058,
+      ahsp_candidates: [
+        { id_pekerjaan: "3.9.8.5", nama_pekerjaan: "Pemasangan Lantai Keramik Ukuran 30 cm x 60 cm (1SP:2PP), Polished", satuan: "m2", score: 0.9058 },
+        { id_pekerjaan: "3.9.8.13", nama_pekerjaan: "Pemasangan Lantai Keramik Ukuran 30 cm x 60 cm (1SP:2PP), Unpolished", satuan: "m2", score: 0.9048 },
+        { id_pekerjaan: "3.9.8.4", nama_pekerjaan: "Pemasangan Lantai Keramik Ukuran 30 cm x 30 cm (1SP : 2PP), Polished", satuan: "m2", score: 0.8866 }
+      ]
+    },
+    {
+      id: "item-C-3",
+      type: "item",
+      sectionCode: "C",
+      no: 3,
+      code: "C.3",
+      name: "Pemasangan Plafond Gypsum Board Rangka Hollow",
+      volume: 150.0,
+      unit: "m2",
+      unitPrice: 95000,
+      ahsp_code: "3.5.2.1",
+      ahsp_name: "Pemasangan langit-langit (plafon) papan gypsum tebal 9 mm",
+      ahsp_unit: "m2",
+      ahsp_status: "mapped_high",
+      ahsp_score: 0.6944,
+      ahsp_candidates: [
+        { id_pekerjaan: "3.5.2.1", nama_pekerjaan: "Pemasangan langit-langit (plafon) papan gypsum tebal 9 mm", satuan: "m2", score: 0.6944 }
+      ]
+    },
+    {
+      id: "item-C-4",
+      type: "item",
+      sectionCode: "C",
+      no: 4,
+      code: "C.4",
+      name: "Pemasangan Pintu Utama PJ1",
+      volume: 1.0,
+      unit: "unit",
+      unitPrice: 3500000,
+      ahsp_code: "3.11.4.5",
+      ahsp_name: "Pemasangan Engsel Pintu",
+      ahsp_unit: "buah",
+      ahsp_status: "mapped_high",
+      ahsp_score: 0.6118,
+      ahsp_candidates: [
+        { id_pekerjaan: "3.11.4.5", nama_pekerjaan: "Pemasangan Engsel Pintu", satuan: "buah", score: 0.6118 },
+        { id_pekerjaan: "10.1.7", nama_pekerjaan: "Produksi Panel P1", satuan: "buah", score: 0.5988 }
+      ]
+    },
+    {
+      id: "item-C-5",
+      type: "item",
+      sectionCode: "C",
+      no: 5,
+      code: "C.5",
+      name: "Pemasangan Pintu & Jendela Aluminium Lainnya (PJ2, P1, P2, P3, P4)",
+      volume: 12.0,
+      unit: "unit",
+      unitPrice: 1800000,
+      ahsp_code: "10.1.9",
+      ahsp_name: "Produksi Panel P3",
+      ahsp_unit: "buah",
+      ahsp_status: "mapped_high",
+      ahsp_score: 0.6029,
+      ahsp_candidates: [
+        { id_pekerjaan: "10.1.9", nama_pekerjaan: "Produksi Panel P3", satuan: "buah", score: 0.6029 }
+      ]
+    },
+    {
+      id: "item-C-6",
+      type: "item",
+      sectionCode: "C",
+      no: 6,
+      code: "C.6",
+      name: "Pemasangan Rangka Atap Baja Ringan C75 & Penutup Atap",
+      volume: 96.0,
+      unit: "m2",
+      unitPrice: 240000,
+      ahsp_code: "2.1.1.2",
+      ahsp_name: "Pemasangan Atap Jurai/Limasan Rangka Atap Baja Ringan (Canai Dingin) Profil C75",
+      ahsp_unit: "m2",
+      ahsp_status: "mapped_high",
+      ahsp_score: 0.8732,
+      ahsp_candidates: [
+        { id_pekerjaan: "2.1.1.2", nama_pekerjaan: "Pemasangan Atap Jurai/Limasan Rangka Atap Baja Ringan (Canai Dingin) Profil C75", satuan: "m2", score: 0.8732 },
+        { id_pekerjaan: "2.1.1.1", nama_pekerjaan: "Pemasangan Atap Pelana Rangka Atap Baja Ringan (Canai Dingin) profil C75", satuan: "m2", score: 0.8691 }
+      ]
+    },
+    {
+      id: "sec-D",
+      type: "section",
+      code: "D",
+      name: "PEKERJAAN UTILITAS & MEP"
+    },
+    {
+      id: "item-D-1",
+      type: "item",
+      sectionCode: "D",
+      no: 1,
+      code: "D.1",
+      name: "Pemasangan Titik Lampu & Saklar/Stop Kontak",
+      volume: 28.0,
+      unit: "titik",
+      unitPrice: 175000,
+      ahsp_code: "5.1.5.13",
+      ahsp_name: "Pemasangan Instalasi Stop Kontak",
+      ahsp_unit: "titik",
+      ahsp_status: "mapped_high",
+      ahsp_score: 0.7584,
+      ahsp_candidates: [
+        { id_pekerjaan: "5.1.5.13", nama_pekerjaan: "Pemasangan Instalasi Stop Kontak", satuan: "titik", score: 0.7584 },
+        { id_pekerjaan: "5.1.5.12", nama_pekerjaan: "Pemasangan Stop Kontak AC", satuan: "titik", score: 0.6535 }
+      ]
+    },
+    {
+      id: "item-D-2",
+      type: "item",
+      sectionCode: "D",
+      no: 2,
+      code: "D.2",
+      name: "Pemasangan Instalasi Pipa Air Bersih Ø3/4\"",
+      volume: 35.0,
+      unit: "m1",
+      unitPrice: 45000,
+      ahsp_code: "5.5.4.14",
+      ahsp_name: "Pemasangan Pipa PVC AW ; DN. 1-1/4\" (32 mm) + Isolasi",
+      ahsp_unit: "m",
+      ahsp_status: "mapped_medium",
+      ahsp_score: 0.5632,
+      ahsp_candidates: [
+        { id_pekerjaan: "5.5.4.14", nama_pekerjaan: "Pemasangan Pipa PVC AW ; DN. 1-1/4\" (32 mm) + Isolasi", satuan: "m", score: 0.5632 },
+        { id_pekerjaan: "5.5.4.19", nama_pekerjaan: "Pemasangan Pipa PVC AW ; DN. 4\" (100 mm) + Isolasi", satuan: "m", score: 0.5627 },
+        { id_pekerjaan: "6.4.3.4", nama_pekerjaan: "Pemasangan pipa PPR PN 10, DN. 1-1/4\" (32 mm)", satuan: "m", score: 0.5627 }
+      ]
+    },
+    {
+      id: "item-D-3",
+      type: "item",
+      sectionCode: "D",
+      no: 3,
+      code: "D.3",
+      name: "Pembuatan Septictank & Sumur Resapan",
+      volume: 1.0,
+      unit: "unit",
+      unitPrice: 6500000,
+      ahsp_code: "2.4.4.3",
+      ahsp_name: "Pemindahan Komponen untuk Kolom Pracetak ( ± 20 m)",
+      ahsp_unit: "buah",
+      ahsp_status: "mapped_medium",
+      ahsp_score: 0.5811,
+      ahsp_candidates: [
+        { id_pekerjaan: "2.4.4.3", nama_pekerjaan: "Pemindahan Komponen untuk Kolom Pracetak ( ± 20 m)", satuan: "buah", score: 0.5811 },
+        { id_pekerjaan: "2.4.5.3", nama_pekerjaan: "Ereksi komponen untuk pelat pracetak", satuan: "buah", score: 0.5809 }
       ]
     }
   ];
-
-  const targetBToU = 954247569.57;
-  let rawSumBToU = 0;
-  rawSectionsBToU.forEach(sec => {
-    sec.items.forEach(it => {
-      rawSumBToU += it.volume * it.unitPrice;
-    });
-  });
-
-  const factor = targetBToU / rawSumBToU;
-  let currentSumBToU = 0;
-  const scaledSections = rawSectionsBToU.map((sec, secIdx) => {
-    const isLastSec = secIdx === rawSectionsBToU.length - 1;
-    const scaledItems = sec.items.map((it, itIdx) => {
-      const isLastItem = isLastSec && itIdx === sec.items.length - 1;
-      if (isLastItem) return { ...it };
-      const newPrice = Math.round((it.unitPrice * factor) * 100) / 100;
-      currentSumBToU += it.volume * newPrice;
-      return { ...it, unitPrice: newPrice };
-    });
-    return { ...sec, items: scaledItems };
-  });
-
-  const flattened = [];
-  flattened.push({
-    id: `sec-${sectionA.code}`,
-    type: 'section',
-    code: sectionA.code,
-    name: sectionA.name
-  });
-  sectionA.items.forEach((it, idx) => {
-    flattened.push({
-      id: `item-${sectionA.code}-${idx}`,
-      type: 'item',
-      sectionCode: sectionA.code,
-      no: idx + 1,
-      name: it.name,
-      volume: it.volume,
-      unit: it.unit,
-      unitPrice: it.unitPrice,
-      code: `A.${idx + 1}`
-    });
-  });
-
-  scaledSections.forEach(sec => {
-    flattened.push({
-      id: `sec-${sec.code}`,
-      type: 'section',
-      code: sec.code,
-      name: sec.name
-    });
-    sec.items.forEach((it, idx) => {
-      flattened.push({
-        id: `item-${sec.code}-${idx}`,
-        type: 'item',
-        sectionCode: sec.code,
-        no: idx + 1,
-        name: it.name,
-        volume: it.volume,
-        unit: it.unit,
-        unitPrice: it.unitPrice,
-        code: `${sec.code}.${idx + 1}`
-      });
-    });
-  });
-
-  return flattened;
 };
 
 const Anggaran = () => {
@@ -189,7 +404,19 @@ const Anggaran = () => {
 
   const [rows, setRows] = useState(() => {
     const saved = localStorage.getItem(`estimator_uploaded_rows_${projectId}`);
-    return saved ? JSON.parse(saved) : getInitialData();
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    const initial = getInitialData();
+    localStorage.setItem(`estimator_uploaded_rows_${projectId}`, JSON.stringify(initial));
+    return initial;
   });
 
   const [activeProjectId, setActiveProjectId] = useState(projectId);
@@ -227,9 +454,9 @@ const Anggaran = () => {
     return { title: `Proyek Estimasi #${projectId}`, client: 'PT Beecons' };
   }, [projectId]);
 
-  // Controls state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  // Controls state & Infinite Scroll
+  const tableContainerRef = useRef(null);
+  const [visibleLimit, setVisibleLimit] = useState(50);
   const [searchQuery, setSearchQuery] = useState("");
   const [ppnRate, setPpnRate] = useState(0);
 
@@ -272,12 +499,16 @@ const Anggaran = () => {
   };
 
   const handleResetData = () => {
-    if (window.confirm("Apakah Anda yakin ingin mengatur ulang semua data ke estimasi awal?")) {
-      setRows(getInitialData());
+    if (window.confirm("Apakah Anda yakin ingin menghapus seluruh cache dan mengatur ulang semua data ke estimasi awal?")) {
+      localStorage.removeItem(`estimator_uploaded_rows_${projectId}`);
+      localStorage.removeItem('estimator_projects');
+      sessionStorage.clear();
+      const freshData = getInitialData();
+      setRows(freshData);
       setCurrentPage(1);
       setSearchQuery("");
       setPpnRate(0);
-      triggerToast("Data estimasi berhasil diatur ulang ke default!", "success");
+      triggerToast("Cache berhasil dihapus & data estimasi diatur ulang ke default!", "success");
     }
   };
 
@@ -456,29 +687,23 @@ const Anggaran = () => {
     return result;
   }, [rows, searchQuery]);
 
-  const totalItems = filteredRows.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-  const activePage = Math.min(currentPage, totalPages);
+  // Reset visible limit on search query or row change
+  useEffect(() => {
+    setVisibleLimit(50);
+  }, [searchQuery, rows]);
 
-  const paginatedRows = useMemo(() => {
-    const startIdx = (activePage - 1) * pageSize;
-    return filteredRows.slice(startIdx, startIdx + pageSize);
-  }, [filteredRows, activePage, pageSize]);
+  const displayedRows = useMemo(() => {
+    return filteredRows.slice(0, visibleLimit);
+  }, [filteredRows, visibleLimit]);
 
-  const paginationRange = useMemo(() => {
-    if (totalPages <= 7) {
-      return Array.from({ length: totalPages }, (_, i) => i + 1);
+  const handleTableScroll = (e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.target;
+    if (scrollHeight - scrollTop - clientHeight < 100) {
+      if (visibleLimit < filteredRows.length) {
+        setVisibleLimit((prev) => Math.min(filteredRows.length, prev + 50));
+      }
     }
-    const range = [];
-    if (activePage <= 4) {
-      range.push(1, 2, 3, 4, 5, '...', totalPages);
-    } else if (activePage >= totalPages - 3) {
-      range.push(1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
-    } else {
-      range.push(1, '...', activePage - 1, activePage, activePage + 1, '...', totalPages);
-    }
-    return range;
-  }, [activePage, totalPages]);
+  };
 
   // Add / Edit / Delete handlers
   const handleOpenAddModal = (sectionCode) => {
@@ -618,28 +843,7 @@ const Anggaran = () => {
 
           {/* Controls Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100 mb-5">
-            {/* Left Controls: Page size */}
-            <div className="flex items-center gap-2">
-              <span className="text-[13px] text-slate-600 font-medium">Data per Halaman:</span>
-              <div className="relative">
-                <select
-                  value={pageSize}
-                  onChange={(e) => {
-                    setPageSize(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="bg-white border border-slate-200 rounded-md py-1.5 pl-3 pr-8 text-[13px] font-semibold text-slate-700 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 cursor-pointer shadow-2xs hover:border-slate-300 transition-colors"
-                >
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                  <option value={50}>50</option>
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5 text-slate-400">
-                  <Icons.ChevronDown />
-                </div>
-              </div>
-            </div>
+
 
             {/* Right Controls: Search bar */}
             <div className="flex items-center gap-2.5 w-full sm:w-auto max-w-xs">
@@ -662,27 +866,31 @@ const Anggaran = () => {
             </div>
           </div>
 
-          {/* Table Container */}
-          <div className="overflow-x-auto rounded-lg border border-slate-100 shadow-3xs mb-6">
+          {/* Table Container with Infinite Scroll */}
+          <div
+            ref={tableContainerRef}
+            onScroll={handleTableScroll}
+            className="overflow-x-auto overflow-y-auto max-h-[600px] rounded-lg border border-slate-200 shadow-3xs mb-4 relative custom-scrollbar bg-white"
+          >
             <table className="w-full border-collapse text-left text-[13px]">
-              <thead>
-                <tr className="bg-[#009624] text-white font-semibold">
-                  <th scope="col" className="py-3.5 px-4 text-center w-12 select-none">No.</th>
-                  <th scope="col" className="py-3.5 px-4 text-left min-w-[340px]">Uraian Pekerjaan & Standar AHSP</th>
-                  <th scope="col" className="py-3.5 px-4 text-right w-24">Volume</th>
-                  <th scope="col" className="py-3.5 px-4 text-center w-20">Satuan</th>
-                  <th scope="col" className="py-3.5 px-4 text-center w-28">Aksi</th>
+              <thead className="bg-[#009624] text-white font-semibold sticky top-0 z-10 shadow-xs">
+                <tr>
+                  <th scope="col" className="py-3 px-4 text-center w-12 bg-[#009624] select-none">No.</th>
+                  <th scope="col" className="py-3 px-4 text-left min-w-[340px] bg-[#009624]">Uraian Pekerjaan & Standar AHSP</th>
+                  <th scope="col" className="py-3 px-4 text-right w-24 bg-[#009624]">Volume</th>
+                  <th scope="col" className="py-3 px-4 text-center w-20 bg-[#009624]">Satuan</th>
+                  <th scope="col" className="py-3 px-4 text-center w-28 bg-[#009624]">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
-                {paginatedRows.length === 0 ? (
+              <tbody className="divide-y divide-slate-100 bg-white">
+                {displayedRows.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="py-12 text-center text-slate-400 font-medium">
                       Tidak ada data yang ditemukan.
                     </td>
                   </tr>
                 ) : (
-                  paginatedRows.map((row) => {
+                  displayedRows.map((row) => {
                     if (row.type === 'section') {
                       return (
                         <tr key={row.id} className="bg-slate-50/70 hover:bg-slate-100/50 transition-colors font-bold text-slate-800 group">
@@ -718,7 +926,7 @@ const Anggaran = () => {
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-semibold text-slate-800 break-words">{topTitle}</span>
                             </div>
-                            
+
                             {/* Bottom: Subtitle for cross-referencing */}
                             {row.ahsp_name && row.ahsp_name !== row.name && (
                               <span className="text-[11.5px] text-slate-500 flex items-center gap-1">
@@ -757,55 +965,23 @@ const Anggaran = () => {
                 )}
               </tbody>
             </table>
+
+            {/* Infinite Scroll Footer inside container */}
+            {visibleLimit < filteredRows.length && (
+              <div
+                onClick={() => setVisibleLimit((prev) => Math.min(filteredRows.length, prev + 50))}
+                className="py-2.5 bg-slate-50 border-t border-slate-200 text-center text-[11.5px] text-[#009624] font-semibold cursor-pointer hover:bg-slate-100 transition-colors"
+              >
+                ▼ Gulir ke bawah atau klik di sini untuk memuat data berikutnya (+50 baris)
+              </div>
+            )}
+
+            {visibleLimit >= filteredRows.length && filteredRows.length > 0 && (
+              <div className="py-2.5 bg-slate-50 border-t border-slate-200 text-center text-[11.5px] text-slate-500 font-semibold">
+                ✓ Semuanya telah dimuat ({filteredRows.length.toLocaleString('id-ID')} baris data BOQ)
+              </div>
+            )}
           </div>
-
-          {/* Footer Controls & Pagination */}
-          {totalPages > 0 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-100">
-              <div className="text-[12.5px] text-slate-500 font-medium">
-                Menampilkan <span className="font-semibold text-slate-700">{Math.min(filteredRows.length, (activePage - 1) * pageSize + 1)}</span> - <span className="font-semibold text-slate-700">{Math.min(filteredRows.length, activePage * pageSize)}</span> dari <span className="font-semibold text-slate-700">{filteredRows.length}</span> baris
-              </div>
-
-              <div className="flex items-center gap-1">
-                <button
-                  disabled={activePage === 1}
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  className="px-3 py-1.5 rounded border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-[12.5px] font-semibold shadow-3xs cursor-pointer transition-colors"
-                >
-                  Sebelumnya
-                </button>
-
-                {paginationRange.map((page, idx) => {
-                  if (page === '...') {
-                    return (
-                      <span key={`dots-${idx}`} className="px-2 text-slate-400 select-none">...</span>
-                    );
-                  }
-                  const isActive = page === activePage;
-                  return (
-                    <button
-                      key={`page-${page}`}
-                      onClick={() => setCurrentPage(page)}
-                      className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-[12.5px] transition-all cursor-pointer ${isActive
-                        ? 'bg-[#009624] text-white shadow-xs'
-                        : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
-                        }`}
-                    >
-                      {page}
-                    </button>
-                  );
-                })}
-
-                <button
-                  disabled={activePage === totalPages}
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  className="px-3 py-1.5 rounded border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-[12.5px] font-semibold shadow-3xs cursor-pointer transition-colors"
-                >
-                  Berikutnya
-                </button>
-              </div>
-            </div>
-          )}
 
         </div>
       </main>

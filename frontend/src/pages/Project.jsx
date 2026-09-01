@@ -109,56 +109,47 @@ const getFriendlyErrorMessage = (rawError) => {
 const Project = () => {
   const navigate = useNavigate()
 
-  // Initialize projects list from localStorage or defaults
+  // Initialize projects list with auto cache purging for legacy versions
   const [projects, setProjects] = useState(() => {
-    const saved = localStorage.getItem('estimator_projects')
-    if (saved) return JSON.parse(saved)
-    return [
+    const isCleared = localStorage.getItem('estimator_v7_cleared')
+    if (!isCleared) {
+      localStorage.clear()
+      sessionStorage.clear()
+      localStorage.setItem('estimator_v7_cleared', 'true')
+    }
+
+    const defaultProject = [
       {
         id: 1,
-        title: 'Pembangunan Gedung Kantor Cabang',
-        client: 'PT Beecons',
-        budget: 995971307.58,
+        title: 'Perencanaan Rumah Tinggal Bapak Heri Hidayat',
+        client: 'Bapak Heri Hidayat',
+        budget: 189625590.00,
         status: 'Dalam Pengerjaan',
         statusColor: 'bg-amber-50 text-amber-700 border-amber-200',
         statusDot: 'bg-amber-500',
-        date: '12 Mei 2026',
-        link: '/anggaran'
-      },
-      {
-        id: 2,
-        title: 'Renovasi Laboratorium IT',
-        client: 'Universitas Negeri',
-        budget: 450000000.00,
-        status: 'Selesai',
-        statusColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-        statusDot: 'bg-emerald-500',
-        date: '28 Mar 2026',
-        link: '/anggaran'
-      },
-      {
-        id: 3,
-        title: 'Pemasangan Jaringan Fiber Optic',
-        client: 'Dinas Kominfo',
-        budget: 350000000.00,
-        status: 'Perencanaan',
-        statusColor: 'bg-blue-50 text-blue-700 border-blue-200',
-        statusDot: 'bg-blue-500',
-        date: '01 Jun 2026',
-        link: '/anggaran'
-      },
-      {
-        id: 4,
-        title: 'Pembangunan Gudang Logistik',
-        client: 'PT Logistik Jaya',
-        budget: 654028692.42,
-        status: 'Selesai',
-        statusColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-        statusDot: 'bg-emerald-500',
-        date: '10 Feb 2026',
-        link: '/anggaran'
+        date: '31 Agustus 2026',
+        link: '/anggaran?id=1'
       }
     ]
+
+    const saved = localStorage.getItem('estimator_projects')
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // If title is legacy "Pembangunan Dummy", update to real project title
+          if (parsed[0].title === 'Pembangunan Dummy' || parsed[0].client === 'PT Beecons') {
+            localStorage.setItem('estimator_projects', JSON.stringify(defaultProject))
+            return defaultProject
+          }
+          return parsed
+        }
+      } catch (e) {
+        console.error(e)
+      }
+    }
+    localStorage.setItem('estimator_projects', JSON.stringify(defaultProject))
+    return defaultProject
   })
 
   // Modal and Form States
