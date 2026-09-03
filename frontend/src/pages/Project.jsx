@@ -111,11 +111,11 @@ const Project = () => {
 
   // Initialize projects list with auto cache purging for legacy versions
   const [projects, setProjects] = useState(() => {
-    const isCleared = localStorage.getItem('estimator_v7_cleared')
+    const isCleared = localStorage.getItem('estimator_v9_cleared')
     if (!isCleared) {
       localStorage.clear()
       sessionStorage.clear()
-      localStorage.setItem('estimator_v7_cleared', 'true')
+      localStorage.setItem('estimator_v9_cleared', 'true')
     }
 
     const defaultProject = [
@@ -123,7 +123,7 @@ const Project = () => {
         id: 1,
         title: 'Perencanaan Rumah Tinggal Bapak Heri Hidayat',
         client: 'Bapak Heri Hidayat',
-        budget: 189625590.00,
+        budget: 417868552.80,
         status: 'Dalam Pengerjaan',
         statusColor: 'bg-amber-50 text-amber-700 border-amber-200',
         statusDot: 'bg-amber-500',

@@ -1,43 +1,28 @@
 import os
-import tempfile
+import base64
+import json
+import time
+import gzip
 import logging
-from typing import List, Dict, Any, Optional
-from pydantic import BaseModel, Field
-import ifcopenshell
-import ifcopenshell.util.element
+import urllib.request
+import urllib.parse
+import urllib.error
+from typing import List, Dict, Any, Union
+
+from src.schemas import BIMElementQuantity
 
 logger = logging.getLogger(__name__)
-
-class BIMElementQuantity(BaseModel):
-    level: str = Field(default="Unassigned Level", description="Nama Level/Lantai Gedung")
-    category: str = Field(..., description="Kategori IFC (IfcWall, IfcColumn, dll.)")
-    family_name: str = Field(..., description="Nama Tipe / Family Elemen BIM")
-    material: str = Field(default="Standard Material", description="Bahan/Material Elemen")
-    count: int = Field(default=1, description="Jumlah elemen")
-    total_volume_m3: float = Field(default=0.0, description="Total Net Volume (m3)")
-    total_area_m2: float = Field(default=0.0, description="Total Net Area (m2)")
-    total_length_m: float = Field(default=0.0, description="Total Panjang (m)")
 
 class APSConverter:
     """
     Autodesk Platform Services (APS) Cloud Converter.
     Converts native Revit (.rvt, .rfa) and Navisworks (.nwd, .nwc) models via Model Derivative API.
-
-    Required APS Dashboard Settings:
-      - Data Management API: ✅ Enabled
-      - Model Derivative API: ✅ Enabled (CRITICAL — 403 if missing)
     """
 
     @classmethod
     def convert_autodesk_model(
         cls, file_path: str, output_ifc_path: str, client_id: str, client_secret: str
     ) -> Union[bool, List[BIMElementQuantity]]:
-        import base64
-        import json
-        import time
-        import urllib.request
-        import urllib.parse
-        import urllib.error
 
         def _read_http_error(err: urllib.error.HTTPError) -> str:
             try:
@@ -48,7 +33,6 @@ class APSConverter:
 
         ext = os.path.splitext(file_path)[1].lower()
 
-        # ── Step 1: 2-Legged OAuth2 Authentication ──
         logger.info("[APS] Step 1/7: Authenticating with Autodesk Platform Services...")
         token_url = "https://developer.api.autodesk.com/authentication/v2/token"
         token_data = urllib.parse.urlencode({
@@ -77,7 +61,6 @@ class APSConverter:
         clean_cid = "".join(c for c in client_id.lower() if c.isalnum())[:16]
         bucket_key = f"beecons_bim_{clean_cid}"
 
-        # ── Step 2: Ensure Transient Bucket Exists ──
         logger.info(f"[APS] Step 2/7: Creating/verifying OSS bucket '{bucket_key}'...")
         bucket_url = "https://developer.api.autodesk.com/oss/v2/buckets"
         bucket_payload = json.dumps({"bucketKey": bucket_key, "policyKey": "transient"}).encode("utf-8")
@@ -96,7 +79,6 @@ class APSConverter:
             else:
                 raise ValueError(f"[APS] Step 2 FAILED — Bucket creation error: {_read_http_error(err)}")
 
-        # ── Step 3: Direct-to-S3 Signed Upload ──
         filename = os.path.basename(file_path)
         file_size = os.path.getsize(file_path)
         s3_endpoint = f"https://developer.api.autodesk.com/oss/v2/buckets/{bucket_key}/objects/{urllib.parse.quote(filename)}/signeds3upload"
@@ -135,13 +117,11 @@ class APSConverter:
         if not object_id:
             raise ValueError("[APS] Step 3c FAILED — No objectId returned.")
 
-        # ── Step 4: Base64 Encode URN ──
         urn_b64 = base64.b64encode(object_id.encode("utf-8")).decode("utf-8").rstrip("=")
         logger.info(f"[APS] Step 4/7: ✅ URN encoded: {urn_b64[:40]}...")
 
         job_url = "https://developer.api.autodesk.com/modelderivative/v2/designdata/job"
 
-        # ── Step 5: Try direct IFC conversion for .rvt files ──
         if ext == ".rvt":
             try:
                 logger.info("[APS] Step 5/7: Triggering RVT → IFC translation job...")
@@ -157,7 +137,6 @@ class APSConverter:
                 with urllib.request.urlopen(j_req, timeout=30) as j_resp:
                     pass
 
-                # Poll for IFC download URN
                 manifest_url = f"https://developer.api.autodesk.com/modelderivative/v2/designdata/{urn_b64}/manifest"
                 start_time = time.time()
                 download_urn = None
@@ -189,7 +168,6 @@ class APSConverter:
             except Exception as err:
                 logger.warning(f"[APS] Direct IFC conversion failed ({err}). Retrying via SVF2 Model Derivative Properties API...")
 
-        # ── Step 5b: Trigger SVF2 translation for .nwd, .nwc, .rfa or fallback .rvt ──
         logger.info(f"[APS] Step 5/7: Triggering SVF2 model derivative translation for {ext.upper()} model...")
         svf_payload = json.dumps({
             "input": {"urn": urn_b64},
@@ -206,7 +184,6 @@ class APSConverter:
         except urllib.error.HTTPError as err:
             raise ValueError(f"[APS] Step 5 FAILED — SVF2 job rejected: {_read_http_error(err)}")
 
-        # ── Step 6: Poll SVF2 Manifest Status ──
         manifest_url = f"https://developer.api.autodesk.com/modelderivative/v2/designdata/{urn_b64}/manifest"
         start_time = time.time()
         logger.info("[APS] Step 6/7: Polling SVF2 translation progress...")
@@ -227,21 +204,10 @@ class APSConverter:
             elif status == "failed":
                 raise ValueError("[APS] Step 6 FAILED — SVF2 translation job failed on Autodesk Cloud.")
 
-        # ── Step 7: Extract quantities directly from Model Derivative Properties API ──
         return cls.extract_quantities_from_aps_properties(urn_b64, headers)
 
     @classmethod
     def extract_quantities_from_aps_properties(cls, urn_b64: str, headers: dict) -> List[BIMElementQuantity]:
-        """
-        Extract 3D element quantities directly from Autodesk Cloud Model Derivative Properties API.
-        Supports .nwd, .nwc, .rfa, .rvt and all formats viewable in APS.
-        Includes GZIP decompression and HTTP 413 objecttree fallback for ultra-large models.
-        """
-        import json
-        import gzip
-        import time
-        import urllib.request
-
         gzip_headers = {**headers, "Accept-Encoding": "gzip, deflate"}
 
         meta_url = f"https://developer.api.autodesk.com/modelderivative/v2/designdata/{urn_b64}/metadata"
@@ -290,7 +256,6 @@ class APSConverter:
                     raise err
             time.sleep(3)
 
-        # Fallback to /objecttree if /properties payload is too large (HTTP 413)
         if payload_too_large or not props_data:
             logger.info("[APS] Fetching model objecttree hierarchy...")
             tree_url = f"https://developer.api.autodesk.com/modelderivative/v2/designdata/{urn_b64}/metadata/{guid}/objecttree"
@@ -345,7 +310,6 @@ class APSConverter:
             props = item.get("properties", {})
             obj_name = item.get("name", "BIM Element")
 
-            # Flatten property groups & preserve full key paths
             flat_props = {}
             if isinstance(props, dict):
                 for g_name, g_val in props.items():
@@ -356,7 +320,6 @@ class APSConverter:
                     else:
                         flat_props[g_name] = g_val
 
-            # Infer category
             cat_candidates = [
                 flat_props.get("Category"),
                 flat_props.get("Element Category"),
@@ -372,7 +335,6 @@ class APSConverter:
                     category = cand.strip()
                     break
 
-            # Infer level
             level = (
                 flat_props.get("Level")
                 or flat_props.get("Reference Level")
@@ -383,7 +345,6 @@ class APSConverter:
                 or "Lantai 1"
             )
 
-            # Infer material
             material = (
                 flat_props.get("Material")
                 or flat_props.get("Structural Material")
@@ -392,7 +353,6 @@ class APSConverter:
                 or "Standard Material"
             )
 
-            # Infer family / type
             family = (
                 flat_props.get("Family")
                 or flat_props.get("Family Name")
@@ -428,7 +388,6 @@ class APSConverter:
                 elif ("length" in k_lower or "height" in k_lower or "width" in k_lower or "thickness" in k_lower or "depth" in k_lower) and length == 0:
                     length = parse_num(v)
 
-            # Retain element if it has props or valid name
             if props or obj_name:
                 raw_elements.append({
                     "level": str(level).strip(),
@@ -469,267 +428,3 @@ class APSConverter:
     def convert_rvt_to_ifc(rvt_file_path: str, output_ifc_path: str, client_id: str, client_secret: str) -> bool:
         res = APSConverter.convert_autodesk_model(rvt_file_path, output_ifc_path, client_id, client_secret)
         return res is True
-
-class BIMEntityExtractor:
-    """
-    OpenBIM IFC Parser Engine using ifcopenshell.
-    Extracts 3D parametric quantities, spatial levels, and material properties.
-    """
-
-    TARGET_CATEGORIES = [
-        "IfcWall",
-        "IfcColumn",
-        "IfcBeam",
-        "IfcSlab",
-        "IfcFooting",
-        "IfcDoor",
-        "IfcWindow",
-        "IfcStair",
-        "IfcCovering",
-        "IfcMember",
-        "IfcRoof",
-        "IfcBuildingElementProxy"
-    ]
-
-    @classmethod
-    def process_ifc_file(cls, file_path: str) -> List[BIMElementQuantity]:
-        """
-        Process an IFC file on disk and return aggregated element quantities.
-        """
-        try:
-            model = ifcopenshell.open(file_path)
-            return cls._extract_from_model(model)
-        except Exception as e:
-            logger.error(f"Failed to open IFC file {file_path}: {e}", exc_info=True)
-            raise ValueError(f"Invalid or corrupted IFC file: {e}")
-
-    @classmethod
-    def process_rvt_file(cls, rvt_file_path: str) -> List[BIMElementQuantity]:
-        """
-        Process native Autodesk Revit (.rvt) binary file.
-        Attempts conversion via Autodesk APS Cloud API first, then local CLI converter.
-        """
-        import shutil
-        import subprocess
-        import sys
-
-        with tempfile.NamedTemporaryFile(suffix=".ifc", delete=False) as tmp_ifc:
-            temp_ifc_path = tmp_ifc.name
-
-        try:
-            # 1. Autodesk Platform Services (APS / Forge) Cloud API Strategy (PRIORITY 1 IF CREDENTIALS SET)
-            aps_client_id = os.getenv("APS_CLIENT_ID")
-            aps_client_secret = os.getenv("APS_CLIENT_SECRET")
-            if aps_client_id and aps_client_secret:
-                try:
-                    logger.info("APS Credentials detected in .env! Translating 3D model via Autodesk Cloud API...")
-                    res = APSConverter.convert_autodesk_model(rvt_file_path, temp_ifc_path, aps_client_id, aps_client_secret)
-                    if isinstance(res, list) and len(res) > 0:
-                        return res
-                    elif res is True and os.path.exists(temp_ifc_path) and os.path.getsize(temp_ifc_path) > 0:
-                        return cls.process_ifc_file(temp_ifc_path)
-                except Exception as aps_err:
-                    logger.warning(f"Autodesk APS Cloud translation failed: {aps_err}. Falling back to local converter...")
-
-            # 2. Local CLI Converter Subprocess Strategy (if system rvt2ifc or IfcConvert is installed)
-            cmd = None
-            if shutil.which("rvt2ifc"):
-                cmd = [shutil.which("rvt2ifc"), rvt_file_path, temp_ifc_path]
-            elif shutil.which("IfcConvert"):
-                cmd = [shutil.which("IfcConvert"), rvt_file_path, temp_ifc_path]
-
-            if cmd:
-                rvt_timeout = int(os.getenv("RVT_TIMEOUT_SECONDS", "300"))
-                logger.info(f"Converting native .rvt file using system command {cmd} with timeout {rvt_timeout}s...")
-                res = subprocess.run(cmd, timeout=rvt_timeout, capture_output=True, text=True)
-                if res.returncode == 0 and os.path.exists(temp_ifc_path) and os.path.getsize(temp_ifc_path) > 0:
-                    return cls.process_ifc_file(temp_ifc_path)
-                logger.warning(f"Local RVT converter exited with error: {res.stderr}")
-
-            # 3. Direct instruction fallback for 100% Real Data Policy
-            err_msg = (
-                "Konversi cloud Autodesk APS tidak berhasil atau mengalami kendala izin/timeout. "
-                "Untuk memastikan estimasi RAB 100% PRESISI dan REAL tanpa data buatan/dummy, "
-                "silakan ekspor proyek Anda ke format .ifc langsung dari Autodesk Revit (File -> Export -> IFC) "
-                "lalu unggah file .ifc tersebut."
-            )
-            logger.error(err_msg)
-            raise ValueError(err_msg)
-
-        finally:
-            if os.path.exists(temp_ifc_path):
-                try:
-                    os.remove(temp_ifc_path)
-                except Exception:
-                    pass
-
-    @classmethod
-    def process_bim_bytes(cls, file_bytes: bytes, filename: str = "model.ifc") -> List[BIMElementQuantity]:
-        """
-        Process BIM file content (.ifc, .rvt, .rfa, .nwd, or .nwc) from raw bytes.
-        """
-        ext = os.path.splitext(filename)[1].lower()
-        with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
-            tmp.write(file_bytes)
-            tmp_path = tmp.name
-
-        try:
-            if ext == ".ifc":
-                return cls.process_ifc_file(tmp_path)
-            elif ext in [".rvt", ".rfa", ".nwd", ".nwc", ".skp"]:
-                return cls.process_rvt_file(tmp_path)
-            else:
-                raise ValueError(f"Unsupported BIM file extension: {ext}")
-        finally:
-            if os.path.exists(tmp_path):
-                try:
-                    os.remove(tmp_path)
-                except Exception:
-                    pass
-
-    @classmethod
-    def process_ifc_bytes(cls, file_bytes: bytes, filename: str = "model.ifc") -> List[BIMElementQuantity]:
-        """Backward compatibility alias for process_bim_bytes."""
-        return cls.process_bim_bytes(file_bytes, filename)
-
-    @classmethod
-    def _extract_from_model(cls, model: ifcopenshell.file) -> List[BIMElementQuantity]:
-        """
-        Internal extractor traversing model elements and grouping quantities.
-        """
-        raw_elements: List[Dict[str, Any]] = []
-
-        for cat in cls.TARGET_CATEGORIES:
-            elements = model.by_type(cat)
-            for elem in elements:
-                # 1. Storey / Level Name
-                container = ifcopenshell.util.element.get_container(elem)
-                level_name = container.Name if (container and hasattr(container, "Name") and container.Name) else "Lantai 1"
-
-                # 2. Family / Element Name
-                elem_name = (
-                    getattr(elem, "ObjectType", None)
-                    or getattr(elem, "Name", None)
-                    or elem.is_a()
-                )
-
-                # 3. Material Extraction
-                mat_name = "Standard Material"
-                try:
-                    mat = ifcopenshell.util.element.get_material(elem)
-                    if mat:
-                        if hasattr(mat, "Name") and mat.Name:
-                            mat_name = mat.Name
-                        elif isinstance(mat, dict) and "Name" in mat:
-                            mat_name = mat["Name"]
-                        else:
-                            mat_name = str(mat)
-                except Exception:
-                    pass
-
-                # 4. Quantity Extraction from Psets (Qto_* BaseQuantities)
-                vol, area, length = cls._extract_quantities(elem, cat)
-
-                raw_elements.append({
-                    "level": str(level_name).strip(),
-                    "category": cat,
-                    "family_name": str(elem_name).strip(),
-                    "material": str(mat_name).strip(),
-                    "volume_m3": float(vol),
-                    "area_m2": float(area),
-                    "length_m": float(length)
-                })
-
-        # Aggregate raw elements by key
-        aggregated_map: Dict[tuple, BIMElementQuantity] = {}
-
-        for item in raw_elements:
-            key = (item["level"], item["category"], item["family_name"], item["material"])
-            if key not in aggregated_map:
-                aggregated_map[key] = BIMElementQuantity(
-                    level=item["level"],
-                    category=item["category"],
-                    family_name=item["family_name"],
-                    material=item["material"],
-                    count=1,
-                    total_volume_m3=round(item["volume_m3"], 3),
-                    total_area_m2=round(item["area_m2"], 3),
-                    total_length_m=round(item["length_m"], 3)
-                )
-            else:
-                existing = aggregated_map[key]
-                existing.count += 1
-                existing.total_volume_m3 = round(existing.total_volume_m3 + item["volume_m3"], 3)
-                existing.total_area_m2 = round(existing.total_area_m2 + item["area_m2"], 3)
-                existing.total_length_m = round(existing.total_length_m + item["length_m"], 3)
-
-        return list(aggregated_map.values())
-
-    @classmethod
-    def _extract_quantities(cls, elem: Any, category: str) -> tuple[float, float, float]:
-        """
-        Extract NetVolume/GrossVolume, NetArea/GrossArea, Length/Height from element Psets.
-        """
-        vol = 0.0
-        area = 0.0
-        length = 0.0
-
-        try:
-            psets = ifcopenshell.util.element.get_psets(elem)
-        except Exception:
-            psets = {}
-
-        # Scan Qto_* BaseQuantities and all Psets for matching quantity keys
-        qto_keys = [
-            f"Qto_{category[3:]}BaseQuantities",
-            "BaseQuantities",
-            "Qto_BuildingElementProxyBaseQuantities"
-        ]
-
-        # Gather relevant property dicts
-        qto_dicts = []
-        for key in qto_keys:
-            if key in psets and isinstance(psets[key], dict):
-                qto_dicts.append(psets[key])
-
-        # Add all psets that start with Qto_
-        for pset_name, pset_val in psets.items():
-            if pset_name.startswith("Qto_") and isinstance(pset_val, dict) and pset_val not in qto_dicts:
-                qto_dicts.append(pset_val)
-
-        for qto in qto_dicts:
-            if not vol:
-                vol = float(
-                    qto.get("NetVolume")
-                    or qto.get("GrossVolume")
-                    or qto.get("Volume")
-                    or 0.0
-                )
-            if not area:
-                area = float(
-                    qto.get("NetSideArea")
-                    or qto.get("GrossSideArea")
-                    or qto.get("NetArea")
-                    or qto.get("GrossArea")
-                    or qto.get("Area")
-                    or 0.0
-                )
-            if not length:
-                length = float(
-                    qto.get("Length")
-                    or qto.get("Height")
-                    or qto.get("UnconnectedHeight")
-                    or qto.get("Width")
-                    or 0.0
-                )
-
-        return vol, area, length
-
-    @classmethod
-    def format_to_llm_payload(cls, quantities: List[BIMElementQuantity]) -> str:
-        """
-        Format extracted BIM quantities into a clean, concise JSON payload for Gemini LLM.
-        """
-        import json
-        payload_data = [item.model_dump() for item in quantities]
-        return json.dumps(payload_data, indent=2, ensure_ascii=False)

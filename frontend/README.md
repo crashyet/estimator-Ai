@@ -1,102 +1,97 @@
-# 📱 Frontend App - AI Quantity Estimator & AHSP Mapper
+# ⚛️ Estimator Frontend Dashboard
 
-Interactive single-page dashboard built with **React** and **Vite** for uploading CAD engineering drawings, BIM models, managing project details, visualizing auto-calculated Bill of Quantities (BOQ / RAB), performing AHSP standard mapping, and generating cost reports.
-
----
-
-## 🛠️ Tech Stack & Dependencies
-
-- **Framework**: React 18 + Vite
-- **Styling**: Tailwind CSS / Vanilla CSS & Lucide Custom Icons (`Icons.jsx`)
-- **HTTP Client**: Native Fetch API (`services/api.js`)
-- **State Management**: React State (`useState`, `useEffect`) & `localStorage` persistence
+Dashboard web modern untuk manajemen proyek konstruksi, visualisasi RAB, dan seleksi kandidat AHSP berbasis AI. Dibangun dengan **React 18 + Vite + TailwindCSS**.
 
 ---
 
-## 🚀 Key Features
+## 🌟 Fitur & Halaman Utama
 
-1. **Multi-Format CAD / BIM Upload Dropzone (`Project.jsx`)**:
-   - Supports 18+ engineering file formats:
-     - **Vector CAD**: `.dwg`, `.dxf`, `.dwt`, `.dwf`, `.dwfx`, `.svg`, `.plt`, `.hpgl`, `.hpg`
-     - **3D BIM / Cloud**: `.ifc`, `.rvt`, `.rfa`, `.nwd`, `.nwc`, `.skp`
-     - **Multimodal**: `.pdf`, `.jpeg`, `.png`, `.jpg`
+### 📋 Project Management (`src/pages/Project.jsx`)
+- Daftar proyek aktif dengan badge status, estimasi anggaran, dan tanggal.
+- **Cache Version Management**: Setiap update aplikasi secara otomatis membersihkan localStorage lama menggunakan key versi (`estimator_v9_cleared`) agar data stale tidak muncul.
+- Navigasi ke halaman Anggaran per proyek via query param `?id=`.
 
-2. **AHSP Mapping Precision Badges & Status Indicators (`Anggaran.jsx`)**:
-   - Displays real-time confidence badges for each WBS work item:
-     - 🟢 **Mapped High (>= 85%)**: High-confidence automated mapping to PUPR standard.
-     - 🟡 **Mapped Medium (65% – 84%)**: Medium confidence with top-3 candidate recommendations.
-     - ⚪ **Unmapped (< 65%)**: Flagged for manual verification.
+### 💰 RAB / Anggaran Detail (`src/pages/Anggaran.jsx`)
+- Tabel WBS interaktif dengan header seksi dan item pekerjaan.
+- **Badge Confidence**: Indikator visual per item (`high` = hijau, `medium` = kuning, `unmapped` = abu/merah).
+- **AI Candidate Popover**: Klik badge untuk melihat daftar `ahsp_candidates` dengan similarity score — pengguna dapat memilih atau mengganti mapping AHSP secara interaktif.
+- Kalkulasi total biaya RAB secara real-time.
+- Export ke Excel atau JSON.
 
-3. **Interactive AHSP Manual Override Modal (`Anggaran.jsx`)**:
-   - Allows Quantity Surveyors (QS) to search the master dataset of 8,900+ Indonesian SE PUPR 2025 work items.
-   - Live semantic search, candidate selection, and instant mapping override with visual feedback.
-
-4. **Interactive RAB Budget & Report Export (`Laporan.jsx`)**:
-   - Real-time cost recalculation, section grouping, and Excel/JSON report generation.
+### 📊 Laporan & Analitik (`src/pages/Laporan.jsx`)
+- Visualisasi breakdown biaya per seksi WBS.
+- Ringkasan statistik proyek.
 
 ---
 
-## 📂 Folder & File Structure
+## 📂 Struktur Direktori
 
-```text
+```
 frontend/
-├── public/                 # Static public assets
-├── src/
-│   ├── assets/             # Images and design assets
-│   ├── components/         # Reusable UI components
-│   │   ├── Navbar.jsx      # Top navigation bar
-│   │   └── Icons.jsx       # Custom SVG icon set (AHSP badges, upload icons)
-│   ├── pages/              # Application views & routes
-│   │   ├── Project.jsx     # Multi-format file upload & project creation page
-│   │   ├── Anggaran.jsx    # Interactive RAB / WBS table & AHSP mapper manager
-│   │   └── Laporan.jsx     # Cost summary and export report page
-│   ├── services/
-│   │   └── api.js          # API service layer & AHSP mapping endpoints integration
-│   ├── App.jsx             # Main app component & simple router
-│   ├── main.jsx            # Application entry point
-│   └── index.css           # Global CSS styles
-├── .env                    # Environment variables (VITE_API_URL)
-├── .env.example            # Environment template
-├── vite.config.js          # Vite configuration
-└── package.json            # NPM dependencies & scripts
+├── index.html               # Entry HTML
+├── vite.config.js           # Konfigurasi Vite dev server
+├── package.json             # Dependencies (React 18, Lucide, Tailwind)
+├── eslint.config.js         # ESLint rules
+└── src/
+    ├── main.jsx             # React entry point
+    ├── App.jsx              # Router & layout utama
+    ├── index.css            # Global styles & Tailwind utilities
+    ├── pages/
+    │   ├── Project.jsx      # Halaman daftar proyek
+    │   ├── Anggaran.jsx     # Halaman RAB detail & AI candidate UI
+    │   └── Laporan.jsx      # Halaman laporan analitik & export
+    └── components/          # Komponen reusable (modal, popover, tabel, dsb.)
 ```
 
 ---
 
-## ⚙️ Environment Variables (`.env`)
+## 🚀 Quick Start
 
-Configure the backend proxy or API endpoint in `frontend/.env`:
-
-```ini
-# API Service URL (Points to CodeIgniter 4 Backend or Python FastAPI direct)
-VITE_BACKEND_API_URL=http://localhost:8080/api/rab/analyze-image
-```
-
----
-
-## 🚀 Running locally
-
-### 1. Install Dependencies
 ```bash
+cd frontend
+
+# Install dependencies
 npm install
+
+# Jalankan dev server (accessible di seluruh jaringan lokal)
+npm run dev -- --host
 ```
 
-### 2. Start Development Server
-```bash
-npm run dev
-```
-The app will run at `http://localhost:5173`.
+Aplikasi tersedia di **`http://localhost:5173`**.
 
-### 3. Build for Production
-```bash
-npm run build
+---
+
+## 🤖 Fitur AI Candidate Popover
+
+Setiap item pekerjaan di halaman Anggaran dapat memiliki array `ahsp_candidates`:
+
+```json
+{
+  "id": "item-A-1",
+  "name": "Pembersihan Lapangan",
+  "ahsp_status": "mapped_medium",
+  "ahsp_candidates": [
+    { "id_pekerjaan": "1.1.1.1", "nama_pekerjaan": "Pembersihan Lapangan", "satuan": "m2", "score": 0.87 },
+    { "id_pekerjaan": "1.1.1.2", "nama_pekerjaan": "Pemotongan Pohon", "satuan": "m2", "score": 0.72 }
+  ]
+}
+```
+
+Jika `ahsp_status` adalah `mapped_medium` atau `unmapped`, badge item dapat diklik dan menampilkan **popover kandidat** agar pengguna dapat memilih mapping yang paling tepat.
+
+> **Catatan Development**: Saat ini `getInitialData()` di `Anggaran.jsx` sudah dilengkapi dummy `ahsp_candidates` untuk keperluan pengujian UI tanpa backend. Ganti dengan respons API dinamis saat integrasi penuh.
+
+---
+
+## ⚙️ Konfigurasi `.env`
+
+```env
+VITE_API_BASE_URL=http://localhost:8200
 ```
 
 ---
 
-## 📡 API Integration Layer (`src/services/api.js`)
+## 📚 Dokumentasi Lanjutan
 
-- **`uploadDEDFile()`**: Uploads engineering file streams to backend (`/api/rab/analyze-image`).
-- **`searchAHSP()`**: Performs real-time semantic query searches on AHSP VectorDB (`/api/ahsp/search`).
-- **`mapSingleItem()`**: Maps individual work item name to AHSP dataset (`/api/ahsp/map-item`).
-- **`overrideAHSPMapping()`**: Submits manual QS override assignments (`/api/ahsp/override`).
+- **[../docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md)** — Alur data end-to-end dari backend ke frontend
+- **[../README.md](../README.md)** — Dokumentasi utama proyek

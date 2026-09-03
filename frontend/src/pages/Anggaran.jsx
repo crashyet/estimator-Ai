@@ -1,16 +1,12 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { Icons, Logo, BusinessAvatar } from '../components/Icons';
+import { Icons } from '../components/Icons';
+import SummaryHeaderCard from '../components/anggaran/SummaryHeaderCard';
+import ExportToolbar from '../components/anggaran/ExportToolbar';
+import WbsSectionTable from '../components/anggaran/WbsSectionTable';
 
-// Currency and numbers formatter
-const formatRupiah = (value) => {
-  return "Rp " + Math.abs(value).toLocaleString('id-ID', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  });
-};
-
+// Currency and numbers formatter helpers
 const formatNumber = (value) => {
   return value.toLocaleString('id-ID', {
     minimumFractionDigits: 2,
@@ -18,380 +14,272 @@ const formatNumber = (value) => {
   });
 };
 
-// Generates initial sections of data based strictly on latest_raw_pipeline.json (Rumah Tinggal Bpk. Heri Hidayat)
+// Initial benchmark dataset
 const getInitialData = () => {
   return [
+    { id: "sec-A", type: "section", code: "A", name: "PEKERJAAN PERSIAPAN & TANAH" },
     {
-      id: "sec-A",
-      type: "section",
-      code: "A",
-      name: "PEKERJAAN PERSIAPAN & TANAH"
-    },
-    {
-      id: "item-A-1",
-      type: "item",
-      sectionCode: "A",
-      no: 1,
-      code: "A.1",
-      name: "Pembersihan Lapangan",
-      volume: 96.0,
-      unit: "m2",
-      unitPrice: 15000,
-      ahsp_code: null,
-      ahsp_name: null,
-      ahsp_unit: null,
-      ahsp_status: "unmapped",
-      ahsp_score: 0.2827,
-      ahsp_candidates: []
-    },
-    {
-      id: "item-A-2",
-      type: "item",
-      sectionCode: "A",
-      no: 2,
-      code: "A.2",
-      name: "Pemasangan Bouwplank",
-      volume: 40.0,
-      unit: "m1",
-      unitPrice: 77364,
-      ahsp_code: "1.1.4.2",
-      ahsp_name: "Pasangan Bouwplank",
-      ahsp_unit: "m1",
-      ahsp_status: "mapped_high",
-      ahsp_score: 0.811,
+      id: "item-A-1", type: "item", sectionCode: "A", no: 1, code: "A.1",
+      name: "Pembersihan Lapangan", volume: 96.0, unit: "m2", unitPrice: 15000,
+      ahsp_code: "4.2.6.1", ahsp_name: "Pembersihan (Penyapuan) Area Tanam", ahsp_unit: "m2", ahsp_status: "mapped_high", ahsp_score: 0.7619,
       ahsp_candidates: [
-        { id_pekerjaan: "1.1.4.2", nama_pekerjaan: "Pasangan Bouwplank", satuan: "m1", score: 0.811 }
+        { id_pekerjaan: "4.2.6.1", nama_pekerjaan: "Pembersihan (Penyapuan) Area Tanam", satuan: "m2", score: 0.7619 },
+        { id_pekerjaan: "1.1.1.1", nama_pekerjaan: "Pembersihan Lapangan dan Perataan", satuan: "m2", score: 0.7420 },
+        { id_pekerjaan: "1.1.1.2", nama_pekerjaan: "Penebasan / Pembersihan Semak Belukar", satuan: "m2", score: 0.6910 }
       ]
     },
     {
-      id: "item-A-3",
-      type: "item",
-      sectionCode: "A",
-      no: 3,
-      code: "A.3",
-      name: "Penggalian Tanah Pondasi Footplate",
-      volume: 42.12,
-      unit: "m3",
-      unitPrice: 80608.5,
-      ahsp_code: null,
-      ahsp_name: null,
-      ahsp_unit: null,
-      ahsp_status: "unmapped",
-      ahsp_score: 0.3501,
+      id: "item-A-2", type: "item", sectionCode: "A", no: 2, code: "A.2",
+      name: "Pemasangan Bouwplank", volume: 40.0, unit: "m1", unitPrice: 77364,
+      ahsp_code: "1.1.4.2", ahsp_name: "Pasangan Bouwplank", ahsp_unit: "m1", ahsp_status: "mapped_high", ahsp_score: 0.8608,
       ahsp_candidates: [
-        { id_pekerjaan: "A.2.1", nama_pekerjaan: "Tebas tebang pohon/tumbuhan Ø > 75 cm (diameter diukur 1m diatas permukaan tanah)", satuan: "batang", score: 0.3501 },
-        { id_pekerjaan: "A.2.2", nama_pekerjaan: "Pemasangan Tangki Toren Kap. 3 m3", satuan: "buah", score: 0.3501 },
-        { id_pekerjaan: "A.2.3", nama_pekerjaan: "Pemasangan Tangki Toren Kap. 4 m3", satuan: "buah", score: 0.3501 }
+        { id_pekerjaan: "1.1.4.2", nama_pekerjaan: "Pasangan Bouwplank", satuan: "m1", score: 0.8608 },
+        { id_pekerjaan: "1.1.4.1", nama_pekerjaan: "Pengukuran dan Pemasangan Bouwplank", satuan: "m1", score: 0.8120 },
+        { id_pekerjaan: "1.1.4.3", nama_pekerjaan: "Pemasangan Papan Duga (Bouwplank) Kayu", satuan: "m1", score: 0.7540 }
       ]
     },
     {
-      id: "sec-B",
-      type: "section",
-      code: "B",
-      name: "PEKERJAAN STRUKTUR & PONDASI BETON BERTULANG"
-    },
-    {
-      id: "item-B-1",
-      type: "item",
-      sectionCode: "B",
-      no: 1,
-      code: "B.1",
-      name: "Pengecoran Lantai Kerja Footplate (t=10cm)",
-      volume: 3.02,
-      unit: "m3",
-      unitPrice: 950000,
-      ahsp_code: null,
-      ahsp_name: null,
-      ahsp_unit: null,
-      ahsp_status: "unmapped",
-      ahsp_score: 0.3509,
-      ahsp_candidates: []
-    },
-    {
-      id: "item-B-2",
-      type: "item",
-      sectionCode: "B",
-      no: 2,
-      code: "B.2",
-      name: "Pengecoran Footplate Beton Bertulang",
-      volume: 7.56,
-      unit: "m3",
-      unitPrice: 4200000,
-      ahsp_code: null,
-      ahsp_name: null,
-      ahsp_unit: null,
-      ahsp_status: "unmapped",
-      ahsp_score: 0.3502,
-      ahsp_candidates: []
-    },
-    {
-      id: "item-B-3",
-      type: "item",
-      sectionCode: "B",
-      no: 3,
-      code: "B.3",
-      name: "Pengecoran Sloof Beton 15x20 cm (S1)",
-      volume: 1.2,
-      unit: "m3",
-      unitPrice: 4200000,
-      ahsp_code: null,
-      ahsp_name: null,
-      ahsp_unit: null,
-      ahsp_status: "unmapped",
-      ahsp_score: 0.3501,
-      ahsp_candidates: []
-    },
-    {
-      id: "item-B-4",
-      type: "item",
-      sectionCode: "B",
-      no: 4,
-      code: "B.4",
-      name: "Pengecoran Kolom Utama Lt. 1 & 2 (K1, K2, Kp)",
-      volume: 3.42,
-      unit: "m3",
-      unitPrice: 4500000,
-      ahsp_code: "2.2.2.1.3",
-      ahsp_name: "Pemasangan Fondasi Batu Belah Mortar Tipe M (17,5 MPa) setara 1 SP : 2 PP, cara semi mekanis",
-      ahsp_unit: "m3",
-      ahsp_status: "mapped_medium",
-      ahsp_score: 0.5801,
+      id: "item-A-3", type: "item", sectionCode: "A", no: 3, code: "A.3",
+      name: "Penggalian Tanah Pondasi Footplate", volume: 36.8, unit: "m3", unitPrice: 80608.5,
+      ahsp_code: "1.2.1.1.4", ahsp_name: "Penggalian tanah biasa sedalam 1 s.d 2 m untuk volume s.d 200 m3 secara manual", ahsp_unit: "m3", ahsp_status: "mapped_medium", ahsp_score: 0.6447,
       ahsp_candidates: [
-        { id_pekerjaan: "2.2.2.1.3", nama_pekerjaan: "Pemasangan Fondasi Batu Belah Mortar Tipe M (17,5 MPa) setara 1 SP : 2 PP, cara semi mekanis", satuan: "m3", score: 0.5801 },
-        { id_pekerjaan: "2.2.2.1.11", nama_pekerjaan: "Pemasangan Fondasi Batu Belah campuran 1 SP : 6 PP, cara semi mekanis", satuan: "m3", score: 0.5801 },
-        { id_pekerjaan: "2.2.2.1.7", nama_pekerjaan: "Pemasangan Fondasi Batu Belah Mortar Tipe N (5,2 MPa) setara 1 SP : 4 PP, cara semi mekanis", satuan: "m3", score: 0.58 }
+        { id_pekerjaan: "1.2.1.1.4", nama_pekerjaan: "Penggalian tanah biasa sedalam 1 s.d 2 m untuk volume s.d 200 m3 secara manual", satuan: "m3", score: 0.6447 },
+        { id_pekerjaan: "1.2.1.1.1", nama_pekerjaan: "Penggalian tanah biasa sedalam 1 m secara manual", satuan: "m3", score: 0.6210 },
+        { id_pekerjaan: "1.2.1.2.1", nama_pekerjaan: "Penggalian tanah keras sedalam 1 m secara manual", satuan: "m3", score: 0.5890 }
+      ]
+    },
+    { id: "sec-B", type: "section", code: "B", name: "PEKERJAAN STRUKTUR & PONDASI" },
+    {
+      id: "item-B-1", type: "item", sectionCode: "B", no: 1, code: "B.1",
+      name: "Pemasangan Pasir Urug Bawah Pondasi", volume: 1.66, unit: "m3", unitPrice: 185000,
+      ahsp_code: "1.3.1.2", ahsp_name: "Urugan dengan pasir uruk untuk volume s.d 200 m3 tanpa pemadatan secara manual", ahsp_unit: "m3", ahsp_status: "mapped_high", ahsp_score: 0.7668,
+      ahsp_candidates: [
+        { id_pekerjaan: "1.3.1.2", nama_pekerjaan: "Urugan dengan pasir uruk untuk volume s.d 200 m3 tanpa pemadatan secara manual", satuan: "m3", score: 0.7668 },
+        { id_pekerjaan: "1.3.1.1", nama_pekerjaan: "Pengurugan Pasir Urug Bawah Pondasi", satuan: "m3", score: 0.7250 },
+        { id_pekerjaan: "1.3.1.3", nama_pekerjaan: "Urugan Pasir Urug Dipadatkan", satuan: "m3", score: 0.6840 }
       ]
     },
     {
-      id: "item-B-5",
-      type: "item",
-      sectionCode: "B",
-      no: 5,
-      code: "B.5",
-      name: "Pengecoran Balok Struktur Lt. 1 & 2 (B1, B2, B3)",
-      volume: 2.88,
-      unit: "m3",
-      unitPrice: 4500000,
-      ahsp_code: "2.2.2.1.3",
-      ahsp_name: "Pemasangan Fondasi Batu Belah Mortar Tipe M (17,5 MPa) setara 1 SP : 2 PP, cara semi mekanis",
-      ahsp_unit: "m3",
-      ahsp_status: "mapped_medium",
-      ahsp_score: 0.5803,
+      id: "item-B-2", type: "item", sectionCode: "B", no: 2, code: "B.2",
+      name: "Pengecoran Lantai Kerja Footplate", volume: 3.31, unit: "m3", unitPrice: 950000,
+      ahsp_code: "2.2.1.6.1", ahsp_name: "Pengecoran Beton menggunakan Ready Mixed (untuk Bangunan Gedung)", ahsp_unit: "m3", ahsp_status: "mapped_medium", ahsp_score: 0.6326,
       ahsp_candidates: [
-        { id_pekerjaan: "2.2.2.1.3", nama_pekerjaan: "Pemasangan Fondasi Batu Belah Mortar Tipe M (17,5 MPa) setara 1 SP : 2 PP, cara semi mekanis", satuan: "m3", score: 0.5803 },
-        { id_pekerjaan: "2.2.2.1.11", nama_pekerjaan: "Pemasangan Fondasi Batu Belah campuran 1 SP : 6 PP, cara semi mekanis", satuan: "m3", score: 0.5802 }
+        { id_pekerjaan: "2.2.1.6.1", nama_pekerjaan: "Pengecoran Beton menggunakan Ready Mixed (untuk Bangunan Gedung)", satuan: "m3", score: 0.6326 },
+        { id_pekerjaan: "2.2.1.1.1", nama_pekerjaan: "Pengecoran Beton Mutu f'c=7.4 MPa (K 100) Lantai Kerja", satuan: "m3", score: 0.6120 },
+        { id_pekerjaan: "2.2.1.1.2", nama_pekerjaan: "Pengecoran Beton Mutu f'c=9.8 MPa (K 125)", satuan: "m3", score: 0.5980 }
       ]
     },
     {
-      id: "item-B-6",
-      type: "item",
-      sectionCode: "B",
-      no: 6,
-      code: "B.6",
-      name: "Pengecoran Plat Lantai 2 & Atap Dak",
-      volume: 14.4,
-      unit: "m3",
-      unitPrice: 4800000,
-      ahsp_code: "2.2.2.1.11",
-      ahsp_name: "Pemasangan Fondasi Batu Belah campuran 1 SP : 6 PP, cara semi mekanis",
-      ahsp_unit: "m3",
-      ahsp_status: "mapped_medium",
-      ahsp_score: 0.5801,
+      id: "item-B-3", type: "item", sectionCode: "B", no: 3, code: "B.3",
+      name: "Pengecoran Pondasi Footplate", volume: 8.35, unit: "m3", unitPrice: 4200000,
+      ahsp_code: "2.2.1.6.6", ahsp_name: "Pengecoran Beton Menggunakan Ready Mixed F'c 25 MPa", ahsp_unit: "m3", ahsp_status: "mapped_medium", ahsp_score: 0.6347,
       ahsp_candidates: [
-        { id_pekerjaan: "2.2.2.1.11", nama_pekerjaan: "Pemasangan Fondasi Batu Belah campuran 1 SP : 6 PP, cara semi mekanis", satuan: "m3", score: 0.5801 }
+        { id_pekerjaan: "2.2.1.6.6", nama_pekerjaan: "Pengecoran Beton Menggunakan Ready Mixed F'c 25 MPa", satuan: "m3", score: 0.6347 },
+        { id_pekerjaan: "2.2.1.6.5", nama_pekerjaan: "Pengecoran Beton Menggunakan Ready Mixed F'c 20 MPa", satuan: "m3", score: 0.6180 },
+        { id_pekerjaan: "2.2.1.2.3", nama_pekerjaan: "Pembuatan Pondasi Beton Bertulang (K 225)", satuan: "m3", score: 0.5890 }
       ]
     },
     {
-      id: "sec-C",
-      type: "section",
-      code: "C",
-      name: "PEKERJAAN ARSITEKTUR & FINISHING"
-    },
-    {
-      id: "item-C-1",
-      type: "item",
-      sectionCode: "C",
-      no: 1,
-      code: "C.1",
-      name: "Pemasangan Dinding Bata Merah / Ringan",
-      volume: 320.0,
-      unit: "m2",
-      unitPrice: 115000,
-      ahsp_code: "3.6.4.2",
-      ahsp_name: "Pemasangan Dinding Bata Ringan Tebal 10 cm dengan Mortar Siap Pakai",
-      ahsp_unit: "m2",
-      ahsp_status: "mapped_high",
-      ahsp_score: 0.8182,
+      id: "item-B-4", type: "item", sectionCode: "B", no: 4, code: "B.4",
+      name: "Pengecoran Sloof Beton 15x20 cm", volume: 2.4, unit: "m3", unitPrice: 4200000,
+      ahsp_code: "2.2.1.6.2", ahsp_name: "Pengecoran Beton Menggunakan Ready Mixed F'c 15 MPa", ahsp_unit: "m3", ahsp_status: "mapped_high", ahsp_score: 0.7814,
       ahsp_candidates: [
-        { id_pekerjaan: "3.6.4.2", nama_pekerjaan: "Pemasangan Dinding Bata Ringan Tebal 10 cm dengan Mortar Siap Pakai", satuan: "m2", score: 0.8182 },
-        { id_pekerjaan: "3.6.4.1", nama_pekerjaan: "Pemasangan Dinding Bata Ringan Tebal 7,5 cm dengan Mortar Siap Pakai", satuan: "m2", score: 0.8168 },
-        { id_pekerjaan: "3.6.4.3", nama_pekerjaan: "Pemasangan Dinding Bata Ringan Tebal 20 cm dengan Mortar Siap Pakai", satuan: "m2", score: 0.8104 }
+        { id_pekerjaan: "2.2.1.6.2", nama_pekerjaan: "Pengecoran Beton Menggunakan Ready Mixed F'c 15 MPa", satuan: "m3", score: 0.7814 },
+        { id_pekerjaan: "2.2.1.10.2", nama_pekerjaan: "Pembuatan Sloof Beton Bertulang 15x20 cm", satuan: "m1", score: 0.7420 },
+        { id_pekerjaan: "2.2.1.6.1", nama_pekerjaan: "Pengecoran Beton menggunakan Ready Mixed (untuk Bangunan Gedung)", satuan: "m3", score: 0.6950 }
       ]
     },
     {
-      id: "item-C-2",
-      type: "item",
-      sectionCode: "C",
-      no: 2,
-      code: "C.2",
-      name: "Pemasangan Keramik Lantai 60x60 cm & 30x30 cm",
-      volume: 150.0,
-      unit: "m2",
-      unitPrice: 185000,
-      ahsp_code: "3.9.8.5",
-      ahsp_name: "Pemasangan Lantai Keramik Ukuran 30 cm x 60 cm (1SP:2PP), Polished",
-      ahsp_unit: "m2",
-      ahsp_status: "mapped_high",
-      ahsp_score: 0.9058,
+      id: "item-B-5", type: "item", sectionCode: "B", no: 5, code: "B.5",
+      name: "Pengecoran Kolom Struktur Lt. 1 & 2", volume: 5.4, unit: "m3", unitPrice: 4500000,
+      ahsp_code: "2.2.1.6.1", ahsp_name: "Pengecoran Beton menggunakan Ready Mixed (untuk Bangunan Gedung)", ahsp_unit: "m3", ahsp_status: "mapped_medium", ahsp_score: 0.6439,
       ahsp_candidates: [
-        { id_pekerjaan: "3.9.8.5", nama_pekerjaan: "Pemasangan Lantai Keramik Ukuran 30 cm x 60 cm (1SP:2PP), Polished", satuan: "m2", score: 0.9058 },
-        { id_pekerjaan: "3.9.8.13", nama_pekerjaan: "Pemasangan Lantai Keramik Ukuran 30 cm x 60 cm (1SP:2PP), Unpolished", satuan: "m2", score: 0.9048 },
-        { id_pekerjaan: "3.9.8.4", nama_pekerjaan: "Pemasangan Lantai Keramik Ukuran 30 cm x 30 cm (1SP : 2PP), Polished", satuan: "m2", score: 0.8866 }
+        { id_pekerjaan: "2.2.1.6.1", nama_pekerjaan: "Pengecoran Beton menggunakan Ready Mixed (untuk Bangunan Gedung)", satuan: "m3", score: 0.6439 },
+        { id_pekerjaan: "2.2.1.6.6", nama_pekerjaan: "Pengecoran Beton Menggunakan Ready Mixed F'c 25 MPa", satuan: "m3", score: 0.6210 },
+        { id_pekerjaan: "2.2.1.10.1", nama_pekerjaan: "Pembuatan Kolom Praktis Beton Bertulang (11x11)", satuan: "m1", score: 0.5840 }
       ]
     },
     {
-      id: "item-C-3",
-      type: "item",
-      sectionCode: "C",
-      no: 3,
-      code: "C.3",
-      name: "Pemasangan Plafond Gypsum Board Rangka Hollow",
-      volume: 150.0,
-      unit: "m2",
-      unitPrice: 95000,
-      ahsp_code: "3.5.2.1",
-      ahsp_name: "Pemasangan langit-langit (plafon) papan gypsum tebal 9 mm",
-      ahsp_unit: "m2",
-      ahsp_status: "mapped_high",
-      ahsp_score: 0.6944,
+      id: "item-B-6", type: "item", sectionCode: "B", no: 6, code: "B.6",
+      name: "Pengecoran Balok Struktur Lt. 1 & 2", volume: 4.8, unit: "m3", unitPrice: 4500000,
+      ahsp_code: "2.2.1.6.1", ahsp_name: "Pengecoran Beton menggunakan Ready Mixed (untuk Bangunan Gedung)", ahsp_unit: "m3", ahsp_status: "mapped_medium", ahsp_score: 0.6395,
       ahsp_candidates: [
-        { id_pekerjaan: "3.5.2.1", nama_pekerjaan: "Pemasangan langit-langit (plafon) papan gypsum tebal 9 mm", satuan: "m2", score: 0.6944 }
+        { id_pekerjaan: "2.2.1.6.1", nama_pekerjaan: "Pengecoran Beton menggunakan Ready Mixed (untuk Bangunan Gedung)", satuan: "m3", score: 0.6395 },
+        { id_pekerjaan: "2.2.1.6.6", nama_pekerjaan: "Pengecoran Beton Menggunakan Ready Mixed F'c 25 MPa", satuan: "m3", score: 0.6150 },
+        { id_pekerjaan: "2.2.1.10.3", nama_pekerjaan: "Pembuatan Balok Ring Beton Bertulang", satuan: "m1", score: 0.5790 }
       ]
     },
     {
-      id: "item-C-4",
-      type: "item",
-      sectionCode: "C",
-      no: 4,
-      code: "C.4",
-      name: "Pemasangan Pintu Utama PJ1",
-      volume: 1.0,
-      unit: "unit",
-      unitPrice: 3500000,
-      ahsp_code: "3.11.4.5",
-      ahsp_name: "Pemasangan Engsel Pintu",
-      ahsp_unit: "buah",
-      ahsp_status: "mapped_high",
-      ahsp_score: 0.6118,
+      id: "item-B-7", type: "item", sectionCode: "B", no: 7, code: "B.7",
+      name: "Pengecoran Plat Lantai 2 & Dak Atap", volume: 15.2, unit: "m3", unitPrice: 4800000,
+      ahsp_code: "2.2.1.6.1", ahsp_name: "Pengecoran Beton menggunakan Ready Mixed (untuk Bangunan Gedung)", ahsp_unit: "m3", ahsp_status: "mapped_medium", ahsp_score: 0.6486,
       ahsp_candidates: [
-        { id_pekerjaan: "3.11.4.5", nama_pekerjaan: "Pemasangan Engsel Pintu", satuan: "buah", score: 0.6118 },
-        { id_pekerjaan: "10.1.7", nama_pekerjaan: "Produksi Panel P1", satuan: "buah", score: 0.5988 }
+        { id_pekerjaan: "2.2.1.6.1", nama_pekerjaan: "Pengecoran Beton menggunakan Ready Mixed (untuk Bangunan Gedung)", satuan: "m3", score: 0.6486 },
+        { id_pekerjaan: "2.2.1.6.6", nama_pekerjaan: "Pengecoran Beton Menggunakan Ready Mixed F'c 25 MPa", satuan: "m3", score: 0.6280 },
+        { id_pekerjaan: "2.2.1.5.1", nama_pekerjaan: "Pengecoran Plat Lantai Beton Bertulang", satuan: "m3", score: 0.6010 }
       ]
     },
     {
-      id: "item-C-5",
-      type: "item",
-      sectionCode: "C",
-      no: 5,
-      code: "C.5",
-      name: "Pemasangan Pintu & Jendela Aluminium Lainnya (PJ2, P1, P2, P3, P4)",
-      volume: 12.0,
-      unit: "unit",
-      unitPrice: 1800000,
-      ahsp_code: "10.1.9",
-      ahsp_name: "Produksi Panel P3",
-      ahsp_unit: "buah",
-      ahsp_status: "mapped_high",
-      ahsp_score: 0.6029,
+      id: "item-B-8", type: "item", sectionCode: "B", no: 8, code: "B.8",
+      name: "Pembuatan Tangga Beton", volume: 2.1, unit: "m3", unitPrice: 4500000,
+      ahsp_code: "2.2.1.10.1", ahsp_name: "Pembuatan kolom praktis beton bertulang (11x11)", ahsp_unit: "m1", ahsp_status: "mapped_medium", ahsp_score: 0.6081,
       ahsp_candidates: [
-        { id_pekerjaan: "10.1.9", nama_pekerjaan: "Produksi Panel P3", satuan: "buah", score: 0.6029 }
+        { id_pekerjaan: "2.2.1.10.1", nama_pekerjaan: "Pembuatan kolom praktis beton bertulang (11x11)", satuan: "m1", score: 0.6081 },
+        { id_pekerjaan: "2.2.1.6.1", nama_pekerjaan: "Pengecoran Beton menggunakan Ready Mixed (untuk Bangunan Gedung)", satuan: "m3", score: 0.5890 },
+        { id_pekerjaan: "2.2.1.5.2", nama_pekerjaan: "Pembuatan Tangga Beton Bertulang", satuan: "m3", score: 0.5640 }
+      ]
+    },
+    { id: "sec-C", type: "section", code: "C", name: "PEKERJAAN DINDING & FINISH" },
+    {
+      id: "item-C-1", type: "item", sectionCode: "C", no: 1, code: "C.1",
+      name: "Pemasangan Dinding Bata Merah", volume: 240.0, unit: "m2", unitPrice: 185000,
+      ahsp_code: "3.7.14", ahsp_name: "Pemasangan Finishing Dinding Siar Pasangan Bata Merah", ahsp_unit: "m2", ahsp_status: "mapped_high", ahsp_score: 0.9569,
+      ahsp_candidates: [
+        { id_pekerjaan: "3.7.14", nama_pekerjaan: "Pemasangan Finishing Dinding Siar Pasangan Bata Merah", satuan: "m2", score: 0.9569 },
+        { id_pekerjaan: "3.7.1.1", nama_pekerjaan: "Pemasangan Dinding Bata Merah Tebal 1/2 Bata (1SP : 4PP)", satuan: "m2", score: 0.9120 },
+        { id_pekerjaan: "3.7.1.2", nama_pekerjaan: "Pemasangan Dinding Bata Merah Tebal 1/2 Bata (1SP : 2PP)", satuan: "m2", score: 0.8840 }
       ]
     },
     {
-      id: "item-C-6",
-      type: "item",
-      sectionCode: "C",
-      no: 6,
-      code: "C.6",
-      name: "Pemasangan Rangka Atap Baja Ringan C75 & Penutup Atap",
-      volume: 96.0,
-      unit: "m2",
-      unitPrice: 240000,
-      ahsp_code: "2.1.1.2",
-      ahsp_name: "Pemasangan Atap Jurai/Limasan Rangka Atap Baja Ringan (Canai Dingin) Profil C75",
-      ahsp_unit: "m2",
-      ahsp_status: "mapped_high",
-      ahsp_score: 0.8732,
+      id: "item-C-2", type: "item", sectionCode: "C", no: 2, code: "C.2",
+      name: "Plesteran dan Acian Dinding", volume: 480.0, unit: "m2", unitPrice: 95000,
+      ahsp_code: "3.7.8", ahsp_name: "Pemasangan Acian", ahsp_unit: "m2", ahsp_status: "mapped_high", ahsp_score: 0.7917,
       ahsp_candidates: [
-        { id_pekerjaan: "2.1.1.2", nama_pekerjaan: "Pemasangan Atap Jurai/Limasan Rangka Atap Baja Ringan (Canai Dingin) Profil C75", satuan: "m2", score: 0.8732 },
-        { id_pekerjaan: "2.1.1.1", nama_pekerjaan: "Pemasangan Atap Pelana Rangka Atap Baja Ringan (Canai Dingin) profil C75", satuan: "m2", score: 0.8691 }
+        { id_pekerjaan: "3.7.8", nama_pekerjaan: "Pemasangan Acian", satuan: "m2", score: 0.7917 },
+        { id_pekerjaan: "3.7.2.1", nama_pekerjaan: "Plesteran 1 SP : 4 PP Tebal 15 mm", satuan: "m2", score: 0.7640 },
+        { id_pekerjaan: "3.7.2.2", nama_pekerjaan: "Plesteran 1 SP : 2 PP Tebal 15 mm", satuan: "m2", score: 0.7320 }
+      ]
+    },
+    { id: "sec-D", type: "section", code: "D", name: "PEKERJAAN KUSEN, PINTU, JENDELA & LANTAI" },
+    {
+      id: "item-D-1", type: "item", sectionCode: "D", no: 1, code: "D.1",
+      name: "Pemasangan Pintu Utama (PJ1)", volume: 1.0, unit: "unit", unitPrice: 3500000,
+      ahsp_code: "3.11.1.5", ahsp_name: "Pemasangan Pintu Kaca Tebal 6 mm Rangka Aluminium", ahsp_unit: "m2", ahsp_status: "mapped_high", ahsp_score: 0.7606,
+      ahsp_candidates: [
+        { id_pekerjaan: "3.11.1.5", nama_pekerjaan: "Pemasangan Pintu Kaca Tebal 6 mm Rangka Aluminium", satuan: "m2", score: 0.7606 },
+        { id_pekerjaan: "3.11.1.1", nama_pekerjaan: "Pemasangan Kusen Pintu Kayu Kamper", satuan: "m3", score: 0.7240 },
+        { id_pekerjaan: "3.11.1.4", nama_pekerjaan: "Pemasangan Daun Pintu Panel Kayu", satuan: "m2", score: 0.6980 }
       ]
     },
     {
-      id: "sec-D",
-      type: "section",
-      code: "D",
-      name: "PEKERJAAN UTILITAS & MEP"
-    },
-    {
-      id: "item-D-1",
-      type: "item",
-      sectionCode: "D",
-      no: 1,
-      code: "D.1",
-      name: "Pemasangan Titik Lampu & Saklar/Stop Kontak",
-      volume: 28.0,
-      unit: "titik",
-      unitPrice: 175000,
-      ahsp_code: "5.1.5.13",
-      ahsp_name: "Pemasangan Instalasi Stop Kontak",
-      ahsp_unit: "titik",
-      ahsp_status: "mapped_high",
-      ahsp_score: 0.7584,
+      id: "item-D-2", type: "item", sectionCode: "D", no: 2, code: "D.2",
+      name: "Pemasangan Pintu Kaca/Aluminium (PJ2)", volume: 1.0, unit: "unit", unitPrice: 2800000,
+      ahsp_code: "3.11.1.5", ahsp_name: "Pemasangan Pintu Kaca Tebal 6 mm Rangka Aluminium", ahsp_unit: "m2", ahsp_status: "mapped_high", ahsp_score: 0.8988,
       ahsp_candidates: [
-        { id_pekerjaan: "5.1.5.13", nama_pekerjaan: "Pemasangan Instalasi Stop Kontak", satuan: "titik", score: 0.7584 },
-        { id_pekerjaan: "5.1.5.12", nama_pekerjaan: "Pemasangan Stop Kontak AC", satuan: "titik", score: 0.6535 }
+        { id_pekerjaan: "3.11.1.5", nama_pekerjaan: "Pemasangan Pintu Kaca Tebal 6 mm Rangka Aluminium", satuan: "m2", score: 0.8988 },
+        { id_pekerjaan: "3.11.1.6", nama_pekerjaan: "Pemasangan Pintu Aluminium Kaca Double", satuan: "m2", score: 0.8410 },
+        { id_pekerjaan: "3.11.1.2", nama_pekerjaan: "Pemasangan Kusen Pintu Aluminium 4 Inci", satuan: "m1", score: 0.7950 }
       ]
     },
     {
-      id: "item-D-2",
-      type: "item",
-      sectionCode: "D",
-      no: 2,
-      code: "D.2",
-      name: "Pemasangan Instalasi Pipa Air Bersih Ø3/4\"",
-      volume: 35.0,
-      unit: "m1",
-      unitPrice: 45000,
-      ahsp_code: "5.5.4.14",
-      ahsp_name: "Pemasangan Pipa PVC AW ; DN. 1-1/4\" (32 mm) + Isolasi",
-      ahsp_unit: "m",
-      ahsp_status: "mapped_medium",
-      ahsp_score: 0.5632,
+      id: "item-D-3", type: "item", sectionCode: "D", no: 3, code: "D.3",
+      name: "Pemasangan Pintu P1 & P2", volume: 6.0, unit: "unit", unitPrice: 2200000,
+      ahsp_code: "3.11.1.5", ahsp_name: "Pemasangan Pintu Kaca Tebal 6 mm Rangka Aluminium", ahsp_unit: "m2", ahsp_status: "mapped_high", ahsp_score: 0.7606,
       ahsp_candidates: [
-        { id_pekerjaan: "5.5.4.14", nama_pekerjaan: "Pemasangan Pipa PVC AW ; DN. 1-1/4\" (32 mm) + Isolasi", satuan: "m", score: 0.5632 },
-        { id_pekerjaan: "5.5.4.19", nama_pekerjaan: "Pemasangan Pipa PVC AW ; DN. 4\" (100 mm) + Isolasi", satuan: "m", score: 0.5627 },
-        { id_pekerjaan: "6.4.3.4", nama_pekerjaan: "Pemasangan pipa PPR PN 10, DN. 1-1/4\" (32 mm)", satuan: "m", score: 0.5627 }
+        { id_pekerjaan: "3.11.1.5", nama_pekerjaan: "Pemasangan Pintu Kaca Tebal 6 mm Rangka Aluminium", satuan: "m2", score: 0.7606 },
+        { id_pekerjaan: "3.11.1.4", nama_pekerjaan: "Pemasangan Daun Pintu Panel Kayu", satuan: "m2", score: 0.7250 },
+        { id_pekerjaan: "3.11.1.2", nama_pekerjaan: "Pemasangan Kusen Pintu Aluminium 4 Inci", satuan: "m1", score: 0.6910 }
       ]
     },
     {
-      id: "item-D-3",
-      type: "item",
-      sectionCode: "D",
-      no: 3,
-      code: "D.3",
-      name: "Pembuatan Septictank & Sumur Resapan",
-      volume: 1.0,
-      unit: "unit",
-      unitPrice: 6500000,
-      ahsp_code: "2.4.4.3",
-      ahsp_name: "Pemindahan Komponen untuk Kolom Pracetak ( ± 20 m)",
-      ahsp_unit: "buah",
-      ahsp_status: "mapped_medium",
-      ahsp_score: 0.5811,
+      id: "item-D-4", type: "item", sectionCode: "D", no: 4, code: "D.4",
+      name: "Pemasangan Pintu Kamar Mandi (P3)", volume: 3.0, unit: "unit", unitPrice: 1200000,
+      ahsp_code: "3.11.1.5", ahsp_name: "Pemasangan Pintu Kaca Tebal 6 mm Rangka Aluminium", ahsp_unit: "m2", ahsp_status: "mapped_high", ahsp_score: 0.7606,
       ahsp_candidates: [
-        { id_pekerjaan: "2.4.4.3", nama_pekerjaan: "Pemindahan Komponen untuk Kolom Pracetak ( ± 20 m)", satuan: "buah", score: 0.5811 },
-        { id_pekerjaan: "2.4.5.3", nama_pekerjaan: "Ereksi komponen untuk pelat pracetak", satuan: "buah", score: 0.5809 }
+        { id_pekerjaan: "3.11.1.5", nama_pekerjaan: "Pemasangan Pintu Kaca Tebal 6 mm Rangka Aluminium", satuan: "m2", score: 0.7606 },
+        { id_pekerjaan: "3.11.1.7", nama_pekerjaan: "Pemasangan Pintu PVC Kamar Mandi", satuan: "unit", score: 0.7410 },
+        { id_pekerjaan: "3.11.1.4", nama_pekerjaan: "Pemasangan Daun Pintu Panel Kayu", satuan: "m2", score: 0.6840 }
+      ]
+    },
+    {
+      id: "item-D-5", type: "item", sectionCode: "D", no: 5, code: "D.5",
+      name: "Pemasangan Jendela J1, J2, J3, J4", volume: 8.0, unit: "unit", unitPrice: 1800000,
+      ahsp_code: "3.11.2.3", ahsp_name: "Pemasangan Jendela Kaca uPVC 2 daun ukuran 1,150 m x 1,30 m", ahsp_unit: "buah", ahsp_status: "mapped_high", ahsp_score: 0.8157,
+      ahsp_candidates: [
+        { id_pekerjaan: "3.11.2.3", nama_pekerjaan: "Pemasangan Jendela Kaca uPVC 2 daun ukuran 1,150 m x 1,30 m", satuan: "buah", score: 0.8157 },
+        { id_pekerjaan: "3.11.2.1", nama_pekerjaan: "Pemasangan Kusen Jendela Aluminium 3 Inci", satuan: "m1", score: 0.7850 },
+        { id_pekerjaan: "3.11.2.2", nama_pekerjaan: "Pemasangan Jendela Kaca Tebal 5 mm", satuan: "m2", score: 0.7410 }
+      ]
+    },
+    {
+      id: "item-D-6", type: "item", sectionCode: "D", no: 6, code: "D.6",
+      name: "Pemasangan Keramik Lantai 60x60 cm", volume: 110.0, unit: "m2", unitPrice: 240000,
+      ahsp_code: "3.9.5.3", ahsp_name: "Pemasangan Lantai Ubin Granit Ukuran 60 cm x 60 cm (1SP : 2PP)", ahsp_unit: "m2", ahsp_status: "mapped_high", ahsp_score: 0.9417,
+      ahsp_candidates: [
+        { id_pekerjaan: "3.9.5.3", nama_pekerjaan: "Pemasangan Lantai Ubin Granit Ukuran 60 cm x 60 cm (1SP : 2PP)", satuan: "m2", score: 0.9417 },
+        { id_pekerjaan: "3.9.5.1", nama_pekerjaan: "Pemasangan Lantai Keramik 60 cm x 60 cm Polished", satuan: "m2", score: 0.8980 },
+        { id_pekerjaan: "3.9.5.2", nama_pekerjaan: "Pemasangan Lantai Keramik 50 cm x 50 cm", satuan: "m2", score: 0.8420 }
+      ]
+    },
+    {
+      id: "item-D-7", type: "item", sectionCode: "D", no: 7, code: "D.7",
+      name: "Pemasangan Keramik Lantai 30x30 cm (WC & Teras)", volume: 18.0, unit: "m2", unitPrice: 180000,
+      ahsp_code: "3.9.8.12", ahsp_name: "Pemasangan Lantai Keramik Ukuran 30 cm x 30 cm (1SP : 2PP), Unpolished", ahsp_unit: "m2", ahsp_status: "mapped_high", ahsp_score: 0.9522,
+      ahsp_candidates: [
+        { id_pekerjaan: "3.9.8.12", nama_pekerjaan: "Pemasangan Lantai Keramik Ukuran 30 cm x 30 cm (1SP : 2PP), Unpolished", satuan: "m2", score: 0.9522 },
+        { id_pekerjaan: "3.9.8.11", nama_pekerjaan: "Pemasangan Lantai Keramik Ukuran 20 cm x 20 cm Unpolished", satuan: "m2", score: 0.8910 },
+        { id_pekerjaan: "3.9.8.10", nama_pekerjaan: "Pemasangan Dinding Keramik 20 cm x 25 cm", satuan: "m2", score: 0.8240 }
+      ]
+    },
+    { id: "sec-E", type: "section", code: "E", name: "PEKERJAAN PLAFON, ATAP & MEP" },
+    {
+      id: "item-E-1", type: "item", sectionCode: "E", no: 1, code: "E.1",
+      name: "Pemasangan Plafon Gypsum + Rangka Hollow", volume: 130.0, unit: "m2", unitPrice: 175000,
+      ahsp_code: "3.5.3.1", ahsp_name: "Pemasangan rangka besi hollow galvanis 40.40 mm, modul 60 x 60 cm untuk langit-langit (plafon)", ahsp_unit: "m2", ahsp_status: "mapped_high", ahsp_score: 0.8719,
+      ahsp_candidates: [
+        { id_pekerjaan: "3.5.3.1", nama_pekerjaan: "Pemasangan rangka besi hollow galvanis 40.40 mm, modul 60 x 60 cm untuk langit-langit (plafon)", satuan: "m2", score: 0.8719 },
+        { id_pekerjaan: "3.5.3.2", nama_pekerjaan: "Pemasangan Langit-langit Gypsum Board 9 mm", satuan: "m2", score: 0.8420 },
+        { id_pekerjaan: "3.5.3.3", nama_pekerjaan: "Pemasangan List Plafon Gypsum Profil", satuan: "m1", score: 0.7850 }
+      ]
+    },
+    {
+      id: "item-E-2", type: "item", sectionCode: "E", no: 2, code: "E.2",
+      name: "Pemasangan Rangka Atap Baja Ringan C75", volume: 95.0, unit: "m2", unitPrice: 220000,
+      ahsp_code: "2.1.1.2", ahsp_name: "Pemasangan Atap Jurai/Limasan Rangka Atap Baja Ringan (Canai Dingin) Profil C75", ahsp_unit: "m2", ahsp_status: "mapped_high", ahsp_score: 0.9348,
+      ahsp_candidates: [
+        { id_pekerjaan: "2.1.1.2", nama_pekerjaan: "Pemasangan Atap Jurai/Limasan Rangka Atap Baja Ringan (Canai Dingin) Profil C75", satuan: "m2", score: 0.9348 },
+        { id_pekerjaan: "2.1.1.1", nama_pekerjaan: "Pemasangan Rangka Atap Baja Ringan Kuda-Kuda Canai Dingin", satuan: "m2", score: 0.9010 },
+        { id_pekerjaan: "2.1.1.3", nama_pekerjaan: "Pemasangan Reng Baja Ringan Hat Section", satuan: "m2", score: 0.8240 }
+      ]
+    },
+    {
+      id: "item-E-3", type: "item", sectionCode: "E", no: 3, code: "E.3",
+      name: "Pemasangan Penutup Atap Genteng Beton Flat", volume: 95.0, unit: "m2", unitPrice: 165000,
+      ahsp_code: "3.1.1.4", ahsp_name: "Pemasangan Atap Genteng Beton", ahsp_unit: "m2", ahsp_status: "mapped_high", ahsp_score: 0.9602,
+      ahsp_candidates: [
+        { id_pekerjaan: "3.1.1.4", nama_pekerjaan: "Pemasangan Atap Genteng Beton", satuan: "m2", score: 0.9602 },
+        { id_pekerjaan: "3.1.1.1", nama_pekerjaan: "Pemasangan Atap Genteng Keramik", satuan: "m2", score: 0.8920 },
+        { id_pekerjaan: "3.1.1.5", nama_pekerjaan: "Pemasangan Nok Genteng Beton", satuan: "m1", score: 0.8410 }
+      ]
+    },
+    {
+      id: "item-E-4", type: "item", sectionCode: "E", no: 4, code: "E.4",
+      name: "Pemasangan Titik Lampu & Saklar/Stop Kontak", volume: 24.0, unit: "titik", unitPrice: 250000,
+      ahsp_code: "5.1.5.13", ahsp_name: "Pemasangan Instalasi Stop Kontak", ahsp_unit: "titik", ahsp_status: "mapped_high", ahsp_score: 0.8555,
+      ahsp_candidates: [
+        { id_pekerjaan: "5.1.5.13", nama_pekerjaan: "Pemasangan Instalasi Stop Kontak", satuan: "titik", score: 0.8555 },
+        { id_pekerjaan: "5.1.5.11", nama_pekerjaan: "Pemasangan Instalasi Titik Lampu Utama NYM 3x2.5 mm2", satuan: "titik", score: 0.8410 },
+        { id_pekerjaan: "5.1.5.12", nama_pekerjaan: "Pemasangan Saklar Ganda / Seri", satuan: "buah", score: 0.7950 }
+      ]
+    },
+    {
+      id: "item-E-5", type: "item", sectionCode: "E", no: 5, code: "E.5",
+      name: "Pemasangan Pipa Air Bersih & Kotor", volume: 45.0, unit: "m1", unitPrice: 120000,
+      ahsp_code: "6.4.4.3", ahsp_name: 'Pemasangan pipa BS MED CLASS, DN. 1" (25 mm)', ahsp_unit: "m", ahsp_status: "mapped_high", ahsp_score: 0.7381,
+      ahsp_candidates: [
+        { id_pekerjaan: "6.4.4.3", nama_pekerjaan: 'Pemasangan pipa BS MED CLASS, DN. 1" (25 mm)', satuan: "m", score: 0.7381 },
+        { id_pekerjaan: "6.4.1.2", nama_pekerjaan: "Pemasangan Pipa PVC AW Diameter 3/4 Inci", satuan: "m1", score: 0.7120 },
+        { id_pekerjaan: "6.4.1.4", nama_pekerjaan: "Pemasangan Pipa PVC AW Diameter 3 Inci (Air Kotor)", satuan: "m1", score: 0.6890 }
+      ]
+    },
+    {
+      id: "item-E-6", type: "item", sectionCode: "E", no: 6, code: "E.6",
+      name: "Pembuatan Septic Tank & Sumur Resapan", volume: 1.0, unit: "set", unitPrice: 6500000,
+      ahsp_code: "6.2.4.1", ahsp_name: "Pembuatan Sumur Resapan Air Limbah diameter 80 cm, t=100 cm (dengan Tutup Beton)", ahsp_unit: "buah", ahsp_status: "mapped_high", ahsp_score: 0.7789,
+      ahsp_candidates: [
+        { id_pekerjaan: "6.2.4.1", nama_pekerjaan: "Pembuatan Sumur Resapan Air Limbah diameter 80 cm, t=100 cm (dengan Tutup Beton)", satuan: "buah", score: 0.7789 },
+        { id_pekerjaan: "6.2.4.2", nama_pekerjaan: "Pembuatan Sumur Resapan Air Limbah diameter 80 cm, t=100 cm (tanpa Tutup Beton)", satuan: "buah", score: 0.7744 },
+        { id_pekerjaan: "6.6.1.1", nama_pekerjaan: "Pembuatan Sumur Resapan Air Hujan diameter 80 cm, t=100 cm", satuan: "buah", score: 0.7555 }
       ]
     }
   ];
@@ -407,9 +295,7 @@ const Anggaran = () => {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       } catch (e) {
         console.error(e);
       }
@@ -431,7 +317,6 @@ const Anggaran = () => {
     localStorage.setItem(`estimator_uploaded_rows_${activeProjectId}`, JSON.stringify(rows));
   }, [rows, activeProjectId]);
 
-  // Listen for returning toast message from PemetaanAhsp page
   useEffect(() => {
     const toastMsg = sessionStorage.getItem('estimator_toast_msg');
     if (toastMsg) {
@@ -454,42 +339,17 @@ const Anggaran = () => {
     return { title: `Proyek Estimasi #${projectId}`, client: 'PT Beecons' };
   }, [projectId]);
 
-  // Controls state & Infinite Scroll
   const tableContainerRef = useRef(null);
   const [visibleLimit, setVisibleLimit] = useState(50);
   const [searchQuery, setSearchQuery] = useState("");
-  const [ppnRate, setPpnRate] = useState(0);
 
-  // Standard Modals state
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
   const [targetSectionCode, setTargetSectionCode] = useState("A");
 
-  // AHSP Mapping State
-  const [showAhspModal, setShowAhspModal] = useState(false);
-  const [ahspTargetRow, setAhspTargetRow] = useState(null);
-  const [ahspSearchQuery, setAhspSearchQuery] = useState("");
-  const [ahspSearchResults, setAhspSearchResults] = useState([]);
-  const [ahspCoreQuery, setAhspCoreQuery] = useState("");
-  const [showMasterCollection, setShowMasterCollection] = useState(false);
-  const [isSearchingAhsp, setIsSearchingAhsp] = useState(false);
-  const [isMappingBatch, setIsMappingBatch] = useState(false);
-
-  // Form states
-  const [formData, setFormData] = useState({
-    name: "",
-    volume: 0,
-    unit: "",
-    unitPrice: 0
-  });
-
-  // Toast notification state
-  const [toast, setToast] = useState({
-    show: false,
-    message: "",
-    type: "success"
-  });
+  const [formData, setFormData] = useState({ name: "", volume: 0, unit: "", unitPrice: 0 });
+  const [toast, setToast] = useState({ show: false, message: "", type: "success" });
 
   const triggerToast = (message, type = "success") => {
     setToast({ show: true, message, type });
@@ -505,14 +365,11 @@ const Anggaran = () => {
       sessionStorage.clear();
       const freshData = getInitialData();
       setRows(freshData);
-      setCurrentPage(1);
       setSearchQuery("");
-      setPpnRate(0);
       triggerToast("Cache berhasil dihapus & data estimasi diatur ulang ke default!", "success");
     }
   };
 
-  // Export CSV
   const handleExportCSV = () => {
     let csvContent = "\ufeffsep=;\n";
     csvContent += "Kode AHSP;Uraian Pekerjaan;Volume;Satuan;Status AHSP\n";
@@ -541,123 +398,10 @@ const Anggaran = () => {
     triggerToast("Berhasil mengekspor data WBS & AHSP ke Excel (CSV)!", "success");
   };
 
-  // AHSP Dedicated Page Navigation
   const handleOpenAhspModal = (row) => {
     navigate(`/pemetaan-ahsp?id=${activeProjectId}`, { state: { projectId: activeProjectId, targetRow: row } });
   };
 
-  const fetchAhspSearch = async (query) => {
-    setIsSearchingAhsp(true);
-    const PYTHON_API_BASE = typeof window !== 'undefined' ? `http://${window.location.hostname}:8200` : (import.meta.env.VITE_PYTHON_API_URL || 'http://localhost:8200');
-    try {
-      const url = query && query.trim()
-        ? `${PYTHON_API_BASE}/api/ahsp/search?q=${encodeURIComponent(query)}&limit=100`
-        : `${PYTHON_API_BASE}/api/ahsp/items?limit=500`;
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        setAhspSearchResults(data.items || []);
-        if (data.core_query) setAhspCoreQuery(data.core_query);
-      } else {
-        setAhspSearchResults([]);
-      }
-    } catch (err) {
-      console.error("Error fetching AHSP search:", err);
-      setAhspSearchResults([]);
-    } finally {
-      setIsSearchingAhsp(false);
-    }
-  };
-
-  const handleSelectAhspItem = (selectedAhsp) => {
-    if (!ahspTargetRow) return;
-
-    const newRows = rows.map((r) => {
-      if (r.id === ahspTargetRow.id) {
-        return {
-          ...r,
-          code: selectedAhsp.id_pekerjaan,
-          ahsp_code: selectedAhsp.id_pekerjaan,
-          ahsp_name: selectedAhsp.nama_pekerjaan,
-          ahsp_unit: selectedAhsp.satuan,
-          unit: selectedAhsp.satuan || r.unit,
-          ahsp_score: selectedAhsp.score || 1.0,
-          ahsp_status: "mapped_high",
-          ahsp_candidates: null
-        };
-      }
-      return r;
-    });
-
-    setRows(newRows);
-    setShowAhspModal(false);
-    setAhspTargetRow(null);
-    triggerToast(`Berhasil menghubungkan ke AHSP ${selectedAhsp.id_pekerjaan}!`, "success");
-  };
-
-  // Batch Map All Unmapped Items against AHSP Engine
-  const handleBatchAhspMap = async () => {
-    setIsMappingBatch(true);
-    triggerToast("Proses pemetaan otomatis AHSP sedang berjalan...", "success");
-    const PYTHON_API_BASE = typeof window !== 'undefined' ? `http://${window.location.hostname}:8200` : (import.meta.env.VITE_PYTHON_API_URL || 'http://localhost:8200');
-
-    try {
-      let mappedCount = 0;
-      const updatedRows = await Promise.all(
-        rows.map(async (r) => {
-          if (r.type !== 'item') return r;
-
-          try {
-            const res = await fetch(`${PYTHON_API_BASE}/api/ahsp/map-item`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ item_name: r.name, item_unit: r.unit || '' })
-            });
-
-            if (res.ok) {
-              const data = await res.json();
-              if (data.ahsp_code && (data.ahsp_status === 'mapped_high' || data.ahsp_status === 'mapped_medium')) {
-                mappedCount++;
-                return {
-                  ...r,
-                  code: data.ahsp_code,
-                  ahsp_code: data.ahsp_code,
-                  ahsp_name: data.ahsp_name,
-                  ahsp_unit: data.ahsp_unit,
-                  ahsp_score: data.ahsp_score,
-                  ahsp_status: data.ahsp_status,
-                  ahsp_candidates: data.ahsp_candidates
-                };
-              }
-            }
-          } catch (e) {
-            console.error("Item mapping error:", e);
-          }
-          return r;
-        })
-      );
-
-      setRows(updatedRows);
-      triggerToast(`Selesai! ${mappedCount} item pekerjaan berhasil diselaraskan dengan AHSP.`, "success");
-    } catch (err) {
-      console.error("Batch map error:", err);
-      triggerToast("Gagal terhubung ke backend AHSP.", "warning");
-    } finally {
-      setIsMappingBatch(false);
-    }
-  };
-
-  // Dynamic calculations
-  const totalProjectPrice = useMemo(() => {
-    return rows.reduce((sum, r) => {
-      if (r.type === 'item') {
-        return sum + (r.volume * (r.unitPrice || 0));
-      }
-      return sum;
-    }, 0);
-  }, [rows]);
-
-  // Filter rows
   const filteredRows = useMemo(() => {
     if (!searchQuery.trim()) return rows;
 
@@ -687,7 +431,6 @@ const Anggaran = () => {
     return result;
   }, [rows, searchQuery]);
 
-  // Reset visible limit on search query or row change
   useEffect(() => {
     setVisibleLimit(50);
   }, [searchQuery, rows]);
@@ -703,13 +446,6 @@ const Anggaran = () => {
         setVisibleLimit((prev) => Math.min(filteredRows.length, prev + 50));
       }
     }
-  };
-
-  // Add / Edit / Delete handlers
-  const handleOpenAddModal = (sectionCode) => {
-    setTargetSectionCode(sectionCode);
-    setFormData({ name: "", volume: 1, unit: "m2", unitPrice: 10000 });
-    setShowAddModal(true);
   };
 
   const handleAddItem = (e) => {
@@ -753,17 +489,6 @@ const Anggaran = () => {
     triggerToast(`Berhasil menambahkan "${formData.name}" ke Bagian ${targetSectionCode}!`);
   };
 
-  const handleOpenEditModal = (item) => {
-    setSelectedRow(item);
-    setFormData({
-      name: item.name,
-      volume: item.volume,
-      unit: item.unit,
-      unitPrice: item.unitPrice
-    });
-    setShowEditModal(true);
-  };
-
   const handleEditItem = (e) => {
     e.preventDefault();
     if (!selectedRow) return;
@@ -795,211 +520,48 @@ const Anggaran = () => {
     }
   };
 
-  const handleDeleteSection = (section) => {
-    if (window.confirm(`Apakah Anda yakin ingin menghapus seluruh bagian "${section.code}. ${section.name}"?`)) {
-      const newRows = rows.filter(r => {
-        if (r.id === section.id) return false;
-        if (r.type === 'item' && r.sectionCode === section.code) return false;
-        return true;
-      });
-
-      setRows(newRows);
-      triggerToast(`Bagian "${section.code}. ${section.name}" berhasil dihapus.`, "warning");
-    }
-  };
-
   return (
     <div className="min-h-screen bg-[#f7faf8] pb-16 antialiased text-slate-800">
       <Navbar onResetData={handleResetData} />
 
-      {/* Main Title Section */}
-      <div className="max-w-[1240px] mx-auto px-4 mt-6 no-print">
-        <div className="w-full bg-[#f1faf2] border border-[#dff3e1] rounded-lg py-4 px-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
-          <div>
-            <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100/50 px-2.5 py-1 rounded-full uppercase tracking-wider">
-              Klien: {projectDetail.client}
-            </span>
-            <h1 className="text-base md:text-lg font-bold tracking-wide text-emerald-950 uppercase mt-2 select-none">
-              {projectDetail.title}
-            </h1>
-          </div>
+      <SummaryHeaderCard
+        projectDetail={projectDetail}
+        handleExportCSV={handleExportCSV}
+      />
 
-          <div className="flex flex-wrap items-center gap-2.5">
-            {/* Export Excel (CSV) Button */}
-            <button
-              onClick={handleExportCSV}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1.5"
-            >
-              <Icons.Grid className="w-3.5 h-3.5" />
-              Ekspor CSV
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Workspace Container */}
       <main className="max-w-[1240px] mx-auto px-4 mt-6">
         <div className="bg-white rounded-xl shadow-xs border border-slate-100 p-6">
+          <ExportToolbar
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+          />
 
-          {/* Controls Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100 mb-5">
-
-
-            {/* Right Controls: Search bar */}
-            <div className="flex items-center gap-2.5 w-full sm:w-auto max-w-xs">
-              <span className="text-[13px] text-slate-600 font-medium whitespace-nowrap">Cari Data:</span>
-              <div className="relative w-full">
-                <input
-                  type="text"
-                  placeholder="Cari nama pekerjaan..."
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="w-full bg-white border border-slate-200 rounded-md py-1.5 pl-3 pr-9 text-[13px] text-slate-700 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 shadow-2xs transition-colors"
-                />
-                <div className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400">
-                  <Icons.Search className="w-4 h-4" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Table Container with Infinite Scroll */}
-          <div
-            ref={tableContainerRef}
-            onScroll={handleTableScroll}
-            className="overflow-x-auto overflow-y-auto max-h-[600px] rounded-lg border border-slate-200 shadow-3xs mb-4 relative custom-scrollbar bg-white"
-          >
-            <table className="w-full border-collapse text-left text-[13px]">
-              <thead className="bg-[#009624] text-white font-semibold sticky top-0 z-10 shadow-xs">
-                <tr>
-                  <th scope="col" className="py-3 px-4 text-center w-12 bg-[#009624] select-none">No.</th>
-                  <th scope="col" className="py-3 px-4 text-left min-w-[340px] bg-[#009624]">Uraian Pekerjaan & Standar AHSP</th>
-                  <th scope="col" className="py-3 px-4 text-right w-24 bg-[#009624]">Volume</th>
-                  <th scope="col" className="py-3 px-4 text-center w-20 bg-[#009624]">Satuan</th>
-                  <th scope="col" className="py-3 px-4 text-center w-28 bg-[#009624]">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
-                {displayedRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="py-12 text-center text-slate-400 font-medium">
-                      Tidak ada data yang ditemukan.
-                    </td>
-                  </tr>
-                ) : (
-                  displayedRows.map((row) => {
-                    if (row.type === 'section') {
-                      return (
-                        <tr key={row.id} className="bg-slate-50/70 hover:bg-slate-100/50 transition-colors font-bold text-slate-800 group">
-                          <td className="py-3 px-4 text-center select-none">{row.code}</td>
-                          <td colSpan={3} className="py-3 px-4 uppercase tracking-wide text-[12.5px] text-emerald-950">
-                            {row.name}
-                          </td>
-                          <td className="py-3 px-4 text-center"></td>
-                        </tr>
-                      );
-                    }
-
-                    // Item row with AHSP Badge rendering (High >= 85%, Medium >= 65%)
-                    const isHighMapped = row.ahsp_status === 'mapped_high' || (row.ahsp_score && row.ahsp_score >= 0.85);
-                    const isMedMapped = row.ahsp_status === 'mapped_medium' || (row.ahsp_score && row.ahsp_score >= 0.65 && row.ahsp_score < 0.85);
-
-                    // Formatted WBS Number for far-left column (e.g. A.1, A.2, A.1.1)
-                    const wbsNumber = row.wbs_code || (row.sectionCode ? `${row.sectionCode}.${row.no}` : row.no);
-
-                    // Title display: Standar AHSP on top if mapped, otherwise AI item name on top
-                    const topTitle = row.ahsp_name || row.name;
-
-                    return (
-                      <tr key={row.id} className="hover:bg-slate-50/50 transition-all group duration-150">
-                        {/* No. Column (WBS hierarchy code e.g. A.1, A.2) */}
-                        <td className="py-3 px-4 text-center font-bold text-slate-700 select-none tabular-nums text-[12.5px]">
-                          {wbsNumber}
-                        </td>
-                        {/* Uraian Pekerjaan Column */}
-                        <td className="py-3 px-4 max-w-[420px]">
-                          <div className="flex flex-col gap-1">
-                            {/* Top: Standar AHSP name */}
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-semibold text-slate-800 break-words">{topTitle}</span>
-                            </div>
-
-                            {/* Bottom: Subtitle for cross-referencing */}
-                            {row.ahsp_name && row.ahsp_name !== row.name && (
-                              <span className="text-[11.5px] text-slate-500 flex items-center gap-1">
-                                <span className="text-slate-400">Hasil Deteksi:</span>
-                                <span className="font-medium text-slate-600">{row.name}</span>
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-right tabular-nums font-medium text-slate-700">
-                          {formatNumber(row.volume)}
-                        </td>
-                        <td className="py-3 px-4 text-center text-slate-500 font-semibold">{row.unit}</td>
-                        <td className="py-3 px-4 text-center">
-                          <div className="inline-flex items-center gap-1.5 bg-[#d2f3d5] px-2.5 py-1 rounded-full shadow-3xs group-hover:bg-[#c3eec7] transition-all">
-                            <button
-                              onClick={() => handleOpenAhspModal(row)}
-                              className="w-6 h-6 rounded-full bg-[#009624] hover:bg-emerald-700 text-white flex items-center justify-center transition-transform hover:scale-105"
-                              title="Pemetaan Item Pekerjaan AHSP"
-                            >
-                              <Icons.Book className="w-3.5 h-3.5" />
-                            </button>
-
-                            <button
-                              onClick={() => handleDeleteItem(row)}
-                              className="w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center transition-transform hover:scale-105"
-                              title="Hapus Item Pekerjaan"
-                            >
-                              <Icons.Trash className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-
-            {/* Infinite Scroll Footer inside container */}
-            {visibleLimit < filteredRows.length && (
-              <div
-                onClick={() => setVisibleLimit((prev) => Math.min(filteredRows.length, prev + 50))}
-                className="py-2.5 bg-slate-50 border-t border-slate-200 text-center text-[11.5px] text-[#009624] font-semibold cursor-pointer hover:bg-slate-100 transition-colors"
-              >
-                ▼ Gulir ke bawah atau klik di sini untuk memuat data berikutnya (+50 baris)
-              </div>
-            )}
-
-            {visibleLimit >= filteredRows.length && filteredRows.length > 0 && (
-              <div className="py-2.5 bg-slate-50 border-t border-slate-200 text-center text-[11.5px] text-slate-500 font-semibold">
-                ✓ Semuanya telah dimuat ({filteredRows.length.toLocaleString('id-ID')} baris data BOQ)
-              </div>
-            )}
-          </div>
-
+          <WbsSectionTable
+            tableContainerRef={tableContainerRef}
+            handleTableScroll={handleTableScroll}
+            displayedRows={displayedRows}
+            filteredRows={filteredRows}
+            visibleLimit={visibleLimit}
+            setVisibleLimit={setVisibleLimit}
+            handleOpenAhspModal={handleOpenAhspModal}
+            handleDeleteItem={handleDeleteItem}
+          />
         </div>
       </main>
 
-      {/* Toast Notification */}
       {toast.show && (
-        <div className={`fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-4.5 py-3 rounded-lg shadow-xl text-white font-medium transition-all transform translate-y-0 animate-bounce duration-300 ${toast.type === 'success'
-          ? 'bg-emerald-600 border border-emerald-500'
-          : toast.type === 'warning'
-            ? 'bg-amber-600 border border-amber-500'
-            : 'bg-red-600 border border-red-500'
-          }`}>
+        <div className={`fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-4.5 py-3 rounded-lg shadow-xl text-white font-medium transition-all transform translate-y-0 animate-bounce duration-300 ${
+          toast.type === 'success'
+            ? 'bg-emerald-600 border border-emerald-500'
+            : toast.type === 'warning'
+              ? 'bg-amber-600 border border-amber-500'
+              : 'bg-red-600 border border-red-500'
+        }`}>
           <Icons.Info className="w-5 h-5" />
           <span className="text-[13px]">{toast.message}</span>
         </div>
       )}
 
-      {/* Modal - Add Item */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-fade-in">
           <div className="bg-white rounded-xl shadow-2xl border border-slate-100 max-w-md w-full overflow-hidden transform scale-100 transition-all">
@@ -1080,7 +642,6 @@ const Anggaran = () => {
         </div>
       )}
 
-      {/* Modal - Edit Item */}
       {showEditModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-fade-in">
           <div className="bg-white rounded-xl shadow-2xl border border-slate-100 max-w-md w-full overflow-hidden transform scale-100 transition-all">
@@ -1166,7 +727,6 @@ const Anggaran = () => {
           </div>
         </div>
       )}
-
     </div>
   );
 };
