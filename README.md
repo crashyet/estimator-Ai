@@ -1,156 +1,193 @@
-# 🏗️ AI-Powered Quantity Estimator & RAB Engine
+# 🏗️ AI Construction Estimator — WBS Takeoff & AHSP Mapper
 
-A modern, full-stack AI platform for automatic **Quantity Surveying (QS)**, **100% Real-Data Volumetric Takeoff**, and **AHSP VectorDB Standard Mapping** (SE PUPR 2025) directly from engineering drawings & BIM models (**DWG**, **DXF**, **DWT**, **DWF**, **SVG**, **PLT**, **IFC**, **RVT**, **NWD**, **SKP**, **PDF**, **JPG**).
-
-Driven by direct vector entity extraction (`ezdwg`, `ezdxf`), OpenBIM parametric parsing (`ifcopenshell`, Autodesk APS Cloud), VectorDB semantic mapping (`ChromaDB` + `Sentence Transformers`), and multimodal AI reasoning (**Google Gemini LLM**), this system eliminates manual measurement overhead, generating precise Work Breakdown Structure (WBS) items, real volumetric calculations, and mapped cost estimation tables.
+> **Sistem estimasi biaya konstruksi berbasis AI** yang menganalisis gambar teknik (CAD, BIM, PDF, Image) dan menghasilkan **Rencana Anggaran Biaya (RAB)** terstruktur berstandar Indonesia, lengkap dengan pemetaan otomatis ke database AHSP nasional.
 
 ---
 
-## 🏛️ System Architecture
+## ✨ Fitur Utama
 
-```mermaid
-flowchart LR
-    User[Client Browser] -->|Upload CAD/BIM/PDF| Frontend[React + Vite Frontend\n:5173]
-    Frontend -->|POST /api/rab/analyze-image| Backend[CodeIgniter 4 Backend\n:8080]
-    Backend -->|Multipart Proxy Request| FastApi[Python FastAPI Engine\n:8200]
-    
-    subgraph Python AI Estimator Engine (api_v2)
-        FastApi --> Parser{File Extension}
-        Parser -->|.dwg / .dxf / .plt / .dwf| VectorEngine[ezdwg / ezdxf / Vector Extractor]
-        Parser -->|.ifc / .rvt / .nwd / .skp| BimEngine[ifcopenshell / APS Cloud Engine]
-        Parser -->|.pdf / .jpg / .png| VisionEngine[Multimodal Vision Engine]
-        
-        VectorEngine -->|Structured CAD Payload| Gemini[Google Gemini LLM Engine]
-        BimEngine -->|3D Parametric Quantities| Gemini
-        VisionEngine -->|Multimodal Visual & Text| Gemini
-        
-        Gemini -->|Dynamic WBS Takeoff JSON| AhspMapper[AHSP VectorDB Mapper Engine\nChromaDB + PUPR 2025]
-    end
+| Fitur | Deskripsi |
+|---|---|
+| 📐 **CAD Takeoff** | Parse DWG/DXF/SVG/PLT secara native, ekstrak layer, dimensi, block attribute |
+| 🏢 **BIM Takeoff** | Parse IFC via `ifcopenshell`; konversi Revit `.rvt` via Autodesk Cloud (APS) |
+| 📄 **PDF Takeoff** | Analisis multimodal set gambar DED multi-halaman via Gemini Vision |
+| 🖼️ **Image Takeoff** | Analisis cetak biru arsitektur (JPG/PNG) via Gemini Vision |
+| 🤖 **Gemini AI Engine** | Multi-tier fallback: Primary API → Gemini SDK → Gemini REST |
+| 🇮🇩 **AHSP Mapper** | Semantic embedding matching ke database AHSP Indonesia |
+| 📊 **Dashboard RAB** | UI interaktif React + AI candidate popover per item pekerjaan |
+| 📥 **Export** | Export RAB ke Excel (`.xlsx`) atau JSON |
 
-    AhspMapper -->|Mapped RAB Response| FastApi
-    FastApi -->|Formatted Response| Backend
-    Backend -->|Response JSON| Frontend
+---
+
+## 🏗️ Arsitektur Sistem
+
+Alur data berjalan dari **Frontend → Backend (CI4) → API V2**:
+
+```
+[User — React Dashboard (frontend/)]
+         │  Upload file + form data
+         ▼
+[Backend — CodeIgniter 4 (backend/)]
+         │  API Gateway & Request Proxy
+         │  POST /api/rab/analyze → forward ke Python API
+         ▼
+[API V2 — FastAPI Python (api_v2/)]
+         │
+         ├─ src/cad_parser   → ekstraksi entitas vektor DWG/DXF
+         ├─ src/bim_parser   → ekstraksi kuantitas IFC/Revit
+         ├─ src/aps_client   → Autodesk Cloud konversi Revit
+         ├─ src/prompts      → AI System Prompts (aturan QS Indonesia)
+         ├─ src/llm_estimator→ Gemini AI Engine (multi-tier fallback)
+         └─ src/schemas      → Pydantic Validation
+         │
+         ▼
+[AHSP Vector DB — Semantic Mapping]
+         │
+         ▼
+[JSON DynamicTakeoffResponse → Frontend]
 ```
 
----
-
-## ⚡ Key Features
-
-- **100% Real-Data Guarantee (Zero Dummy Policy)**: Complete removal of static dummy numbers, hardcoded fallback dimensions, and sample prompt volumes. Every quantity ($m^3$, $m^2$, $m^1$, unit, set, ls) is dynamically derived from project metadata and AI vector reasoning.
-- **AHSP Semantic VectorDB Mapper (`ChromaDB` + `IndoRoBERTa`)**: Maps extracted work items against 8,900+ official SE PUPR 2025 standard items with precision confidence scoring:
-  - **High Confidence (>= 85%)**: Automated high-precision mapping.
-  - **Medium Confidence (65% – 84%)**: Top-3 candidate recommendations.
-  - **Unmapped (< 65%)**: Flagged for QS manual override.
-- **Multi-Format Vector CAD Extraction**: Reads pure vector entities (`TEXT`, `MTEXT`, `DIMENSION`, block schedules) directly from binary `.dwg`, `.dxf`, `.dwt`, `.dwf`, `.dwfx`, `.svg`, and `.plt` files without heavy raster conversion.
-- **3D BIM & Cloud Model Conversion**: Parses OpenBIM `.ifc` files directly via `ifcopenshell` and native Revit (`.rvt`, `.rfa`), Navisworks (`.nwd`, `.nwc`), SketchUp (`.skp`) files via local binary CLI or Autodesk Platform Services (APS) Cloud API.
-- **Interactive React Dashboard**: High-performance UI for visualizing WBS sections, confidence badges, manual AHSP overrides, and Excel report export.
+Lihat **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** untuk diagram sequence lengkap.
 
 ---
 
-## 📂 Project Structure
+## 📁 Struktur Direktori
 
-```text
+```
 estimator/
-├── frontend/               # React + Vite Frontend UI (AHSP badges & override modal)
-│   ├── src/
-│   │   ├── components/     # UI Components (Navbar, Icons, etc.)
-│   │   ├── pages/          # Application Pages (Anggaran, Laporan, Project)
-│   │   └── services/       # API Service Integration (api.js & AHSP endpoints)
-│   ├── .env.example        # Frontend environment template
-│   └── package.json
+├── frontend/                        # ⚛️  Frontend React 18 + Vite (UI Dashboard)
+│   ├── package.json
+│   └── src/
+│       ├── pages/
+│       │   ├── Project.jsx          # Daftar proyek
+│       │   ├── Anggaran.jsx         # RAB detail + AI candidate popover
+│       │   └── Laporan.jsx          # Laporan analitik & export
+│       └── components/              # Komponen UI reusable
 │
-├── backend/                # CodeIgniter 4 PHP Backend API
+├── backend/                         # 🐘 Backend Gateway CodeIgniter 4 (PHP Gateway)
 │   ├── app/
-│   │   ├── Config/         # App, Database, Routes configuration
-│   │   └── Controllers/    # RABController.php (Proxy to Python API)
-│   ├── env                 # CI4 environment template
-│   └── public/             # Public webroot index.php
+│   │   ├── Controllers/
+│   │   │   └── RABController.php    # Proxy controller forwarding request ke Python API
+│   │   └── Config/
+│   │       └── Routes.php           # Routing API CodeIgniter
+│   ├── public/                      # Web root (index.php)
+│   └── .env                         # Konfigurasi CI4 (PYTHON_API_URL, dll.)
 │
-├── api_v2/                 # Production Python FastAPI Engine (Native CAD, BIM, AHSP VectorDB)
-│   ├── ahsp/               # ChromaDB VectorDB & SE PUPR 2025 dataset
-│   ├── bim_parser.py       # Direct OpenBIM & APS cloud quantity extractor
-│   ├── cad_parser.py       # Direct ezdwg / ezdxf / vector entity extractor
-│   ├── llm_estimator.py    # Google Gemini LLM Takeoff engine (Zero-Dummy Prompts)
-│   ├── main.py             # FastAPI Server & CLI runner
-│   ├── schemas.py          # Pydantic data schemas (0.0 volume pass-through)
-│   ├── exporter.py         # Excel & JSON export utility
-│   ├── .env.example        # Python service environment template
-│   └── requirements.txt    # Python dependencies
+├── api_v2/                          # 🐍 AI Engine FastAPI Python (V2 Microservice)
+│   ├── main.py                      # Entry point server & CLI runner
+│   ├── requirements.txt             # Python dependencies
+│   ├── .env.example                 # Template variabel lingkungan
+│   ├── ahsp/                        # Vector DB & semantic mapper AHSP
+│   │   └── ahsp_mapper.py           # Core embedding search engine
+│   ├── routers/                     # Route REST API
+│   │   ├── takeoff.py               # Endpoint takeoff (CAD/BIM/PDF/Image)
+│   │   └── ahsp.py                  # Endpoint pencarian & mapping AHSP
+│   └── src/                         # Micro-modules logika bisnis (< 500 baris/file)
+│       ├── schemas.py               # Pydantic schemas (DynamicTakeoffResponse, dll.)
+│       ├── prompts.py               # System prompts & user prompt builders
+│       ├── aps_client.py            # Autodesk Platform Services (APS) API client
+│       ├── bim_parser.py            # OpenBIM IFC parser (ifcopenshell)
+│       ├── cad_parser.py            # CAD DWG/DXF/SVG/PLT parser
+│       ├── llm_estimator.py         # Gemini LLM execution engine
+│       ├── exporter.py              # Excel & JSON exporter
+│       └── inspect_raw_pipeline.py  # CLI debug inspector tool
 │
-├── api_v1/                 # Legacy Python FastAPI Engine
-└── README.md               # Main System Documentation
+├── docs/                            # 📚 Dokumentasi teknis terpusat
+│   ├── ARCHITECTURE.md              # Diagram arsitektur & alur data pipeline
+│   ├── API_V2_REFERENCE.md          # Referensi lengkap REST API V2
+│   ├── DEVELOPMENT_GUIDE.md         # Panduan setup & pengembangan
+│   └── modules/                     # Dokumentasi terpisah per modul src/
+│       ├── schemas.md
+│       ├── prompts.md
+│       ├── llm_estimator.md
+│       ├── bim_parser.md
+│       ├── cad_parser.md
+│       └── aps_client_and_exporter.md
+│
+└── README.md                        # Dokumentasi utama proyek ini
 ```
 
 ---
 
-## ⚙️ Environment Setup (`.env`)
+## 🚀 Quick Start
 
-Each tier utilizes `.env` files for dynamic configuration. Copy `.env.example` to `.env` in each module directory:
+Jalankan ketiga layanan secara berurutan:
 
-### 1. Python API v2 (`api_v2/.env`)
-```ini
-# Google Gemini API Settings
-GEMINI_API_KEY=your_google_gemini_api_key_here
-GEMINI_MODEL=gemini-2.5-flash
-
-# Autodesk APS Cloud Settings (Optional for RVT/NWD cloud conversion)
-APS_CLIENT_ID=your_autodesk_aps_client_id
-APS_CLIENT_SECRET=your_autodesk_aps_client_secret
-
-# FastAPI Server Settings
-HOST=0.0.0.0
-PORT=8200
-ALLOWED_ORIGINS=*
-MAX_UPLOAD_SIZE_MB=500
-```
-
-### 2. CodeIgniter 4 Backend (`backend/.env`)
-```ini
-CI_ENVIRONMENT = development
-app.baseURL = 'http://localhost:8080/'
-
-# Python FastAPI AI Service URL
-PYTHON_API_URL = http://localhost:8200
-```
-
-### 3. Frontend React (`frontend/.env`)
-```ini
-# Vite Frontend Environment Variables
-VITE_API_URL=http://localhost:8080/api/rab/analyze-image
-```
-
----
-
-## 🚀 Getting Started
-
-### 1. Run Python AI Service (`api_v2`)
-```bash
-cd api_v2
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-
-# Start API Server
-python3 main.py server --port 8200
-```
-
-### 2. Run CodeIgniter 4 Backend (`backend`)
-```bash
-cd backend
-php -d upload_max_filesize=500M -d post_max_size=500M -d memory_limit=1024M -t public -S 0.0.0.0:8080 public/index.php
-```
-
-### 3. Run React Frontend (`frontend`)
+### 1. Frontend (`frontend/`)
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run dev -- --host
 ```
+> Dashboard tersedia di `http://localhost:5173`
 
-The application will be accessible at `http://localhost:5173`.
+### 2. Backend Gateway (`backend/`)
+```bash
+cd backend
+cp env .env
+# Pastikan PYTHON_API_URL=http://localhost:8200 di .env
+
+php spark serve --port 8080
+```
+> Backend gateway berjalan di `http://localhost:8080`
+
+### 3. AI Engine API (`api_v2/`)
+```bash
+cd api_v2
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+# Isi GEMINI_API_KEY di file .env
+
+python3 main.py server
+```
+> API V2 berjalan di `http://localhost:8200`
+> Swagger UI tersedia di `http://localhost:8200/docs`
 
 ---
 
-## 📄 License
+## ⚙️ Environment Variables
 
-Internal Development & Proprietary Use - Magang Politeknik Negeri Cilacap - PT. Baracipta Esa Engineering.
+### `api_v2/.env`
+
+| Variabel | Wajib | Default | Keterangan |
+|---|:---:|:---:|---|
+| `GEMINI_API_KEY` | ✅ | — | API Key Google Gemini |
+| `GEMINI_MODEL` | ❌ | `gemini-2.5-flash` | Model Gemini yang digunakan |
+| `PRIMARY_API_BASE` | ❌ | — | URL proxy API OpenAI-compatible |
+| `PRIMARY_API_KEY` | ❌ | — | API Key untuk primary proxy |
+| `APS_CLIENT_ID` | ❌ | — | Autodesk Platform Services Client ID |
+| `APS_CLIENT_SECRET` | ❌ | — | Autodesk Platform Services Client Secret |
+| `HOST` | ❌ | `0.0.0.0` | Host server |
+| `PORT` | ❌ | `8200` | Port server |
+
+### `backend/.env`
+
+| Variabel | Keterangan |
+|---|---|
+| `PYTHON_API_URL` | URL ke FastAPI AI Engine (default: `http://localhost:8200`) |
+| `app.baseURL` | URL base backend CI4 (default: `http://localhost:8080/`) |
+
+---
+
+## 🛠️ Tech Stack
+
+**Frontend**: React 18 · Vite · TailwindCSS · Lucide React · React Router
+
+**Backend Gateway**: PHP 8.2+ · CodeIgniter 4 · cURL
+
+**AI Engine**: Python 3.10+ · FastAPI · Uvicorn · Pydantic V2 · ifcopenshell · ezdxf · ezdwg · Google Generative AI SDK · pandas · openpyxl
+
+---
+
+## 📚 Dokumentasi Teknis
+
+| Dokumen | Isi |
+|---|---|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Diagram arsitektur sistem, sequence diagram pipeline, tabel modul |
+| [docs/API_V2_REFERENCE.md](docs/API_V2_REFERENCE.md) | Spesifikasi endpoint REST API, skema request/response, env vars |
+| [docs/DEVELOPMENT_GUIDE.md](docs/DEVELOPMENT_GUIDE.md) | Setup lokal, CLI debug tool, cara modifikasi prompt AI |
+| [docs/modules/](docs/modules/) | Dokumentasi per modul `api_v2/src/` |
+| [frontend/README.md](frontend/README.md) | Panduan spesifik frontend dashboard |
+| [backend/README.md](backend/README.md) | Panduan spesifik backend gateway CI4 |
+| [api_v2/README.md](api_v2/README.md) | Panduan spesifik AI Engine API V2 |

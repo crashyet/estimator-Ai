@@ -1,129 +1,138 @@
-# 🐍 Python AI Estimator Service (`api_v2`)
+# 🐍 Estimator API V2 — FastAPI Backend
 
-Production Python microservice for **Native CAD Parsing** (`.dwg`, `.dxf`, `.dwt`, `.dwf`, `.dwfx`, `.svg`, `.plt`), **OpenBIM & Autodesk Cloud 3D Takeoff** (`.ifc`, `.rvt`, `.rfa`, `.nwd`, `.nwc`, `.skp`), **VectorDB AHSP Mapping Engine** (SE PUPR 2025), and **Multimodal Vision Takeoff Analysis** (`.pdf`, `.jpeg`, `.png`) using **Google Gemini LLM**.
-
----
-
-## 🚀 Key Features
-
-1. **AHSP VectorDB Semantic Mapping & Multi-Tier Rerank Engine (`ahsp/ahsp_mapper.py`)**:
-   - Integrates 8,900+ official Indonesian SE PUPR 2025 standard construction work items.
-   - Vector database search powered by ChromaDB & Sentence-Transformers (`paraphrase-multilingual-MiniLM-L12-v2`).
-   - **Local BGE-Reranker-v2-m3 (`BAAI/bge-reranker-v2-m3`)**: Primary local CrossEncoder model for 100% offline, zero-latency, rate-limit-free semantic reranking across Bahasa Indonesia construction terms.
-   - **Cohere Rerank API Integration (`rerank-v3.5`)**: Secondary cloud fallback if local model is disabled.
-   - Dynamic item mapping post-processing with calibrated confidence thresholds:
-     - **Mapped High (>= 70%)**: Automated high-precision mapping.
-     - **Mapped Medium (45% – 69%)**: Includes top-3 AHSP candidate suggestions.
-     - **Unmapped (< 45%)**: Flagged for manual QS verification/override.
-
-2. **100% Real-Data Policy (Zero Dummy Data Guarantee)**:
-   - Purged all static dummy numbers, hardcoded fallback dimensions, and sample prompt volumes.
-   - All quantities ($m^3$, $m^2$, $m^1$, unit, set, ls) are 100% derived from CAD vector geometry or BIM parametric metadata.
-   - Unparseable fields default to `0.0` with explicit `low` confidence warning notes instead of misleading static defaults.
-
-3. **Direct OpenBIM & Cloud 3D Takeoff (`bim_parser.py`)**:
-   - Parses OpenBIM `.ifc` files using `ifcopenshell` to extract 3D parametric volumes ($m^3$), net areas ($m^2$), lengths ($m$), storey levels, family types, and materials.
-   - Supports native Autodesk Revit (`.rvt`, `.rfa`), Navisworks (`.nwd`, `.nwc`), and SketchUp (`.skp`) files via local converter CLI or Autodesk Platform Services (APS) Model Derivative Cloud API (with GZIP & objecttree fallback).
-
-4. **Direct Vector CAD Parser (`cad_parser.py`)**:
-   - Multi-format vector extractor supporting AutoCAD `.dwg`, `.dxf`, `.dwt`, compressed `.dwf`/`.dwfx`, `.svg`, and plot files (`.plt`, `.hpgl`).
-   - Extracts `TEXT`, `MTEXT`, `DIMENSION` notation, schedule tables, and block attributes grouped by CAD layer names.
-
-5. **Multimodal LLM Takeoff Engine (`llm_estimator.py`)**:
-   - Connects to Google Gemini API (`gemini-2.5-flash`) with fallback model routing.
-   - Analyzes CAD text dumps, 3D BIM payloads, or multimodal PDF/Image page streams to calculate physical work quantities.
-
-6. **FastAPI & CLI Engine (`main.py`)**:
-   - Exposes REST API endpoints for takeoff analysis and AHSP search/mapping management.
-   - CLI mode for offline batch file processing to Excel (.xlsx) and JSON.
+Backend FastAPI untuk analisis AI konstruksi: ekstraksi kuantitas dari file CAD, BIM, PDF, dan gambar cetak biru, menggunakan **Google Gemini Multimodal** dan **AHSP Vector Semantic Matching**.
 
 ---
 
-## 📂 File Breakdown
+## 📂 Struktur `api_v2/src/` — Micro-Module Architecture
 
-```text
-api_v2/
-├── ahsp/
-│   ├── ahsp_mapper.py      # ChromaDB + SentenceTransformers vector search engine
-│   ├── Item Pekerjaan CK.xlsx # Master dataset (8,900+ SE PUPR 2025 items)
-│   └── ahsp_vectordb/      # Persisted ChromaDB embeddings index
-├── bim_parser.py           # OpenBIM IFC & APS Cloud 3D parametric quantity extractor
-├── cad_parser.py           # Native CAD vector extractor (.dwg, .dxf, .dwf, .svg, .plt)
-├── llm_estimator.py        # Google Gemini LLM Integration & Zero-Dummy System Prompts
-├── schemas.py              # Pydantic schemas for request/response validation (0.0 volume pass-through)
-├── exporter.py             # Export utility for Excel (.xlsx) and JSON
-├── main.py                 # FastAPI server & CLI command dispatcher
-├── prd_ahsp_mapping.md     # Product requirement document for AHSP mapper engine
-├── bin/
-│   ├── dwg2dxf             # Native AutoCAD DWG to DXF binary converter
-│   └── rvt2ifc             # Autodesk Revit RVT to IFC converter script/binary
-├── tests/                  # Integration test suite
-├── requirements.txt        # Python package dependencies
-├── .env                    # Active environment variables
-└── .env.example            # Environment template
-```
+Seluruh logika bisnis inti diorganisir ke modul-modul kecil dengan satu tanggung jawab:
+
+| File | Baris | Tanggung Jawab |
+|---|:---:|---|
+| `schemas.py` | ~155 | Pydantic schemas: `DynamicTakeoffResponse`, `EstimateItem`, `BIMElementQuantity`, dll. |
+| `prompts.py` | ~300 | System prompts & user prompt builders untuk CAD, PDF, Image, BIM |
+| `aps_client.py` | ~450 | Autodesk Platform Services (APS) Cloud API — OAuth, S3 upload, model derivative |
+| `bim_parser.py` | ~280 | Parser OpenBIM IFC via `ifcopenshell` & orkestrasi konversi Revit |
+| `cad_parser.py` | ~620 | Parser DWG/DXF/DWF/SVG/PLT dengan chain fallback (dwg2dxf → ODA → ezdwg) |
+| `llm_estimator.py` | ~490 | Engine eksekusi LLM: fallback chain, JSON repair, Gemini SDK & REST |
+| `exporter.py` | ~75 | Export RAB ke Excel (`.xlsx`, 2 sheet) dan JSON flat format |
+| `inspect_raw_pipeline.py` | ~300 | CLI debug inspector — jalankan takeoff tanpa server HTTP |
 
 ---
 
-## ⚙️ Environment Variables (`.env`)
+## 📡 API Endpoints
 
-Copy `.env.example` to `.env` in `api_v2/`:
+### Takeoff (Upload & Analisis File)
+| Method | Endpoint | Input | Keterangan |
+|---|---|---|---|
+| POST | `/api/v2/takeoff/cad` | `.dwg`, `.dxf`, `.svg`, `.plt` | Analisis CAD vector takeoff |
+| POST | `/api/v2/takeoff/pdf` | `.pdf` | Analisis PDF set gambar DED |
+| POST | `/api/v2/takeoff/image` | `.jpg`, `.png`, `.webp` | Analisis gambar cetak biru |
+| POST | `/api/v2/takeoff/bim` | `.ifc`, `.rvt`, `.nwd` | Analisis model 3D BIM |
 
-```ini
-# Google Gemini API Settings
-GEMINI_API_KEY=your_google_gemini_api_key_here
+### AHSP Search & Mapping
+| Method | Endpoint | Keterangan |
+|---|---|---|
+| GET | `/api/v2/ahsp/search?q=plesteran` | Cari item AHSP berdasarkan kata kunci |
+| POST | `/api/v2/ahsp/map-item` | Peta satu item custom ke AHSP vector DB |
+
+Semua endpoint takeoff mengembalikan **`DynamicTakeoffResponse`** (JSON).
+
+---
+
+## ⚙️ Konfigurasi `.env`
+
+Salin dari `.env.example` lalu isi sesuai kebutuhan:
+
+```env
+# === WAJIB ===
+GEMINI_API_KEY=your-gemini-api-key-here
+
+# === Opsional: Model Selection ===
 GEMINI_MODEL=gemini-2.5-flash
 
-# Autodesk APS Cloud Settings (Optional for RVT/NWD/SKP cloud conversion)
-APS_CLIENT_ID=your_autodesk_aps_client_id
-APS_CLIENT_SECRET=your_autodesk_aps_client_secret
+# === Opsional: Primary OpenAI-compatible Proxy ===
+PRIMARY_API_BASE=https://your-openai-proxy.com/v1
+PRIMARY_API_KEY=your-proxy-key
+PRIMARY_MODEL=gpt-4o
 
-# FastAPI Server Settings
+# === Opsional: Autodesk Revit (.rvt) Cloud Conversion ===
+APS_CLIENT_ID=your-autodesk-client-id
+APS_CLIENT_SECRET=your-autodesk-client-secret
+RVT_TIMEOUT_SECONDS=300
+
+# === Server Config ===
 HOST=0.0.0.0
 PORT=8200
-ALLOWED_ORIGINS=*
 MAX_UPLOAD_SIZE_MB=500
-
-# Cohere Rerank API Settings
-COHERE_API_KEY=your_cohere_api_key_here
-COHERE_RERANK_MODEL=rerank-v3.5
 ```
 
 ---
 
-## 💻 Usage & Installation
+## 🚀 Menjalankan Backend
 
-### 1. Environment Setup
 ```bash
+cd api_v2
+
+# 1. Buat virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
+
+# 2. Install dependencies
 pip install -r requirements.txt
+
+# 3. Isi konfigurasi
+cp .env.example .env
+
+# 4. Jalankan server
+python3 main.py server
 ```
 
-### 2. Run API Server Mode
-```bash
-python3 main.py server --host 0.0.0.0 --port 8200
-```
-Server runs at `http://localhost:8200`.
+- **Swagger UI**: `http://localhost:8200/docs`
+- **ReDoc**: `http://localhost:8200/redoc`
 
-### 3. Run CLI Mode (Offline Processing)
+---
+
+## 🖥️ CLI — Analisis Langsung dari Terminal
+
+Untuk menguji takeoff tanpa server HTTP:
+
 ```bash
-# Process a local IFC or RVT file and save to Excel & JSON
-python3 main.py analyze --file sample_bim.ifc --project "Gedung Kantor" --client "PT Beecons" --excel output_rab.xlsx --json output_rab.json
+# Analisis file DWG, export ke Excel
+python3 main.py analyze --file denah.dwg --project "Rumah Pak Heri" --excel output.xlsx
+
+# Analisis file IFC, export ke JSON
+python3 main.py analyze --file model.ifc --json output.json
+
+# Analisis PDF set gambar DED
+python3 main.py analyze --file ded_lengkap.pdf --project "Gedung Kantor"
+
+# Jalankan debug inspector pipeline
+python3 src/inspect_raw_pipeline.py path/to/drawing.dwg
 ```
 
 ---
 
-## 📡 REST API Endpoints
+## 🧠 Cara Mengubah Aturan QS / Prompt AI
 
-### 📊 Quantity Takeoff Endpoints
-- **`POST /api/rab/analyze-bim`**: Parse 3D BIM/Revit/Navisworks models (`.ifc`, `.rvt`, `.rfa`, `.nwd`, `.nwc`, `.skp`).
-- **`POST /api/rab/analyze-image`** / **`POST /api/estimate`**: Unified endpoint for all CAD (`.dwg`, `.dxf`, `.dwt`, `.dwf`, `.plt`), PDF, images, and BIM files.
+Seluruh instruksi AI berada di satu file: **`src/prompts.py`**
 
-### 🏷️ AHSP VectorDB Mapping Endpoints
-- **`POST /api/ahsp/search`**: Semantic search AHSP items by text query.
-- **`POST /api/ahsp/map-item`**: Map a single item name & unit to best matching AHSP code.
-- **`GET /api/ahsp/list`**: Paginated list of master AHSP items with search filtering.
-- **`POST /api/ahsp/override`**: Manually assign an AHSP code to a work item.
-- **`GET /api/ahsp/stats`**: Retrieve AHSP vector DB indexing statistics.
-- **`POST /api/ahsp/reindex`**: Force re-indexing of ChromaDB vector database from Excel master.
+```
+src/prompts.py
+├── CAD_SYSTEM_PROMPT    → aturan untuk DWG/DXF
+├── PDF_SYSTEM_PROMPT    → aturan untuk set gambar PDF multi-halaman
+├── IMAGE_SYSTEM_PROMPT  → aturan untuk gambar JPG/PNG
+├── BIM_SYSTEM_PROMPT    → aturan untuk model IFC/Revit 3D
+└── build_*_user_prompt() → template perintah pengguna
+```
+
+Cukup edit konstanta yang relevan — tidak perlu menyentuh kode logika eksekusi LLM.
+
+---
+
+## 📚 Dokumentasi Lanjutan
+
+- **[../docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md)** — Diagram arsitektur & sequence diagram pipeline
+- **[../docs/API_V2_REFERENCE.md](../docs/API_V2_REFERENCE.md)** — Referensi endpoint & skema JSON lengkap
+- **[../docs/DEVELOPMENT_GUIDE.md](../docs/DEVELOPMENT_GUIDE.md)** — Panduan setup & kontribusi

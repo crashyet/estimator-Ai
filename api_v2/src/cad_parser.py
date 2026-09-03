@@ -1,3 +1,22 @@
+"""
+src/cad_parser.py — Vector CAD File Parser Engine
+
+Mengekstrak entitas vektor, teks anotasi, dimensi, atribut blok, dan pengukuran geometri
+dari berbagai format file gambar teknik 2D yang umum digunakan di Indonesia:
+  - DWG (AutoCAD native, konversi via dwg2dxf/ODAFileConverter/ezdwg)
+  - DXF (ASCII/binary exchange format, dibaca langsung oleh ezdxf)
+  - DWF/DWFX (Autodesk Design Web Format, XML+ZIP atau binary)
+  - SVG (Scalable Vector Graphics, parsing via xml.etree.ElementTree)
+  - PLT/HPGL (Plotter Language, parsing via regex HPGL commands)
+
+Kelas:
+  CADEntityExtractor: Kelas utama dengan semua metode ekstraksi CAD.
+
+Fungsi Utilitas:
+  fix_ezdwg_cjk_encoding(): Memperbaiki karakter CJK yang rusak dari parser ezdwg Rust.
+  get_polyline_length()   : Menghitung panjang total 2D dari polyline.
+"""
+
 import os
 import io
 import sys
@@ -25,7 +44,6 @@ def fix_ezdwg_cjk_encoding(text: str) -> str:
             try:
                 le_bytes = ch.encode("utf-16-le")
                 decoded = le_bytes.decode("cp1252", errors="ignore")
-                # Filter non-printable control characters
                 clean_dec = "".join([c for c in decoded if c.isprintable() or c.isalnum() or c in " ._-\\/()"])
                 res_chars.append(clean_dec if clean_dec else ch)
             except Exception:
@@ -63,13 +81,34 @@ def get_polyline_length(poly) -> float:
 
 class CADEntityExtractor:
     """
-    Direct CAD Vector Data Extractor for DWG and DXF files.
-    Extracts text, dimensions, block attributes, and geometric measurements deterministically.
+    Direct CAD Vector Data Extractor untuk file DWG, DXF, DWF, SVG, dan PLT/HPGL.
+
+    Semua metode bersifat statik/kelas, tidak memerlukan inisialisasi instance.
+    Entry point utama untuk penggunaan normal adalah `process_file_bytes()`.
+
+    Methods:
+        process_file_bytes()      : Entry point — menerima bytes + nama file, memanggil extractor yang tepat.
+        format_to_llm_payload()   : Memformat hasil ekstraksi menjadi teks terstruktur untuk LLM.
+        extract_from_dxf_file()   : Parser DXF via ezdxf.
+        extract_from_dwg_file()   : Parser DWG via dwg2dxf/ODAFileConverter/ezdwg (dengan fallback chain).
+        extract_from_dwf_file()   : Parser DWF/DWFX via ZIP+XML parsing.
+        extract_from_svg_file()   : Parser SVG via xml.etree.ElementTree.
+        extract_from_plt_file()   : Parser PLT/HPGL via regex HPGL command parsing.
     """
 
     @staticmethod
     def extract_from_dxf_file(dxf_file_path: str) -> Dict[str, Any]:
-        """Extract text, dimensions, block attributes, and geometry measurements from a DXF file."""
+        """
+        Membaca file DXF dan mengekstrak seluruh entitas dari modelspace.
+
+        Args:
+            dxf_file_path (str): Path ke file DXF.
+
+        Returns:
+            Dict[str, Any]: Dictionary berisi 'layers', 'text_by_layer', 'block_attributes',
+                            'dimensions', 'geometry_by_layer', 'total_texts_count', 'source_file_type'.
+                            Mengembalikan dict dengan key 'error' jika file tidak dapat dibaca.
+        """
         try:
             doc = ezdxf.readfile(dxf_file_path)
             return CADEntityExtractor._process_ezdxf_doc(doc)
@@ -79,11 +118,9 @@ class CADEntityExtractor:
 
     @staticmethod
     def extract_from_dwg_file(dwg_file_path: str, timeout_seconds: int = 15) -> Dict[str, Any]:
-        """Extract CAD data from DWG file using dwg2dxf / ODAFileConverter / ezdwg in a subprocess with timeout."""
         temp_dxf_path = None
         dwg_version = "Unknown"
         try:
-            # Check version header quickly
             try:
                 dwg_doc = ezdwg.read(dwg_file_path)
                 dwg_version = getattr(dwg_doc, "version", "Unknown")
@@ -94,8 +131,7 @@ class CADEntityExtractor:
             with tempfile.NamedTemporaryFile(suffix=".dxf", delete=False) as tmp_file:
                 temp_dxf_path = tmp_file.name
 
-            # 1. Try system dwg2dxf CLI converter if available
-            project_bin = os.path.join(os.path.dirname(__file__), "bin", "dwg2dxf")
+            project_bin = os.path.join(os.path.dirname(os.path.dirname(__file__)), "bin", "dwg2dxf")
             dwg2dxf_bin = (
                 shutil.which("dwg2dxf") or 
                 (project_bin if os.path.exists(project_bin) else None) or
@@ -115,7 +151,6 @@ class CADEntityExtractor:
                 except Exception as ex:
                     logger.warning(f"dwg2dxf attempt failed: {ex}")
 
-            # 2. Try system ODAFileConverter CLI tool if available
             oda_bin = shutil.which("ODAFileConverter") or shutil.which("oda-file-converter")
             if oda_bin:
                 try:
@@ -136,7 +171,6 @@ class CADEntityExtractor:
                 except Exception as ex:
                     logger.warning(f"ODAFileConverter attempt failed: {ex}")
 
-            # 3. Fall back to ezdwg PyO3 engine in isolated worker process
             logger.info(f"Converting DWG to DXF via ezdwg in isolated worker process (timeout: {timeout_seconds}s)...")
             
             cmd = [
@@ -182,17 +216,15 @@ class CADEntityExtractor:
 
     @staticmethod
     def _process_ezdxf_doc(doc) -> Dict[str, Any]:
-        """Process ezdxf Document object and extract structured texts, layers, blocks, dimensions, and geometry measurements."""
         layers = sorted([layer.dxf.name for layer in doc.layers])
         msp = doc.modelspace()
-        
+
         text_by_layer: Dict[str, List[str]] = {}
         block_attributes: List[Dict[str, str]] = []
         dimensions: List[str] = []
         geometry_by_layer: Dict[str, Dict[str, Any]] = {}
         total_texts_count = 0
 
-        # 1. Extract TEXT and MTEXT entities
         for entity in msp.query("TEXT MTEXT"):
             layer_name = getattr(entity.dxf, "layer", "DEFAULT")
             text_str = ""
@@ -210,7 +242,6 @@ class CADEntityExtractor:
                 text_by_layer[layer_name].append(text_clean)
                 total_texts_count += 1
 
-        # 2. Extract Block Attributes (INSERT entities)
         for insert in msp.query("INSERT"):
             block_name = getattr(insert.dxf, "name", "UNKNOWN_BLOCK")
             layer = getattr(insert.dxf, "layer", "DEFAULT")
@@ -228,17 +259,15 @@ class CADEntityExtractor:
                         "attributes": attrib_dict
                     })
 
-        # 3. Extract DIMENSION entities
         for dim in msp.query("DIMENSION"):
             dim_layer = getattr(dim.dxf, "layer", "DEFAULT")
             dim_text = fix_ezdwg_cjk_encoding(getattr(dim.dxf, "text", ""))
             dim_val = getattr(dim.dxf, "actual_measurement", None)
-            
+
             val_str = dim_text if dim_text else (f"{dim_val:.2f}" if dim_val is not None else "")
             if val_str:
                 dimensions.append(f"[{dim_layer}] {val_str}")
 
-        # 4. Extract Geometry Measurements (LINE & POLYLINE total lengths) per layer
         for line in msp.query("LINE"):
             layer = getattr(line.dxf, "layer", "DEFAULT")
             p1, p2 = line.dxf.start, line.dxf.end
@@ -270,7 +299,6 @@ class CADEntityExtractor:
 
     @staticmethod
     def _process_ezdwg_doc(dwg_doc) -> Dict[str, Any]:
-        """Fallback direct ezdwg document processing."""
         text_by_layer: Dict[str, List[str]] = {}
         msp = dwg_doc.modelspace()
         total_texts_count = 0
@@ -300,7 +328,6 @@ class CADEntityExtractor:
 
     @staticmethod
     def extract_from_dwf_file(dwf_file_path: str) -> Dict[str, Any]:
-        """Extract text, layers, annotations, and properties from Autodesk DWF / DWFX files."""
         text_by_layer: Dict[str, List[str]] = {"DWF_ANNOTATIONS": []}
         dimensions: List[str] = []
         total_texts_count = 0
@@ -351,7 +378,6 @@ class CADEntityExtractor:
 
     @staticmethod
     def extract_from_svg_file(svg_file_path: str) -> Dict[str, Any]:
-        """Extract text, layers, annotations, and properties from SVG Vector drawing files."""
         text_by_layer: Dict[str, List[str]] = {}
         dimensions: List[str] = []
         total_texts_count = 0
@@ -410,7 +436,6 @@ class CADEntityExtractor:
 
     @staticmethod
     def extract_from_plt_file(plt_file_path: str) -> Dict[str, Any]:
-        """Extract text, pen layers, geometry measurements, and annotations from HPGL/HPGL-2 (.plt) plotter vector files."""
         text_by_layer: Dict[str, List[str]] = {}
         geometry_by_layer: Dict[str, Dict[str, Any]] = {}
         dimensions: List[str] = []
@@ -427,8 +452,6 @@ class CADEntityExtractor:
             is_pen_down = False
             cur_x, cur_y = 0.0, 0.0
 
-            # 1. Regex scanning for HPGL LB (label) text strings
-            # LB text can terminate with ETX (\x03), \x04, \x1b (ESC), newline, or semicolon
             lb_matches = re.findall(r"LB([^\x03\x04\x1b\r\n;]{1,200})[\x03\x04\x1b\r\n;]", content)
             for raw_lbl in lb_matches:
                 clean_lbl = fix_ezdwg_cjk_encoding(raw_lbl.strip())
@@ -441,7 +464,6 @@ class CADEntityExtractor:
                         if any(c.isdigit() for c in clean_lbl) and any(kw in clean_lbl.lower() for kw in ["m", "cm", "mm", "kg", "ø", "dn", "t=", "h="]):
                             dimensions.append(f"[{current_layer}] {clean_lbl}")
 
-            # 2. HPGL Instruction Parser for Pen changes (SP) and Polylines/Lines (PA, PR, PD, PU)
             commands = re.findall(r"([A-Za-z]{2}\s*[^;]*|\S+)", content)
             for cmd_str in commands:
                 cmd_clean = cmd_str.strip()
@@ -450,11 +472,11 @@ class CADEntityExtractor:
                 cmd_code = cmd_clean[:2].upper()
                 params_str = cmd_clean[2:].strip()
 
-                if cmd_code == "SP":  # Select Pen -> Layer
+                if cmd_code == "SP":
                     pen_num = params_str.strip() if params_str else "1"
                     current_layer = f"PEN_{pen_num}" if pen_num else "PEN_1"
 
-                elif cmd_code == "PU":  # Pen Up
+                elif cmd_code == "PU":
                     is_pen_down = False
                     coords = re.findall(r"[-+]?\d*\.?\d+", params_str)
                     if len(coords) >= 2:
@@ -463,7 +485,7 @@ class CADEntityExtractor:
                         except ValueError:
                             pass
 
-                elif cmd_code == "PD":  # Pen Down
+                elif cmd_code == "PD":
                     is_pen_down = True
                     coords = re.findall(r"[-+]?\d*\.?\d+", params_str)
                     if len(coords) >= 2:
@@ -479,7 +501,7 @@ class CADEntityExtractor:
                             except ValueError:
                                 pass
 
-                elif cmd_code in ["PA", "PR"]:  # Plot Absolute / Relative
+                elif cmd_code in ["PA", "PR"]:
                     coords = re.findall(r"[-+]?\d*\.?\d+", params_str)
                     if len(coords) >= 2:
                         for i in range(0, len(coords) - 1, 2):
@@ -498,7 +520,6 @@ class CADEntityExtractor:
                             except ValueError:
                                 pass
 
-            # 3. Fallback: Generic ASCII string extraction if text_by_layer is empty
             if not text_by_layer:
                 ascii_matches = re.findall(r"[\x20-\x7E]{4,100}", content)
                 fallback_texts = []
@@ -530,7 +551,22 @@ class CADEntityExtractor:
 
     @classmethod
     def process_file_bytes(cls, file_bytes: bytes, filename: str) -> Dict[str, Any]:
-        """Process DWG, DXF, DWT, DWF, DWFX, SVG, PLT, or HPGL file from raw bytes."""
+        """
+        Entry point utama: menerima file CAD sebagai bytes dan memanggil parser yang sesuai.
+
+        Menulis bytes ke file sementara, menentukan tipe parser berdasarkan ekstensi,
+        memanggil metode extract yang tepat, dan membersihkan file sementara setelahnya.
+
+        Args:
+            file_bytes (bytes): Konten biner file CAD yang diunggah.
+            filename   (str)  : Nama file asli (termasuk ekstensi).
+
+        Returns:
+            Dict[str, Any]: Hasil ekstraksi entitas CAD.
+
+        Raises:
+            ValueError: Jika ekstensi file tidak didukung.
+        """
         ext = os.path.splitext(filename)[1].lower()
         with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
             tmp.write(file_bytes)
@@ -556,8 +592,19 @@ class CADEntityExtractor:
     @classmethod
     def format_to_llm_payload(cls, cad_data: Dict[str, Any]) -> str:
         """
-        Format extracted CAD entity data into deterministic structured Markdown context string
-        optimized for LLM Quantity Takeoff reasoning.
+        Memformat hasil ekstraksi CAD menjadi teks terstruktur siap kirim ke LLM.
+
+        Menghasilkan string dengan beberapa seksi:
+          - LAYER-WISE TEXT & ANNOTATIONS (maksimal 200 teks per layer)
+          - BLOCK ATTRIBUTES & SCHEDULE TABLES (maksimal 100 block)
+          - DIMENSION NOTATIONS & MEASUREMENTS (maksimal 150 dimensi)
+          - LAYER GEOMETRY MEASUREMENTS dengan konversi unit mm/cm ke meter
+
+        Args:
+            cad_data (Dict[str, Any]): Output dari salah satu metode `extract_from_*`.
+
+        Returns:
+            str: Teks terstruktur multi-bagian untuk dikonsumsi oleh LLM.
         """
         lines = []
         lines.append("=== DRAWING LAYERS & VECTOR CAD ENTITIES DUMP ===")
@@ -565,7 +612,6 @@ class CADEntityExtractor:
         lines.append(f"Total Text Entities: {cad_data.get('total_texts_count', 0)}")
         lines.append("")
 
-        # 1. Text & MText grouped by layer (sorted deterministically)
         text_by_layer = cad_data.get("text_by_layer", {})
         if text_by_layer:
             lines.append("--- LAYER-WISE TEXT & ANNOTATIONS ---")
@@ -576,7 +622,6 @@ class CADEntityExtractor:
                 for txt in unique_texts[:200]:
                     lines.append(f"- {txt}")
 
-        # 2. Block attributes & Schedules
         block_attributes = cad_data.get("block_attributes", [])
         if block_attributes:
             lines.append("\n--- BLOCK ATTRIBUTES & SCHEDULE TABLES ---")
@@ -584,7 +629,6 @@ class CADEntityExtractor:
                 attrs_str = ", ".join([f"{k}: {v}" for k, v in sorted(blk['attributes'].items())])
                 lines.append(f"- [Block: {blk['block_name']} | Layer: {blk['layer']}] -> {attrs_str}")
 
-        # 3. Dimensions
         dimensions = cad_data.get("dimensions", [])
         if dimensions:
             lines.append("\n--- DIMENSION NOTATIONS & MEASUREMENTS ---")
@@ -592,7 +636,6 @@ class CADEntityExtractor:
             for dim in unique_dims[:150]:
                 lines.append(f"- {dim}")
 
-        # 4. Geometry Measurements & Total Lengths per layer (sorted deterministically)
         geometry_by_layer = cad_data.get("geometry_by_layer", {})
         if geometry_by_layer:
             lines.append("\n--- LAYER GEOMETRY MEASUREMENTS (LINEAR LENGTHS - NOT AREA) ---")
