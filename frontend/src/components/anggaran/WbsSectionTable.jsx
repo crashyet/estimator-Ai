@@ -28,7 +28,8 @@ const WbsSectionTable = ({
         <thead className="bg-[#009624] text-white font-semibold sticky top-0 z-10 shadow-xs">
           <tr>
             <th scope="col" className="py-3 px-4 text-center w-12 bg-[#009624] select-none">No.</th>
-            <th scope="col" className="py-3 px-4 text-left min-w-[340px] bg-[#009624]">Uraian Pekerjaan & Standar AHSP</th>
+            <th scope="col" className="py-3 px-3 text-center w-28 bg-[#009624]">Kode AHSP</th>
+            <th scope="col" className="py-3 px-4 text-left min-w-[300px] bg-[#009624]">Uraian Pekerjaan Standar AHSP</th>
             <th scope="col" className="py-3 px-4 text-right w-24 bg-[#009624]">Volume</th>
             <th scope="col" className="py-3 px-4 text-center w-20 bg-[#009624]">Satuan</th>
             <th scope="col" className="py-3 px-4 text-center w-28 bg-[#009624]">Aksi</th>
@@ -37,17 +38,17 @@ const WbsSectionTable = ({
         <tbody className="divide-y divide-slate-100 bg-white">
           {displayedRows.length === 0 ? (
             <tr>
-              <td colSpan={5} className="py-12 text-center text-slate-400 font-medium">
+              <td colSpan={6} className="py-12 text-center text-slate-400 font-medium">
                 Tidak ada data yang ditemukan.
               </td>
             </tr>
           ) : (
-            displayedRows.map((row) => {
+            displayedRows.map((row, idx) => {
               if (row.type === 'section') {
                 return (
                   <tr key={row.id} className="bg-slate-50/70 hover:bg-slate-100/50 transition-colors font-bold text-slate-800 group">
                     <td className="py-3 px-4 text-center select-none">{row.code}</td>
-                    <td colSpan={3} className="py-3 px-4 uppercase tracking-wide text-[12.5px] text-emerald-950">
+                    <td colSpan={4} className="py-3 px-4 uppercase tracking-wide text-[12.5px] text-emerald-950">
                       {row.name}
                     </td>
                     <td className="py-3 px-4 text-center"></td>
@@ -58,34 +59,66 @@ const WbsSectionTable = ({
               const wbsNumber = row.wbs_code || (row.sectionCode ? `${row.sectionCode}.${row.no}` : row.no);
               const topTitle = row.ahsp_name || row.name;
 
+              // Generated code for unmapped item (e.g. BARU-001)
+              const isUnmapped = row.ahsp_status === 'unmapped' || !row.ahsp_code;
+              const displayCode = row.ahsp_code || (row.custom_code ? row.custom_code : `BARU-${String(idx + 1).padStart(3, '0')}`);
+
               return (
-                <tr key={row.id} className="hover:bg-slate-50/50 transition-all group duration-150">
+                <tr key={row.id} className={`transition-all group duration-150 ${isUnmapped ? 'bg-amber-50/20 hover:bg-amber-50/50' : 'hover:bg-slate-50/50'}`}>
                   <td className="py-3 px-4 text-center font-bold text-slate-700 select-none tabular-nums text-[12.5px]">
                     {wbsNumber}
                   </td>
+                  
+                  {/* Column 2: Kode AHSP / Kode Pekerjaan Baru */}
+                  <td className="py-3 px-3 text-center font-mono text-[11.5px]">
+                    <span className={`inline-block px-2 py-0.5 rounded font-bold ${
+                      isUnmapped 
+                        ? 'bg-amber-100 text-amber-800 border border-amber-300' 
+                        : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                    }`}>
+                      {displayCode}
+                    </span>
+                  </td>
+
+                  {/* Column 3: Uraian Pekerjaan */}
                   <td className="py-3 px-4 max-w-[420px]">
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-slate-800 break-words">{topTitle}</span>
+                        {isUnmapped && (
+                          <span 
+                            className="inline-flex items-center gap-1 bg-amber-500 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full shadow-2xs animate-pulse"
+                            title="Item belum terpetakan! Klik ikon buku untuk melakukan pemetaan manual."
+                          >
+                            ! UNMAPPED
+                          </span>
+                        )}
                       </div>
                       {row.ahsp_name && row.ahsp_name !== row.name && (
-                        <span className="text-[11.5px] text-slate-500 flex items-center gap-1">
-                          <span className="text-slate-400">Hasil Deteksi:</span>
-                          <span className="font-medium text-slate-600">{row.name}</span>
+                        <span className="text-[11.5px] text-slate-500 font-medium">
+                          {row.name}
                         </span>
                       )}
                     </div>
                   </td>
+
+                  {/* Column 4: Volume */}
                   <td className="py-3 px-4 text-right tabular-nums font-medium text-slate-700">
                     {formatNumber(row.volume)}
                   </td>
+
+                  {/* Column 5: Satuan */}
                   <td className="py-3 px-4 text-center text-slate-500 font-semibold">{row.unit}</td>
+
+                  {/* Column 6: Aksi */}
                   <td className="py-3 px-4 text-center">
                     <div className="inline-flex items-center gap-1.5 bg-[#d2f3d5] px-2.5 py-1 rounded-full shadow-3xs group-hover:bg-[#c3eec7] transition-all">
                       <button
                         onClick={() => handleOpenAhspModal(row)}
-                        className="w-6 h-6 rounded-full bg-[#009624] hover:bg-emerald-700 text-white flex items-center justify-center transition-transform hover:scale-105"
-                        title="Pemetaan Item Pekerjaan AHSP"
+                        className={`w-6 h-6 rounded-full flex items-center justify-center transition-transform hover:scale-105 ${
+                          isUnmapped ? 'bg-amber-500 hover:bg-amber-600 text-white animate-bounce' : 'bg-[#009624] hover:bg-emerald-700 text-white'
+                        }`}
+                        title={isUnmapped ? "Aksi Pemetaan Manual untuk Item Unmapped" : "Pemetaan Item Pekerjaan AHSP"}
                       >
                         <Icons.Book className="w-3.5 h-3.5" />
                       </button>
