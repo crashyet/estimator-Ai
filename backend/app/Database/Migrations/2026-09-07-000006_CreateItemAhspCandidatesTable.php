@@ -15,10 +15,21 @@ class CreateItemAhspCandidatesTable extends Migration
                 'unsigned'       => true,
                 'auto_increment' => true,
             ],
+            'uuid' => [
+                'type'       => 'CHAR',
+                'constraint' => 36,
+                'null'       => false,
+            ],
             'item_id' => [
                 'type'       => 'BIGINT',
                 'constraint' => 20,
                 'unsigned'   => true,
+                'null'       => false,
+            ],
+            'item_uuid' => [
+                'type'       => 'CHAR',
+                'constraint' => 36,
+                'null'       => true,
             ],
             'rank' => [
                 'type'       => 'INT',
@@ -57,7 +68,8 @@ class CreateItemAhspCandidatesTable extends Migration
                 'comment'    => 'Contoh: bge_m3_hybrid',
             ],
         ]);
-        $this->forge->addKey('id', true);
+        $this->forge->addKey('id', true); // Primary Key
+        $this->forge->addUniqueKey('uuid'); // Unique UUID
         $this->forge->addForeignKey('item_id', 'estimation_items', 'id', 'CASCADE', 'CASCADE');
         $this->forge->addKey(['item_id', 'rank'], false, false, 'idx_candidates_item_rank');
         $this->forge->createTable('item_ahsp_candidates', true);

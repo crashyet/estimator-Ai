@@ -15,10 +15,21 @@ class CreateWbsSectionsTable extends Migration
                 'unsigned'       => true,
                 'auto_increment' => true,
             ],
+            'uuid' => [
+                'type'       => 'CHAR',
+                'constraint' => 36,
+                'null'       => false,
+            ],
             'run_id' => [
                 'type'       => 'BIGINT',
                 'constraint' => 20,
                 'unsigned'   => true,
+                'null'       => false,
+            ],
+            'run_uuid' => [
+                'type'       => 'CHAR',
+                'constraint' => 36,
+                'null'       => true,
             ],
             'section_id_code' => [
                 'type'       => 'VARCHAR',
@@ -41,7 +52,8 @@ class CreateWbsSectionsTable extends Migration
                 'default'    => 1,
             ],
         ]);
-        $this->forge->addKey('id', true);
+        $this->forge->addKey('id', true); // Primary Key
+        $this->forge->addUniqueKey('uuid'); // Unique UUID
         $this->forge->addForeignKey('run_id', 'estimation_runs', 'id', 'CASCADE', 'CASCADE');
         $this->forge->createTable('wbs_sections', true);
     }

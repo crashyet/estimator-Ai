@@ -15,15 +15,21 @@ class CreateEstimationRunsTable extends Migration
                 'unsigned'       => true,
                 'auto_increment' => true,
             ],
-            'run_uid' => [
-                'type'       => 'VARCHAR',
+            'uuid' => [
+                'type'       => 'CHAR',
                 'constraint' => 36,
-                'null'       => true,
+                'null'       => false,
             ],
             'project_id' => [
                 'type'       => 'BIGINT',
                 'constraint' => 20,
                 'unsigned'   => true,
+                'null'       => false,
+            ],
+            'project_uuid' => [
+                'type'       => 'CHAR',
+                'constraint' => 36,
+                'null'       => true,
             ],
             'run_timestamp' => [
                 'type' => 'DATETIME',
@@ -62,7 +68,8 @@ class CreateEstimationRunsTable extends Migration
                 'null' => true,
             ],
         ]);
-        $this->forge->addKey('id', true);
+        $this->forge->addKey('id', true); // Primary Key
+        $this->forge->addUniqueKey('uuid'); // Unique UUID
         $this->forge->addForeignKey('project_id', 'projects', 'id', 'CASCADE', 'CASCADE');
         $this->forge->createTable('estimation_runs', true);
     }

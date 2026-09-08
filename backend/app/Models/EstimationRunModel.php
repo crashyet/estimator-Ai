@@ -13,8 +13,10 @@ class EstimationRunModel extends Model
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
     protected $allowedFields    = [
-        'run_uid',
+        'id',
+        'uuid',
         'project_id',
+        'project_uuid',
         'run_timestamp',
         'total_items',
         'mapped_high',
@@ -22,21 +24,30 @@ class EstimationRunModel extends Model
         'unmapped',
         'high_ratio',
         'engine_stats',
-        'created_at',
     ];
 
+    // Dates
+    protected $useTimestamps = true;
+    protected $dateFormat    = 'datetime';
+    protected $createdField  = 'created_at';
+    protected $updatedField  = '';
+
+    // Callbacks
     protected $beforeInsert = ['generateUuid'];
 
     protected function generateUuid(array $data)
     {
-        if (empty($data['data']['run_uid'])) {
-            $bytes = random_bytes(16);
-            $bytes[6] = chr(ord($bytes[6]) & 0x0f | 0x40);
-            $bytes[8] = chr(ord($bytes[8]) & 0x3f | 0x80);
-            $data['data']['run_uid'] = vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($bytes), 4));
+        if (empty($data['data']['uuid'])) {
+            $data['data']['uuid'] = ProjectModel::generateUuidV4();
         }
         return $data;
     }
 
-    protected $useTimestamps = false; // We set created_at manually or default
+    public function findByIdOrUuid($idOrUuid)
+    {
+        if (is_numeric($idOrUuid)) {
+            return $this->find($idOrUuid);
+        }
+        return $this->where('uuid', $idOrUuid)->first();
+    }
 }

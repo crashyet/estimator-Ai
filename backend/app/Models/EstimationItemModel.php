@@ -13,7 +13,10 @@ class EstimationItemModel extends Model
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
     protected $allowedFields    = [
+        'id',
+        'uuid',
         'section_id',
+        'section_uuid',
         'item_uid',
         'item_no',
         'item_code',
@@ -32,4 +35,22 @@ class EstimationItemModel extends Model
     ];
 
     protected $useTimestamps = false;
+
+    protected $beforeInsert = ['generateUuid'];
+
+    protected function generateUuid(array $data)
+    {
+        if (empty($data['data']['uuid'])) {
+            $data['data']['uuid'] = ProjectModel::generateUuidV4();
+        }
+        return $data;
+    }
+
+    public function findByIdOrUuid($idOrUuid)
+    {
+        if (is_numeric($idOrUuid)) {
+            return $this->find($idOrUuid);
+        }
+        return $this->where('uuid', $idOrUuid)->first();
+    }
 }

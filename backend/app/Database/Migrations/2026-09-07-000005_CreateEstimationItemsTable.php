@@ -15,14 +15,26 @@ class CreateEstimationItemsTable extends Migration
                 'unsigned'       => true,
                 'auto_increment' => true,
             ],
+            'uuid' => [
+                'type'       => 'CHAR',
+                'constraint' => 36,
+                'null'       => false,
+            ],
             'section_id' => [
                 'type'       => 'BIGINT',
                 'constraint' => 20,
                 'unsigned'   => true,
+                'null'       => false,
+            ],
+            'section_uuid' => [
+                'type'       => 'CHAR',
+                'constraint' => 36,
+                'null'       => true,
             ],
             'item_uid' => [
                 'type'       => 'VARCHAR',
                 'constraint' => 50,
+                'null'       => true,
                 'comment'    => 'Contoh: item-A-1',
             ],
             'item_no' => [
@@ -92,7 +104,8 @@ class CreateEstimationItemsTable extends Migration
                 'null' => true,
             ],
         ]);
-        $this->forge->addKey('id', true);
+        $this->forge->addKey('id', true); // Primary Key
+        $this->forge->addUniqueKey('uuid'); // Unique UUID
         $this->forge->addForeignKey('section_id', 'wbs_sections', 'id', 'CASCADE', 'CASCADE');
         $this->forge->addKey(['section_id', 'ahsp_status'], false, false, 'idx_items_section_status');
         $this->forge->createTable('estimation_items', true);

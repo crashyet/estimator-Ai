@@ -13,6 +13,7 @@ class ProjectModel extends Model
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
     protected $allowedFields    = [
+        'id',
         'uuid',
         'title',
         'client',
@@ -32,14 +33,14 @@ class ProjectModel extends Model
     protected function generateUuid(array $data)
     {
         if (empty($data['data']['uuid'])) {
-            $data['data']['uuid'] = $this->generateUuidV4();
+            $data['data']['uuid'] = self::generateUuidV4();
         }
         return $data;
     }
 
-    private function generateUuidV4()
+    public static function generateUuidV4(): string
     {
-        $bytes = random_bytes(16);
+        $bytes    = random_bytes(16);
         $bytes[6] = chr(ord($bytes[6]) & 0x0f | 0x40); // version 4
         $bytes[8] = chr(ord($bytes[8]) & 0x3f | 0x80); // variant
         return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($bytes), 4));
@@ -51,7 +52,7 @@ class ProjectModel extends Model
     public function findByIdOrUuid($idOrUuid)
     {
         if (is_numeric($idOrUuid)) {
-            return $this->where('id', $idOrUuid)->first() ?: $this->where('uuid', $idOrUuid)->first();
+            return $this->find($idOrUuid);
         }
         return $this->where('uuid', $idOrUuid)->first();
     }
@@ -66,7 +67,7 @@ class ProjectModel extends Model
     protected $validationMessages = [
         'title' => [
             'required'   => 'Judul proyek wajib diisi.',
-            'min_length' => 'Judul proyek minimal 3 karakter.'
-        ]
+            'min_length' => 'Judul proyek minimal 3 karakter.',
+        ],
     ];
 }
