@@ -134,4 +134,56 @@ class RabController extends ResourceController
             ], 500);
         }
     }
+
+    public function analyzePrompt()
+    {
+        // 1. Ambil data JSON atau POST form
+        $json = $this->request->getJSON(true);
+        $projectName = $json['name'] ?? $this->request->getPost('name') ?? 'Konsep Desain Rumah';
+        $clientName  = $json['client'] ?? $this->request->getPost('client') ?? 'Client';
+        $promptText  = $json['prompt'] ?? $this->request->getPost('prompt') ?? '';
+
+        if (empty(trim($promptText))) {
+            return $this->respond([
+                'success' => false,
+                'message' => 'Deskripsi konsep rumah / prompt tidak boleh kosong.'
+            ], 400);
+        }
+
+        // 2. Arahkan ke URL FastAPI Python (dinamis via .env dengan fallback)
+        $envUrl = env('PYTHON_API_URL') ?: 'http://127.0.0.1:8200';
+        $pythonBaseUrl = rtrim($envUrl, '/');
+        $pythonUrl = $pythonBaseUrl . '/api/rab/analyze-prompt';
+
+        $client = \Config\Services::curlrequest();
+
+        try {
+            // 3. Kirim request JSON ke Python FastAPI
+            $response = $client->post($pythonUrl, [
+                'json' => [
+                    'name'   => $projectName,
+                    'client' => $clientName,
+                    'prompt' => $promptText
+                ],
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                    'Accept'       => 'application/json'
+                ],
+                'http_errors' => false,
+                'timeout'     => 300
+            ]);
+
+            return $this->response
+                ->setStatusCode($response->getStatusCode())
+                ->setContentType('application/json')
+                ->setBody($response->getBody());
+
+        } catch (\Exception $e) {
+            return $this->respond([
+                'success' => false,
+                'message' => 'Tidak dapat terhubung ke AI service (Python API).',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
 }
