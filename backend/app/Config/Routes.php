@@ -8,6 +8,7 @@ $routes->get('/', 'Home::index');
 // AI Estimator Analysis Proxy Endpoints
 $routes->post('api/rab/analyze', 'RabController::analyze');
 $routes->post('api/rab/analyze-image', 'RabController::analyzeImage');
+$routes->post('api/rab/analyze-prompt', 'RABController::analyzePrompt');
 
 // Projects CRUD Endpoints (Supports both Integer ID and UUID)
 $routes->group('api/projects', function ($routes) {

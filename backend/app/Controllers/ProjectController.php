@@ -13,7 +13,7 @@ class ProjectController extends ResourceController
 
     /**
      * GET /api/projects
-     * List all projects with UUID and summary of latest estimation run
+     * List all projects with both id & uuid and summary of latest estimation run
      */
     public function index()
     {
@@ -23,9 +23,10 @@ class ProjectController extends ResourceController
         $db = \Config\Database::connect();
 
         $data = array_map(function ($project) use ($db) {
-            // Get latest estimation run
+            // Get latest estimation run by project_id or project_uuid
             $latestRun = $db->table('estimation_runs')
                 ->where('project_id', $project['id'])
+                ->orWhere('project_uuid', $project['uuid'])
                 ->orderBy('run_timestamp', 'DESC')
                 ->get()
                 ->getRowArray();
@@ -36,7 +37,7 @@ class ProjectController extends ResourceController
                 $totalBudgetRow = $db->table('estimation_items')
                     ->join('wbs_sections', 'wbs_sections.id = estimation_items.section_id')
                     ->where('wbs_sections.run_id', $latestRun['id'])
-                    ->selectSum('estimation_items.volume * estimation_items.unit_price', 'total_budget')
+                    ->select('COALESCE(SUM(estimation_items.volume * estimation_items.unit_price), 0) AS total_budget', false)
                     ->get()
                     ->getRowArray();
 
@@ -45,7 +46,7 @@ class ProjectController extends ResourceController
 
             return [
                 'id'           => (int) $project['id'],
-                'uuid'         => $project['uuid'] ?? null,
+                'uuid'         => $project['uuid'],
                 'title'        => $project['title'],
                 'client'       => $project['client'],
                 'status'       => $project['status'],
@@ -53,7 +54,9 @@ class ProjectController extends ResourceController
                 'total_budget' => $totalBudget,
                 'latest_run'   => $latestRun ? [
                     'id'            => (int) $latestRun['id'],
-                    'run_uid'       => $latestRun['run_uid'] ?? null,
+                    'uuid'          => $latestRun['uuid'],
+                    'project_id'    => (int) $latestRun['project_id'],
+                    'project_uuid'  => $latestRun['project_uuid'],
                     'run_timestamp' => $latestRun['run_timestamp'],
                     'total_items'   => (int) $latestRun['total_items'],
                     'mapped_high'   => (int) $latestRun['mapped_high'],
@@ -75,7 +78,7 @@ class ProjectController extends ResourceController
 
     /**
      * POST /api/projects
-     * Create a new project (Generates UUID v4 automatically)
+     * Create a new project (Generates id & uuid v4)
      */
     public function create()
     {
@@ -98,30 +101,39 @@ class ProjectController extends ResourceController
             return $this->fail($projectModel->errors(), 422);
         }
 
-        $id = $projectModel->insert($data);
+        $insertId = $projectModel->insert($data); // returns inserted integer id
 
-        if (!$id) {
+        if (!$insertId) {
             return $this->fail('Gagal menyimpan proyek.', 500);
         }
 
-        $newProject = $projectModel->find($id);
+        $newProject = $projectModel->find($insertId);
 
         return $this->respondCreated([
             'status'  => 201,
             'success' => true,
             'message' => 'Proyek berhasil dibuat.',
-            'data'    => $newProject
+            'data'    => [
+                'id'         => (int) $newProject['id'],
+                'uuid'       => $newProject['uuid'],
+                'title'      => $newProject['title'],
+                'client'     => $newProject['client'],
+                'status'     => $newProject['status'],
+                'summary'    => $newProject['summary'],
+                'created_at' => $newProject['created_at'],
+                'updated_at' => $newProject['updated_at'],
+            ]
         ]);
     }
 
     /**
      * GET /api/projects/(:segment)
-     * Get single project detail with estimation runs history (Accepts Integer ID or UUID)
+     * Get single project detail with estimation runs history (Accepts ID or UUID)
      */
-    public function show($id = null)
+    public function show($idOrUuid = null)
     {
         $projectModel = new ProjectModel();
-        $project = $projectModel->findByIdOrUuid($id);
+        $project = $projectModel->findByIdOrUuid($idOrUuid);
 
         if (!$project) {
             return $this->failNotFound('Proyek tidak ditemukan.');
@@ -130,27 +142,36 @@ class ProjectController extends ResourceController
         $db = \Config\Database::connect();
         $runs = $db->table('estimation_runs')
             ->where('project_id', $project['id'])
+            ->orWhere('project_uuid', $project['uuid'])
             ->orderBy('run_timestamp', 'DESC')
             ->get()
             ->getResultArray();
 
+        $formattedProject = array_merge($project, [
+            'id'              => (int) $project['id'],
+            'uuid'            => $project['uuid'],
+            'estimation_runs' => array_map(function ($r) {
+                $r['id']         = (int) $r['id'];
+                $r['project_id'] = (int) $r['project_id'];
+                return $r;
+            }, $runs)
+        ]);
+
         return $this->respond([
             'status'  => 200,
             'success' => true,
-            'data'    => array_merge($project, [
-                'estimation_runs' => $runs
-            ])
+            'data'    => $formattedProject
         ]);
     }
 
     /**
      * PUT/PATCH /api/projects/(:segment)
-     * Update project metadata (Accepts Integer ID or UUID)
+     * Update project metadata (Accepts ID or UUID)
      */
-    public function update($id = null)
+    public function update($idOrUuid = null)
     {
         $projectModel = new ProjectModel();
-        $project = $projectModel->findByIdOrUuid($id);
+        $project = $projectModel->findByIdOrUuid($idOrUuid);
 
         if (!$project) {
             return $this->failNotFound('Proyek tidak ditemukan.');
@@ -171,22 +192,25 @@ class ProjectController extends ResourceController
             $projectModel->update($project['id'], $data);
         }
 
+        $updatedProject = $projectModel->find($project['id']);
+        $updatedProject['id'] = (int) $updatedProject['id'];
+
         return $this->respond([
             'status'  => 200,
             'success' => true,
             'message' => 'Proyek berhasil diperbarui.',
-            'data'    => $projectModel->find($project['id'])
+            'data'    => $updatedProject
         ]);
     }
 
     /**
      * DELETE /api/projects/(:segment)
-     * Delete project (Accepts Integer ID or UUID)
+     * Delete project (Accepts ID or UUID)
      */
-    public function delete($id = null)
+    public function delete($idOrUuid = null)
     {
         $projectModel = new ProjectModel();
-        $project = $projectModel->findByIdOrUuid($id);
+        $project = $projectModel->findByIdOrUuid($idOrUuid);
 
         if (!$project) {
             return $this->failNotFound('Proyek tidak ditemukan.');

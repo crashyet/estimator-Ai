@@ -13,7 +13,10 @@ class WbsSectionModel extends Model
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
     protected $allowedFields    = [
+        'id',
+        'uuid',
         'run_id',
+        'run_uuid',
         'section_id_code',
         'code',
         'name',
@@ -21,4 +24,22 @@ class WbsSectionModel extends Model
     ];
 
     protected $useTimestamps = false;
+
+    protected $beforeInsert = ['generateUuid'];
+
+    protected function generateUuid(array $data)
+    {
+        if (empty($data['data']['uuid'])) {
+            $data['data']['uuid'] = ProjectModel::generateUuidV4();
+        }
+        return $data;
+    }
+
+    public function findByIdOrUuid($idOrUuid)
+    {
+        if (is_numeric($idOrUuid)) {
+            return $this->find($idOrUuid);
+        }
+        return $this->where('uuid', $idOrUuid)->first();
+    }
 }

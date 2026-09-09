@@ -16,9 +16,9 @@ class CreateProjectsTable extends Migration
                 'auto_increment' => true,
             ],
             'uuid' => [
-                'type'       => 'VARCHAR',
+                'type'       => 'CHAR',
                 'constraint' => 36,
-                'null'       => true,
+                'null'       => false,
             ],
             'title' => [
                 'type'       => 'VARCHAR',
@@ -27,6 +27,7 @@ class CreateProjectsTable extends Migration
             'client' => [
                 'type'       => 'VARCHAR',
                 'constraint' => 255,
+                'null'       => true,
             ],
             'status' => [
                 'type'       => 'VARCHAR',
@@ -46,8 +47,8 @@ class CreateProjectsTable extends Migration
                 'null' => true,
             ],
         ]);
-        $this->forge->addKey('id', true);
-        $this->forge->addUniqueKey('uuid');
+        $this->forge->addKey('id', true); // Primary Key
+        $this->forge->addUniqueKey('uuid'); // Unique UUID
         $this->forge->createTable('projects', true);
     }
 
