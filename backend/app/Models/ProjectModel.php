@@ -17,8 +17,12 @@ class ProjectModel extends Model
         'uuid',
         'title',
         'client',
+        'location',
+        'contractor_fee',
+        'ppn',
         'status',
         'summary',
+        'image',
     ];
 
     // Dates
@@ -59,9 +63,13 @@ class ProjectModel extends Model
 
     // Validation
     protected $validationRules = [
-        'title'  => 'required|min_length[3]|max_length[255]',
-        'client' => 'permit_empty|max_length[255]',
-        'status' => 'permit_empty|max_length[100]',
+        'title'          => 'required|min_length[3]|max_length[255]',
+        'client'         => 'permit_empty|max_length[255]',
+        'location'       => 'permit_empty|max_length[255]',
+        'contractor_fee' => 'permit_empty|numeric',
+        'ppn'            => 'permit_empty|numeric',
+        'status'         => 'permit_empty|max_length[100]',
+        'image'          => 'permit_empty|max_length[255]',
     ];
 
     protected $validationMessages = [
