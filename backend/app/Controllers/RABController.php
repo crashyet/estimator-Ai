@@ -170,7 +170,7 @@ class RabController extends ResourceController
                     'Accept'       => 'application/json'
                 ],
                 'http_errors' => false,
-                'timeout'     => 300
+                'timeout'     => 600   
             ]);
 
             return $this->response
