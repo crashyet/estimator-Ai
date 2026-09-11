@@ -45,14 +45,18 @@ class ProjectController extends ResourceController
             }
 
             return [
-                'id'           => (int) $project['id'],
-                'uuid'         => $project['uuid'],
-                'title'        => $project['title'],
-                'client'       => $project['client'],
-                'status'       => $project['status'],
-                'summary'      => $project['summary'],
-                'total_budget' => $totalBudget,
-                'latest_run'   => $latestRun ? [
+                'id'             => (int) $project['id'],
+                'uuid'           => $project['uuid'],
+                'title'          => $project['title'],
+                'client'         => $project['client'],
+                'location'       => $project['location'] ?? null,
+                'contractor_fee' => isset($project['contractor_fee']) ? (float) $project['contractor_fee'] : 10.00,
+                'ppn'            => isset($project['ppn']) ? (float) $project['ppn'] : 11.00,
+                'status'         => $project['status'],
+                'summary'        => $project['summary'],
+                'image'          => $project['image'] ?? null,
+                'total_budget'   => $totalBudget,
+                'latest_run'     => $latestRun ? [
                     'id'            => (int) $latestRun['id'],
                     'uuid'          => $latestRun['uuid'],
                     'project_id'    => (int) $latestRun['project_id'],
@@ -64,8 +68,8 @@ class ProjectController extends ResourceController
                     'unmapped'      => (int) $latestRun['unmapped'],
                     'high_ratio'    => (float) $latestRun['high_ratio'],
                 ] : null,
-                'created_at'   => $project['created_at'],
-                'updated_at'   => $project['updated_at'],
+                'created_at'     => $project['created_at'],
+                'updated_at'     => $project['updated_at'],
             ];
         }, $projects);
 
@@ -91,10 +95,14 @@ class ProjectController extends ResourceController
         $projectModel = new ProjectModel();
 
         $data = [
-            'title'   => trim($json['title'] ?? ''),
-            'client'  => trim($json['client'] ?? ''),
-            'status'  => $json['status'] ?? 'Perencanaan',
-            'summary' => $json['summary'] ?? null,
+            'title'          => trim($json['title'] ?? ''),
+            'client'         => trim($json['client'] ?? ''),
+            'location'       => isset($json['location']) ? trim($json['location']) : null,
+            'contractor_fee' => isset($json['contractor_fee']) ? (float) $json['contractor_fee'] : 10.00,
+            'ppn'            => isset($json['ppn']) ? (float) $json['ppn'] : 11.00,
+            'status'         => $json['status'] ?? 'Perencanaan',
+            'summary'        => $json['summary'] ?? null,
+            'image'          => $json['image'] ?? null,
         ];
 
         if (!$projectModel->validate($data)) {
@@ -108,21 +116,15 @@ class ProjectController extends ResourceController
         }
 
         $newProject = $projectModel->find($insertId);
+        $newProject['id']             = (int) $newProject['id'];
+        $newProject['contractor_fee'] = (float) ($newProject['contractor_fee'] ?? 10.00);
+        $newProject['ppn']            = (float) ($newProject['ppn'] ?? 11.00);
 
         return $this->respondCreated([
             'status'  => 201,
             'success' => true,
             'message' => 'Proyek berhasil dibuat.',
-            'data'    => [
-                'id'         => (int) $newProject['id'],
-                'uuid'       => $newProject['uuid'],
-                'title'      => $newProject['title'],
-                'client'     => $newProject['client'],
-                'status'     => $newProject['status'],
-                'summary'    => $newProject['summary'],
-                'created_at' => $newProject['created_at'],
-                'updated_at' => $newProject['updated_at'],
-            ]
+            'data'    => $newProject
         ]);
     }
 
@@ -147,9 +149,17 @@ class ProjectController extends ResourceController
             ->get()
             ->getResultArray();
 
+        $documents = $db->table('project_documents')
+            ->where('project_id', $project['id'])
+            ->get()
+            ->getResultArray();
+
         $formattedProject = array_merge($project, [
             'id'              => (int) $project['id'],
             'uuid'            => $project['uuid'],
+            'contractor_fee'  => (float) ($project['contractor_fee'] ?? 10.00),
+            'ppn'             => (float) ($project['ppn'] ?? 11.00),
+            'documents'       => $documents,
             'estimation_runs' => array_map(function ($r) {
                 $r['id']         = (int) $r['id'];
                 $r['project_id'] = (int) $r['project_id'];
@@ -183,17 +193,23 @@ class ProjectController extends ResourceController
         }
 
         $data = [];
-        if (isset($json['title']))   $data['title']   = trim($json['title']);
-        if (isset($json['client']))  $data['client']  = trim($json['client']);
-        if (isset($json['status']))  $data['status']  = trim($json['status']);
-        if (isset($json['summary'])) $data['summary'] = trim($json['summary']);
+        if (isset($json['title']))          $data['title']          = trim($json['title']);
+        if (isset($json['client']))         $data['client']         = trim($json['client']);
+        if (isset($json['location']))       $data['location']       = trim($json['location']);
+        if (isset($json['contractor_fee'])) $data['contractor_fee'] = (float) $json['contractor_fee'];
+        if (isset($json['ppn']))            $data['ppn']            = (float) $json['ppn'];
+        if (isset($json['status']))         $data['status']         = trim($json['status']);
+        if (isset($json['summary']))        $data['summary']        = trim($json['summary']);
+        if (isset($json['image']))          $data['image']          = trim($json['image']);
 
         if (!empty($data)) {
             $projectModel->update($project['id'], $data);
         }
 
         $updatedProject = $projectModel->find($project['id']);
-        $updatedProject['id'] = (int) $updatedProject['id'];
+        $updatedProject['id']             = (int) $updatedProject['id'];
+        $updatedProject['contractor_fee'] = (float) ($updatedProject['contractor_fee'] ?? 10.00);
+        $updatedProject['ppn']            = (float) ($updatedProject['ppn'] ?? 11.00);
 
         return $this->respond([
             'status'  => 200,
