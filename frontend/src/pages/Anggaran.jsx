@@ -7,7 +7,6 @@ import {
   updateEstimationItem,
   deleteEstimationItem
 } from '../services/api';
-import * as XLSX from 'xlsx';
 import { useProject, DEFAULT_SECTIONS } from '../context/ProjectContext';
 import EstimationEmptyState from '../components/anggaran/EstimationEmptyState';
 
@@ -142,6 +141,7 @@ const Anggaran = () => {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showReorderModal, setShowReorderModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [isReDetecting, setIsReDetecting] = useState(false);
 
   const [selectedRow, setSelectedRow] = useState(null);
   const [targetSectionCode, setTargetSectionCode] = useState("A");
@@ -447,137 +447,8 @@ const Anggaran = () => {
   }, [isLoadingWbs, projectDetail?.estimation_runs, estimationRuns, estimationRun, totalItemsCount]);
 
   const handleEstimationSuccess = async () => {
+    setIsReDetecting(false);
     await loadProjectAndEstimation(projectId, null, true);
-  };
-
-  // Export to Excel for Debugging & Cross-Checking
-  const handleExportExcel = () => {
-    if (!rows || rows.length === 0) {
-      triggerToast("Tidak ada data estimasi untuk diexport.", "error");
-      return;
-    }
-
-    try {
-      // 1. Data Sheet 1: Format RAB Standar
-      const rabRows = [];
-      let currentSecCode = '';
-      let currentSecName = '';
-
-      rows.forEach(r => {
-        if (r.type === 'section') {
-          currentSecCode = r.code || '';
-          currentSecName = r.name || '';
-          rabRows.push({
-            "No": r.code || '',
-            "Kategori / Seksi WBS": r.name || '',
-            "Uraian Pekerjaan": '',
-            "Volume": '',
-            "Satuan": '',
-            "Harga Satuan (Rp)": '',
-            "Total Harga (Rp)": Number(r.sectionTotal) || '',
-            "Kode AHSP": ''
-          });
-        } else if (r.type === 'item') {
-          const vol = Number(r.volume) || 0;
-          const price = Number(r.unit_price) || 0;
-          const total = Number(r.total_price) || (vol * price);
-          rabRows.push({
-            "No": `${currentSecCode}.${r.no || ''}`,
-            "Kategori / Seksi WBS": currentSecName,
-            "Uraian Pekerjaan": r.name || '',
-            "Volume": vol,
-            "Satuan": r.unit || '',
-            "Harga Satuan (Rp)": price,
-            "Total Harga (Rp)": total,
-            "Kode AHSP": r.ahsp_code || r.code || ''
-          });
-        }
-      });
-
-      // 2. Data Sheet 2: Debugging & Pipeline AHSP (Detail lengkap untuk pencocokan data)
-      const debugRows = [];
-      rows.forEach(r => {
-        if (r.type === 'item') {
-          let candStr = '';
-          if (Array.isArray(r.ahsp_candidates) && r.ahsp_candidates.length > 0) {
-            candStr = r.ahsp_candidates
-              .map((c, idx) => `[Rank ${idx + 1}] ${c.id_pekerjaan || ''} - ${c.nama_pekerjaan || ''} (${c.satuan || ''}) [Score: ${(Number(c.score || 0) * 100).toFixed(1)}%]`)
-              .join(' | ');
-          }
-
-          const scoreVal = r.ahsp_score !== null && r.ahsp_score !== undefined
-            ? `${(Number(r.ahsp_score) * 100).toFixed(2)}%`
-            : '-';
-
-          debugRows.push({
-            "ID Item": r.id || '',
-            "Seksi": r.sectionCode || currentSecCode || '',
-            "No": r.no || '',
-            "Nama Pekerjaan (AI)": r.name || '',
-            "Volume (AI)": Number(r.volume) || 0,
-            "Satuan (AI)": r.unit || '',
-            "Confidence AI": r.confidence || 'high',
-            "Kode AHSP": r.ahsp_code || '',
-            "Nama Standar AHSP (PUPR CK)": r.ahsp_name || '',
-            "Satuan AHSP": r.ahsp_unit || '',
-            "Status Pemetaan": r.ahsp_status || 'unmapped',
-            "Skor Kemiripan (Score)": scoreVal,
-            "Harga Satuan (Rp)": Number(r.unit_price) || 0,
-            "Catatan Rumus / Warning Note": r.warning_note || '',
-            "Kandidat Alternatif AHSP": candStr
-          });
-        }
-      });
-
-      // 3. Build Workbook
-      const wb = XLSX.utils.book_new();
-
-      // Sheet 1: RAB Estimasi
-      const wsRab = XLSX.utils.json_to_sheet(rabRows);
-      wsRab['!cols'] = [
-        { wch: 10 }, // No
-        { wch: 30 }, // Kategori
-        { wch: 45 }, // Uraian Pekerjaan
-        { wch: 12 }, // Volume
-        { wch: 10 }, // Satuan
-        { wch: 18 }, // Harga Satuan
-        { wch: 20 }, // Total Harga
-        { wch: 16 }  // Kode AHSP
-      ];
-      XLSX.utils.book_append_sheet(wb, wsRab, "RAB_Estimasi");
-
-      // Sheet 2: Debugging AHSP
-      const wsDebug = XLSX.utils.json_to_sheet(debugRows);
-      wsDebug['!cols'] = [
-        { wch: 14 }, // ID Item
-        { wch: 8 },  // Seksi
-        { wch: 6 },  // No
-        { wch: 42 }, // Nama AI
-        { wch: 12 }, // Volume
-        { wch: 10 }, // Satuan AI
-        { wch: 14 }, // Confidence
-        { wch: 16 }, // Kode AHSP
-        { wch: 48 }, // Nama AHSP
-        { wch: 12 }, // Satuan AHSP
-        { wch: 16 }, // Status
-        { wch: 14 }, // Skor
-        { wch: 18 }, // Harga Satuan
-        { wch: 40 }, // Catatan Rumus
-        { wch: 70 }  // Kandidat
-      ];
-      XLSX.utils.book_append_sheet(wb, wsDebug, "Debug_Pemetaan_AHSP");
-
-      // Generate Filename
-      const cleanTitle = (projectDetail.title || 'Proyek').replace(/[^a-zA-Z0-9_-]/g, '_');
-      const dateStr = new Date().toISOString().slice(0, 10);
-      const fileName = `RAB_Debug_${cleanTitle}_${dateStr}.xlsx`;
-
-      XLSX.writeFile(wb, fileName);
-      triggerToast(`File Excel "${fileName}" berhasil diexport!`);
-    } catch (err) {
-      console.error("Gagal export Excel:", err);
-      triggerToast(`Gagal export Excel: ${err.message}`, "error");
-    }
   };
 
   // If no projectId provided, do not render contents while redirecting
@@ -609,110 +480,86 @@ const Anggaran = () => {
 
       {/* Main Content Workspace Card */}
       <main className="max-w-[1360px] mx-auto px-4 mt-6">
-        <div className="bg-white rounded-xl shadow-xs border border-slate-200/80 p-5 md:p-6">
-          {/* Action Toolbar: Search & Export Buttons */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-150">
-            {/* Search and item count */}
-            <div className="flex items-center gap-3 flex-1 max-w-md">
-              <div className="relative w-full">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={hasNoEstimationRuns ? "Belum ada item untuk dicari..." : "Cari pekerjaan, seksi, atau kode AHSP..."}
-                  disabled={hasNoEstimationRuns}
-                  className={`w-full pl-9 pr-7 py-1.5 text-xs rounded-lg focus:outline-none transition-all ${hasNoEstimationRuns
-                      ? 'bg-slate-100/70 border border-slate-200 text-slate-400 cursor-not-allowed'
-                      : 'bg-slate-50 border border-slate-250 focus:border-[#0fa83c] focus:bg-white text-slate-700 placeholder-slate-400'
-                    }`}
-                />
-                <svg className="w-4 h-4 text-slate-400 absolute left-2.5 top-2 pointer-events-none" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-                </svg>
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-2.5 top-1.5 text-slate-400 hover:text-slate-600 text-sm font-bold cursor-pointer"
-                    title="Hapus pencarian"
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
-              <span className="hidden md:inline-block text-[11.5px] text-slate-600 font-semibold whitespace-nowrap bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">
-                {totalItemsCount} Pekerjaan
-              </span>
-            </div>
-
-            {/* Action Buttons: Export Excel */}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleExportExcel}
-                disabled={hasNoEstimationRuns}
-                className={`inline-flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg shadow-3xs transition-all select-none group ${hasNoEstimationRuns
-                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                    : 'bg-[#107c41] hover:bg-[#0c6233] text-white hover:shadow cursor-pointer'
-                  }`}
-                title={hasNoEstimationRuns ? "Belum ada data estimasi untuk diexport" : "Export data WBS dan detail pemetaan AHSP ke Excel (.xlsx) untuk debugging dan pencocokan"}
-              >
-                <svg className="w-4 h-4 transition-transform group-hover:scale-110 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M21.17 3.25Q21.5 3.25 21.75 3.5 22 3.75 22 4.08V19.92Q22 20.25 21.75 20.5 21.5 20.75 21.17 20.75H7.83Q7.5 20.75 7.25 20.5 7 20.25 7 19.92V17H2.83Q2.5 17 2.25 16.75 2 16.5 2 16.17V7.83Q2 7.5 2.25 7.25 2.5 7 2.83 7H7V4.08Q7 3.75 7.25 3.5 7.5 3.25 7.83 3.25M7 15V9H3.5V15M9.5 18.5V15.5H8.5V18.5M20.5 19.25V4.75H8.5V7.5H9.5Q9.5 7.5 10.5 7.5V5.75H19.5V18.25H10.5V16.5H9.5V19.25M14.5 14.5L16.25 11.75 14.75 9H16.25L17.25 10.75 18.25 9H19.75L18.25 11.75 20 14.5H18.5L17.25 12.5 16 14.5Z" />
-                </svg>
-                <span>Export Excel (.xlsx)</span>
-              </button>
+        {isLoadingWbs ? (
+          <div className="bg-white rounded-xl shadow-xs border border-slate-200/80 p-12 text-center text-slate-500 font-medium">
+            <div className="flex flex-col items-center justify-center gap-3">
+              <div className="w-8 h-8 border-3 border-[#0fa83c] border-t-transparent rounded-full animate-spin"></div>
+              <span className="text-sm font-semibold text-slate-700">Memuat data estimasi anggaran...</span>
             </div>
           </div>
+        ) : (hasNoEstimationRuns || isReDetecting) ? (
+          <EstimationEmptyState
+            projectId={projectId}
+            projectDetail={projectDetail}
+            onEstimationSuccess={handleEstimationSuccess}
+            triggerToast={triggerToast}
+            onCancel={!hasNoEstimationRuns && isReDetecting ? () => setIsReDetecting(false) : null}
+          />
+        ) : (
+          <div className="bg-white rounded-xl shadow-xs border border-slate-200/80 p-5 md:p-6">
+            {/* Action Toolbar: Search & Action Buttons */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-150">
+              {/* Search and item count */}
+              <div className="flex items-center gap-3 flex-1 max-w-md">
+                <div className="relative w-full">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Cari pekerjaan, seksi, atau kode AHSP..."
+                    className="w-full pl-9 pr-7 py-1.5 text-xs rounded-lg focus:outline-none transition-all bg-slate-50 border border-slate-250 focus:border-[#0fa83c] focus:bg-white text-slate-700 placeholder-slate-400"
+                  />
+                  <svg className="w-4 h-4 text-slate-400 absolute left-2.5 top-2 pointer-events-none" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                  </svg>
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-2.5 top-1.5 text-slate-400 hover:text-slate-600 text-sm font-bold cursor-pointer"
+                      title="Hapus pencarian"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
 
-          {/* Table Container */}
-          <div className="overflow-x-auto border border-slate-200/90 rounded-sm shadow-3xs max-h-screen">
-            <table className="w-full border-collapse text-left text-[12.5px]">
-              {/* Header: Solid Dark Green */}
-              <thead className="bg-[#089613] text-white select-none sticky top-0 z-10">
-                <tr>
-                  <th scope="col" className="py-2.5 px-3 text-left w-12 font-bold text-[12px] tracking-wide">
-                    No.
-                  </th>
-                  <th scope="col" className="py-2.5 px-4 text-left font-bold text-[12px] tracking-wide">
-                    Uraian Pekerjaan
-                  </th>
-                  <th scope="col" className="py-2.5 px-3 text-center w-24 font-bold text-[12px] tracking-wide">
-                    Volume
-                  </th>
-                  <th scope="col" className="py-2.5 px-3 text-center w-20 font-bold text-[12px] tracking-wide">
-                    Satuan
-                  </th>
-                  <th scope="col" className="py-2.5 px-3 text-center w-24 font-bold text-[12px] tracking-wide">
-                    Aksi
-                  </th>
-                </tr>
-              </thead>
+            {/* Table Container */}
+            <div className="overflow-x-auto border border-slate-200/90 rounded-sm shadow-3xs max-h-screen">
+              <table className="w-full border-collapse text-left text-[12.5px]">
+                {/* Header: Solid Dark Green */}
+                <thead className="bg-[#089613] text-white select-none sticky top-0 z-10">
+                  <tr>
+                    <th scope="col" className="py-2.5 px-3 text-left w-12 font-bold text-[12px] tracking-wide">
+                      No.
+                    </th>
+                    <th scope="col" className="py-2.5 px-4 text-left font-bold text-[12px] tracking-wide">
+                      Uraian Pekerjaan
+                    </th>
+                    <th scope="col" className="py-2.5 px-3 text-center w-24 font-bold text-[12px] tracking-wide">
+                      Volume
+                    </th>
+                    <th scope="col" className="py-2.5 px-3 text-center w-20 font-bold text-[12px] tracking-wide">
+                      Satuan
+                    </th>
+                    <th scope="col" className="py-2.5 px-3 text-center w-24 font-bold text-[12px] tracking-wide">
+                      Aksi
+                    </th>
+                  </tr>
+                </thead>
 
-              {/* Table Body */}
-              <tbody className="divide-y divide-slate-100">
-                {isLoadingWbs ? (
-                  <tr>
-                    <td colSpan={5} className="py-14 text-center text-slate-500 font-medium">
-                      <div className="flex flex-col items-center justify-center gap-2">
-                        <div className="w-6 h-6 border-2 border-[#00802b] border-t-transparent rounded-full animate-spin"></div>
-                        <span>Memuat data estimasi anggaran...</span>
-                      </div>
-                    </td>
-                  </tr>
-                ) : hasNoEstimationRuns ? (
-                  <tr>
-                    <td colSpan={5} className="p-3 sm:p-5 bg-white">
-                      <EstimationEmptyState
-                        projectId={projectId}
-                        projectDetail={projectDetail}
-                        onEstimationSuccess={handleEstimationSuccess}
-                        triggerToast={triggerToast}
-                      />
-                    </td>
-                  </tr>
-                ) : (
-                  filteredSections.map((sec, secIdx) => {
+                {/* Table Body */}
+                <tbody className="divide-y divide-slate-100">
+                  {filteredSections.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-12 text-center text-slate-400 font-medium">
+                        {searchQuery ? `Tidak ada pekerjaan yang cocok dengan pencarian "${searchQuery}".` : 'Tidak ada data pekerjaan.'}
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredSections.map((sec, secIdx) => {
 
                     const isCollapsed = collapsedSections[sec.code] !== undefined ? collapsedSections[sec.code] : false; // default expanded
 
@@ -758,19 +605,22 @@ const Anggaran = () => {
                           <td className="py-2.5 px-3 text-center text-slate-400 text-[12px] align-middle"></td>
                         </tr>
 
-                        {/* Sub-item Rows (Shown when Category is Expanded) */}
+                        {/* Items Rows in this Section */}
                         {!isCollapsed && sec.items.map((item, itemIdx) => {
                           const itemVolume = Number(item.volume) || 0;
 
                           return (
-                            <tr key={item.id} className="bg-slate-50/50 hover:bg-slate-100/60 transition-colors">
-                              {/* Col 1: Item Number */}
-                              <td className="py-2.5 px-3 text-center text-slate-500 font-semibold text-[11.5px] tabular-nums">
-                                {itemIdx + 1}
+                            <tr
+                              key={item.id || itemIdx}
+                              className="bg-[#fafcfa] hover:bg-[#edf7ee] transition-colors"
+                            >
+                              {/* Col 1: Empty or Sub-number */}
+                              <td className="py-2.5 px-3 text-center text-slate-400 text-[11px] align-middle">
+                                {item.no || itemIdx + 1}
                               </td>
 
-                              {/* Col 2: Item Name & AHSP Badge */}
-                              <td className="py-2.5 px-4 pl-8">
+                              {/* Col 2: Uraian Pekerjaan + Status Badge */}
+                              <td className="py-2.5 px-4 text-slate-800 align-middle">
                                 <div className="flex gap-2">
                                   <span className="font-semibold text-slate-800 text-[12px]">
                                     {item.ahsp_name || item.name || ''}
@@ -823,37 +673,34 @@ const Anggaran = () => {
                       </React.Fragment>
                     );
                   })
-                )}
-              </tbody>
+                  )}
+                </tbody>
 
-              {/* Table Footer: Total Items */}
-              <tfoot className="bg-[#089613] text-white font-bold select-none text-[12px] sticky bottom-0 z-40 shadow-xs">
-                {/* 3. TOTAL ITEMS */}
-                <tr className="border-t border-[#006e24]/40">
-                  <td colSpan={4} className="py-2.5 px-4 text-right tracking-wide">
-                    Total Item
-                  </td>
-                  <td className="py-2.5 px-4 text-right tracking-wider tabular-nums font-bold">
-                    {totalItemsCount}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+                {/* Table Footer: Total Items */}
+                <tfoot className="bg-[#00802b] text-white font-semibold text-[13px] select-none border-t border-[#006e24]/40 sticky bottom-0">
+                  {/* 3. TOTAL ITEMS */}
+                  <tr className="border-t border-[#006e24]/40">
+                    <td colSpan={4} className="py-2.5 px-4 text-right tracking-wide">
+                      Total Item
+                    </td>
+                    <td className="py-2.5 px-4 text-right tracking-wider tabular-nums font-bold">
+                      {totalItemsCount}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
 
-          <div className="p-4 flex justify-end">
-            <button
-              onClick={() => handleSaveEstimation()}
-              disabled={hasNoEstimationRuns}
-              className={`px-6 py-2 text-white transition-colors rounded-full font-bold text-[13.5px] tracking-wide shadow-md ${hasNoEstimationRuns
-                  ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
-                  : 'bg-[#00802b] hover:bg-[#006e24] cursor-pointer active:scale-98'
-                }`}
-            >
-              Lanjut ke RAB
-            </button>
+            <div className="p-4 flex justify-end">
+              <button
+                onClick={() => handleSaveEstimation()}
+                className="px-6 py-2 text-white bg-[#00802b] hover:bg-[#006e24] cursor-pointer active:scale-98 transition-colors rounded-full font-bold text-[13.5px] tracking-wide shadow-md"
+              >
+                Lanjut ke RAB
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </main>
 
       {/* Floating Toast Notification */}

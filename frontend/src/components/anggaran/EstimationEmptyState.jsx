@@ -57,39 +57,107 @@ const PROMPT_RECOMMENDATIONS = [
   }
 ];
 
-// Line-art illustration for Upload Dokumen DED
-const DedIllustration = () => (
-  <svg viewBox="0 0 240 140" className="w-48 h-28 mx-auto" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M20 125H220" stroke="#1e293b" strokeWidth="2.5" strokeLinecap="round" />
-    <path d="M35 125L25 135M205 125L215 135" stroke="#64748b" strokeWidth="2" strokeLinecap="round" />
-    <rect x="40" y="55" width="85" height="58" rx="4" fill="#f8fafc" stroke="#1e293b" strokeWidth="2" />
-    <path d="M48 68H85M48 78H115M48 88H100M48 98H75" stroke="#94a3b8" strokeWidth="1.8" strokeLinecap="round" strokeDasharray="3 3" />
-    <path d="M95 110L145 110L120 60Z" fill="#eff6ff" stroke="#2563eb" strokeWidth="2" strokeLinejoin="round" />
-    <circle cx="120" cy="90" r="8" fill="white" stroke="#2563eb" strokeWidth="1.5" />
-    <path d="M102 110V105M110 110V107M118 110V105M126 110V107M134 110V105" stroke="#2563eb" strokeWidth="1.5" strokeLinecap="round" />
-    <path d="M165 45L195 30L220 45L190 60Z" fill="#dcfce7" stroke="#15803d" strokeWidth="2" />
-    <path d="M165 45V80L190 95V60Z" fill="#bbf7d0" stroke="#15803d" strokeWidth="2" />
-    <path d="M190 60V95L220 80V45Z" fill="#86efac" stroke="#15803d" strokeWidth="2" />
-    <circle cx="170" cy="98" r="14" fill="#089613" />
-    <path d="M170 104V92M165 97L170 92L175 97" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+// Minimalist Line-art Illustration for Design / Blueprint option
+const DesignCardIllustration = ({ isSelected }) => (
+  <svg viewBox="0 0 120 80" className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
+    {/* Base Blueprint Sheet */}
+    <rect
+      x="12"
+      y="10"
+      width="96"
+      height="60"
+      rx="6"
+      fill={isSelected ? "#f0faf1" : "#f8fafc"}
+      stroke={isSelected ? "#089613" : "#94a3b8"}
+      strokeWidth="1.8"
+    />
+    {/* Grid / Guide lines */}
+    <line x1="12" y1="30" x2="108" y2="30" stroke={isSelected ? "#bbf7d0" : "#e2e8f0"} strokeWidth="1" strokeDasharray="2 2" />
+    <line x1="12" y1="50" x2="108" y2="50" stroke={isSelected ? "#bbf7d0" : "#e2e8f0"} strokeWidth="1" strokeDasharray="2 2" />
+    <line x1="45" y1="10" x2="45" y2="70" stroke={isSelected ? "#bbf7d0" : "#e2e8f0"} strokeWidth="1" strokeDasharray="2 2" />
+    <line x1="75" y1="10" x2="75" y2="70" stroke={isSelected ? "#bbf7d0" : "#e2e8f0"} strokeWidth="1" strokeDasharray="2 2" />
+    
+    {/* 2D Plan Wall Layout */}
+    <rect
+      x="24"
+      y="20"
+      width="38"
+      height="40"
+      rx="2"
+      fill="white"
+      stroke={isSelected ? "#089613" : "#64748b"}
+      strokeWidth="1.8"
+    />
+    <path
+      d="M24 38H44V60"
+      stroke={isSelected ? "#089613" : "#64748b"}
+      strokeWidth="1.5"
+    />
+    {/* Door swing arc */}
+    <path
+      d="M38 38C38 32 44 28 50 28"
+      stroke={isSelected ? "#16a34a" : "#94a3b8"}
+      strokeWidth="1.2"
+      strokeDasharray="2 2"
+    />
+    
+    {/* 3D Isometric Element */}
+    <path
+      d="M78 26L94 18L102 23L86 31Z"
+      fill={isSelected ? "#dcfce7" : "#f1f5f9"}
+      stroke={isSelected ? "#089613" : "#64748b"}
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M78 26V46L86 51V31Z"
+      fill={isSelected ? "#bbf7d0" : "#e2e8f0"}
+      stroke={isSelected ? "#089613" : "#64748b"}
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M86 31L102 23V43L86 51Z"
+      fill={isSelected ? "#86efac" : "#cbd5e1"}
+      stroke={isSelected ? "#089613" : "#64748b"}
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+    />
   </svg>
 );
 
-// Line-art illustration for AI Prompt & Concept
-const AiPromptIllustration = () => (
-  <svg viewBox="0 0 240 140" className="w-48 h-28 mx-auto" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M20 125H220" stroke="#1e293b" strokeWidth="2.5" strokeLinecap="round" />
-    <rect x="55" y="85" width="40" height="35" rx="3" fill="#fef3c7" stroke="#b45309" strokeWidth="2" />
-    <rect x="65" y="55" width="35" height="30" rx="3" fill="#fde68a" stroke="#b45309" strokeWidth="2" />
-    <path d="M72 70H88M62 102H88" stroke="#d97706" strokeWidth="1.5" strokeLinecap="round" />
-    <path d="M140 125V95C140 85 148 80 158 80C168 80 176 85 176 95V125" stroke="#1e293b" strokeWidth="2.2" strokeLinecap="round" />
-    <circle cx="158" cy="62" r="12" fill="#f8fafc" stroke="#1e293b" strokeWidth="2.2" />
-    <path d="M140 92L110 75M176 92L195 80" stroke="#1e293b" strokeWidth="2" strokeLinecap="round" />
-    <path d="M110 50L112 40L117 38L112 36L110 26L108 36L103 38L108 40Z" fill="#f59e0b" stroke="#d97706" strokeWidth="1.2" />
-    <path d="M195 45L196.5 37L201 35.5L196.5 34L195 26L193.5 34L189 35.5L193.5 37Z" fill="#10b981" stroke="#059669" strokeWidth="1.2" />
-    <circle cx="128" cy="32" r="3" fill="#3b82f6" />
-    <circle cx="185" cy="65" r="2.5" fill="#f59e0b" />
-    <path d="M102 75C100 68 105 60 115 58" stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="2 2" strokeLinecap="round" />
+// Minimalist Line-art Illustration for AI Prompt option
+const PromptCardIllustration = ({ isSelected }) => (
+  <svg viewBox="0 0 120 80" className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
+    {/* Base Document Sheet */}
+    <rect
+      x="16"
+      y="10"
+      width="88"
+      height="60"
+      rx="6"
+      fill={isSelected ? "#f0faf1" : "#f8fafc"}
+      stroke={isSelected ? "#089613" : "#94a3b8"}
+      strokeWidth="1.8"
+    />
+    {/* Text Lines */}
+    <rect x="28" y="22" width="34" height="4" rx="2" fill={isSelected ? "#089613" : "#64748b"} />
+    <rect x="28" y="32" width="54" height="3" rx="1.5" fill={isSelected ? "#86efac" : "#cbd5e1"} />
+    <rect x="28" y="40" width="46" height="3" rx="1.5" fill={isSelected ? "#86efac" : "#cbd5e1"} />
+    <rect x="28" y="48" width="30" height="3" rx="1.5" fill={isSelected ? "#86efac" : "#cbd5e1"} />
+    
+    {/* Typing Cursor */}
+    <line x1="61" y1="46" x2="61" y2="53" stroke={isSelected ? "#089613" : "#64748b"} strokeWidth="1.8" strokeLinecap="round" />
+
+    {/* AI Sparkles */}
+    <path
+      d="M86 20L87.5 14L93.5 12.5L87.5 11L86 5L84.5 11L78.5 12.5L84.5 14Z"
+      fill={isSelected ? "#089613" : "#64748b"}
+    />
+    <path
+      d="M74 34L75 30L79 29L75 28L74 24L73 28L69 29L73 30Z"
+      fill={isSelected ? "#16a34a" : "#94a3b8"}
+    />
   </svg>
 );
 
@@ -97,11 +165,10 @@ const EstimationEmptyState = ({
   projectId,
   projectDetail,
   onEstimationSuccess,
-  triggerToast
+  triggerToast,
+  onCancel
 }) => {
-  // Modal state
-  const [showModal, setShowModal] = useState(false);
-  const [inputMode, setInputMode] = useState('file'); // 'file' | 'prompt'
+  const [inputMode, setInputMode] = useState('file'); // 'file' (Berdasarkan Desain) | 'prompt'
   const [file, setFile] = useState(null);
   const [promptText, setPromptText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -110,6 +177,7 @@ const EstimationEmptyState = ({
   const [activeStepIdx, setActiveStepIdx] = useState(0);
   const [currentTriviaIdx, setCurrentTriviaIdx] = useState(0);
   const [apiError, setApiError] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const fileInputRef = useRef(null);
 
@@ -134,10 +202,23 @@ const EstimationEmptyState = ({
     return `${m}:${s}`;
   };
 
-  const handleOpenModal = (mode) => {
-    setInputMode(mode);
-    setApiError(null);
-    setShowModal(true);
+  // Drag & Drop handlers
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      setFile(e.dataTransfer.files[0]);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -215,7 +296,6 @@ const EstimationEmptyState = ({
       clearInterval(progressInterval);
 
       setIsProcessing(false);
-      setShowModal(false);
       setFile(null);
       setPromptText('');
 
@@ -237,331 +317,346 @@ const EstimationEmptyState = ({
   };
 
   return (
-    <>
-      {/* 1. Base 2-Column Illustration Workspace Card (Matches Screenshot & Style) */}
-      <div className="w-full bg-white rounded-xl md:rounded-2xl border border-slate-200/90 shadow-xs p-6 sm:p-8 md:p-10 my-3">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 relative">
-          {/* Subtle vertical divider between columns on desktop */}
-          <div className="hidden md:block absolute left-1/2 top-4 bottom-4 w-px bg-slate-100 -translate-x-1/2"></div>
-
-          {/* Column 1: Upload Berkas DED */}
-          <div className="flex flex-col items-center text-center p-4 sm:p-6 rounded-xl hover:bg-slate-50/40 transition-all">
-            <div className="mb-4">
-              <DedIllustration />
+    <div className="w-full max-w-3xl mx-auto bg-white rounded-2xl shadow-xs border border-slate-200/90 overflow-hidden my-3">
+      {/* 1. Processing State */}
+      {isProcessing ? (
+        <div className="p-6 md:p-8 flex flex-col min-h-[420px]">
+          {/* Circle & Timer */}
+          <div className="flex items-center gap-5 pb-5 border-b border-slate-100 mb-5">
+            <div className="relative w-20 h-20 flex-shrink-0 flex items-center justify-center">
+              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="42" stroke="#f1f5f9" strokeWidth="6" fill="transparent" />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="42"
+                  stroke="#0fa83c"
+                  strokeWidth="6"
+                  fill="transparent"
+                  strokeDasharray={2 * Math.PI * 42}
+                  strokeDashoffset={2 * Math.PI * 42 * (1 - progressPercent / 100)}
+                  strokeLinecap="round"
+                  className="transition-all duration-300"
+                />
+              </svg>
+              <span className="absolute text-base font-extrabold text-emerald-950 tabular-nums">
+                {Math.round(progressPercent)}%
+              </span>
             </div>
-
-            <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-2 tracking-tight">
-              Unggah Berkas Dokumen DED
-            </h3>
-            <p className="text-xs text-slate-500 leading-relaxed max-w-sm mb-6">
-              Ekstrak kuantitas dan volume riil secara otomatis dari berkas gambar kerja 2D/3D Anda (PDF, DWG, DXF, IFC, RVT, SKP).
-            </p>
-
-            <button
-              type="button"
-              onClick={() => handleOpenModal('file')}
-              className="mt-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-[#089613] hover:bg-[#06730e] text-white text-xs font-bold rounded-lg shadow-xs hover:shadow transition-all cursor-pointer select-none active:scale-98"
-            >
-              <span>+ Upload Berkas DED</span>
-            </button>
+            <div>
+              <h3 className="text-sm md:text-base font-bold text-slate-800 mb-0.5">
+                {inputMode === 'prompt' ? 'Memproses Deteksi Prompt AI' : 'Memproses Berkas Dokumen DED'}
+              </h3>
+              <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5 text-[#0fa83c] animate-pulse" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Waktu Berjalan: <span className="font-bold text-slate-700 tabular-nums">{formatTimer(elapsedTime)}</span>
+              </p>
+              {inputMode === 'prompt' ? (
+                <p className="text-[11px] text-slate-400 mt-1 font-semibold truncate max-w-sm">
+                  Konsep: "{promptText.slice(0, 60)}..."
+                </p>
+              ) : file ? (
+                <p className="text-[11px] text-slate-400 mt-1 font-semibold truncate max-w-sm">
+                  File: {file.name} ({(file.size / (1024 * 1024)).toFixed(2)} MB)
+                </p>
+              ) : null}
+            </div>
           </div>
 
-          {/* Column 2: Deteksi Berdasarkan Prompt AI */}
-          <div className="flex flex-col items-center text-center p-4 sm:p-6 rounded-xl hover:bg-slate-50/40 transition-all">
-            <div className="mb-4">
-              <AiPromptIllustration />
+          {/* Pipeline Stepper Checklist */}
+          <div className="space-y-3 mb-5 flex-1">
+            {loadingSteps.map((step, idx) => {
+              const isCompleted = idx < activeStepIdx;
+              const isActive = idx === activeStepIdx;
+              return (
+                <div
+                  key={idx}
+                  className={`flex items-start gap-3 p-3 rounded-lg border transition-all ${isActive
+                      ? 'bg-emerald-50/40 border-emerald-200 shadow-3xs'
+                      : isCompleted
+                        ? 'bg-slate-50/30 border-slate-100 opacity-80'
+                        : 'border-transparent opacity-40'
+                    }`}
+                >
+                  <div className="flex-shrink-0 mt-0.5">
+                    {isCompleted ? (
+                      <div className="w-5 h-5 rounded-full bg-[#0fa83c] flex items-center justify-center text-white">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                        </svg>
+                      </div>
+                    ) : isActive ? (
+                      <div className="relative w-5 h-5 flex items-center justify-center">
+                        <span className="animate-ping absolute inline-flex h-3.5 w-3.5 rounded-full bg-emerald-400 opacity-75"></span>
+                        <div className="relative rounded-full h-4 w-4 border-2 border-[#0fa83c] border-t-transparent animate-spin"></div>
+                      </div>
+                    ) : (
+                      <div className="w-5 h-5 rounded-full border border-slate-300 flex items-center justify-center text-slate-400 text-[10px] font-bold">
+                        {idx + 1}
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className={`text-xs font-semibold ${isActive ? 'text-emerald-950 font-bold' : 'text-slate-650'}`}>
+                      {step.label}
+                    </p>
+                    {isActive && (
+                      <p className="text-[10px] text-emerald-700/80 font-medium animate-pulse mt-0.5">
+                        Pekerjaan sedang berlangsung di server...
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Trivia Box */}
+          {TRIVIA_SLIDES[currentTriviaIdx] && (
+            <div className="bg-[#f0faf1] border border-[#daf2dd] rounded-xl p-3.5 relative overflow-hidden mt-1">
+              <h4 className="text-xs font-bold text-emerald-800 mb-0.5 flex items-center gap-1.5">
+                {TRIVIA_SLIDES[currentTriviaIdx].title}
+              </h4>
+              <p className="text-[11px] text-slate-600 leading-relaxed font-medium">
+                {TRIVIA_SLIDES[currentTriviaIdx].text}
+              </p>
             </div>
-
-            <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-2 tracking-tight">
-              Deteksi Berdasarkan Prompt AI
-            </h3>
-            <p className="text-xs text-slate-500 leading-relaxed max-w-sm mb-6">
-              Tuliskan konsep atau spesifikasi fisik bangunan yang ingin dibangun, dan biarkan AI menyusun rincian item pekerjaan standar AHSP.
-            </p>
-
+          )}
+        </div>
+      ) : apiError ? (
+        /* 2. Error State */
+        <div className="p-6 md:p-8 flex flex-col items-center">
+          <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-red-500 mb-3 border border-red-100">
+            <Icons.AlertTriangle className="w-6 h-6" />
+          </div>
+          <div className="w-full border border-slate-100 rounded-xl p-4 bg-slate-50/60 mb-5 max-h-[250px] overflow-y-auto text-left">
+            <p className="text-xs font-bold text-red-800 mb-1">Terjadi Kesalahan:</p>
+            <p className="text-xs text-slate-650 leading-relaxed">{apiError}</p>
+          </div>
+          <div className="flex gap-3 w-full max-w-xs">
             <button
               type="button"
-              onClick={() => handleOpenModal('prompt')}
-              className="mt-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 hover:border-slate-400 text-xs font-bold rounded-lg shadow-2xs hover:shadow transition-all cursor-pointer select-none active:scale-98"
+              onClick={() => setApiError(null)}
+              className="flex-1 border border-slate-200 text-slate-700 font-semibold py-2.5 rounded-lg text-xs hover:bg-slate-50 cursor-pointer"
             >
-              <span>+ Mulai dengan Prompt AI</span>
+              Kembali
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              className="flex-1 bg-[#0fa83c] hover:bg-[#0c8a31] text-white font-semibold py-2.5 rounded-lg text-xs cursor-pointer"
+            >
+              Coba Ulang
             </button>
           </div>
         </div>
-      </div>
+      ) : (
+        /* 3. Inline Form View */
+        <form onSubmit={handleSubmit} className="p-6 md:p-8 flex flex-col gap-6">
+          {/* Header Title & Subtitle */}
+          <div className="text-center max-w-lg mx-auto">
+            <h2 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">
+              Pilih Metode Deteksi
+            </h2>
+            <p className="text-xs md:text-sm text-slate-500 mt-1 leading-relaxed">
+              Pilih metode analisis yang ingin Anda gunakan untuk mendeteksi rincian anggaran proyek
+            </p>
+          </div>
 
-      {/* 2. Modal Estimasi (Exact Same Style as Project.jsx) */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full border border-slate-100 overflow-hidden relative animate-fadeIn max-h-[92vh] flex flex-col">
-
-            {/* Modal Header */}
-            <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="text-[14px] font-bold text-slate-800 uppercase tracking-wide">
-                {inputMode === 'file' ? 'Upload Dokumen DED' : 'Deteksi Berdasarkan Prompt AI'}
-              </h2>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!isProcessing) setShowModal(false);
-                }}
-                className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer text-base"
-                disabled={isProcessing}
-              >
-                ✕
-              </button>
+          {/* 2 Method Option Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Card 1: Berdasarkan Desain (Default) */}
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => setInputMode('file')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setInputMode('file'); }}
+              className={`flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all cursor-pointer select-none text-center ${
+                inputMode === 'file'
+                  ? 'border-[#089613] bg-[#f0faf1] shadow-xs ring-2 ring-[#089613]/10'
+                  : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/50'
+              }`}
+            >
+              <div className="w-full h-20 flex items-center justify-center mb-2.5 pointer-events-none">
+                <DesignCardIllustration isSelected={inputMode === 'file'} />
+              </div>
+              <span className={`text-sm font-bold tracking-tight ${
+                inputMode === 'file' ? 'text-emerald-800' : 'text-slate-800'
+              }`}>
+                Berdasarkan Desain
+              </span>
+              <span className={`text-xs mt-0.5 font-medium ${
+                inputMode === 'file' ? 'text-emerald-600' : 'text-slate-400'
+              }`}>
+                File Dokumen DED / Gambar 2D & 3D
+              </span>
             </div>
 
-            {/* Modal Body: Processing State */}
-            {isProcessing ? (
-              <div className="p-6 flex flex-col min-h-[420px]">
-                {/* Circle & Timer */}
-                <div className="flex items-center gap-5 pb-5 border-b border-slate-100 mb-5">
-                  <div className="relative w-20 h-20 flex-shrink-0 flex items-center justify-center">
-                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                      <circle cx="50" cy="50" r="42" stroke="#f1f5f9" strokeWidth="6" fill="transparent" />
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r="42"
-                        stroke="#0fa83c"
-                        strokeWidth="6"
-                        fill="transparent"
-                        strokeDasharray={2 * Math.PI * 42}
-                        strokeDashoffset={2 * Math.PI * 42 * (1 - progressPercent / 100)}
-                        strokeLinecap="round"
-                        className="transition-all duration-300"
-                      />
-                    </svg>
-                    <span className="absolute text-base font-extrabold text-emerald-950 tabular-nums">
-                      {Math.round(progressPercent)}%
-                    </span>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-800 mb-0.5">
-                      {inputMode === 'prompt' ? 'Memproses Deteksi Prompt AI' : 'Memproses Berkas Dokumen DED'}
-                    </h3>
-                    <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5">
-                      <svg className="w-3.5 h-3.5 text-[#0fa83c] animate-pulse" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      Waktu Berjalan: <span className="font-bold text-slate-700 tabular-nums">{formatTimer(elapsedTime)}</span>
-                    </p>
-                    {inputMode === 'prompt' ? (
-                      <p className="text-[10.5px] text-slate-400 mt-1 font-semibold truncate max-w-[280px]">
-                        Konsep: "{promptText.slice(0, 50)}..."
-                      </p>
-                    ) : file ? (
-                      <p className="text-[10.5px] text-slate-400 mt-1 font-semibold truncate max-w-[280px]">
-                        File: {file.name} ({(file.size / (1024 * 1024)).toFixed(2)} MB)
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-
-                {/* Pipeline Stepper Checklist */}
-                <div className="space-y-3 mb-5 flex-1">
-                  {loadingSteps.map((step, idx) => {
-                    const isCompleted = idx < activeStepIdx;
-                    const isActive = idx === activeStepIdx;
-                    return (
-                      <div
-                        key={idx}
-                        className={`flex items-start gap-3 p-2.5 rounded-lg border transition-all ${isActive
-                            ? 'bg-emerald-50/40 border-emerald-200 shadow-3xs'
-                            : isCompleted
-                              ? 'bg-slate-50/30 border-slate-100 opacity-80'
-                              : 'border-transparent opacity-40'
-                          }`}
-                      >
-                        <div className="flex-shrink-0 mt-0.5">
-                          {isCompleted ? (
-                            <div className="w-5 h-5 rounded-full bg-[#0fa83c] flex items-center justify-center text-white">
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                              </svg>
-                            </div>
-                          ) : isActive ? (
-                            <div className="relative w-5 h-5 flex items-center justify-center">
-                              <span className="animate-ping absolute inline-flex h-3.5 w-3.5 rounded-full bg-emerald-400 opacity-75"></span>
-                              <div className="relative rounded-full h-4 w-4 border-2 border-[#0fa83c] border-t-transparent animate-spin"></div>
-                            </div>
-                          ) : (
-                            <div className="w-5 h-5 rounded-full border border-slate-300 flex items-center justify-center text-slate-400 text-[10px] font-bold">
-                              {idx + 1}
-                            </div>
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <p className={`text-xs font-semibold ${isActive ? 'text-emerald-950 font-bold' : 'text-slate-650'}`}>
-                            {step.label}
-                          </p>
-                          {isActive && (
-                            <p className="text-[10px] text-emerald-700/80 font-medium animate-pulse mt-0.5">
-                              Pekerjaan sedang berlangsung di server...
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Trivia Box */}
-                {TRIVIA_SLIDES[currentTriviaIdx] && (
-                  <div className="bg-[#f0faf1] border border-[#daf2dd] rounded-xl p-3.5 relative overflow-hidden mt-1">
-                    <h4 className="text-xs font-bold text-emerald-800 mb-0.5 flex items-center gap-1.5">
-                      {TRIVIA_SLIDES[currentTriviaIdx].title}
-                    </h4>
-                    <p className="text-[11px] text-slate-600 leading-relaxed font-medium">
-                      {TRIVIA_SLIDES[currentTriviaIdx].text}
-                    </p>
-                  </div>
-                )}
+            {/* Card 2: Berdasarkan Prompt */}
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => setInputMode('prompt')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setInputMode('prompt'); }}
+              className={`flex flex-col items-center justify-center p-5 rounded-xl border-2 transition-all cursor-pointer select-none text-center ${
+                inputMode === 'prompt'
+                  ? 'border-[#089613] bg-[#f0faf1] shadow-xs ring-2 ring-[#089613]/10'
+                  : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/50'
+              }`}
+            >
+              <div className="w-full h-20 flex items-center justify-center mb-2.5 pointer-events-none">
+                <PromptCardIllustration isSelected={inputMode === 'prompt'} />
               </div>
-            ) : apiError ? (
-              /* Modal Body: Error State */
-              <div className="p-6 flex flex-col items-center">
-                <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-red-500 mb-3 border border-red-100">
-                  <Icons.AlertTriangle className="w-6 h-6" />
-                </div>
-                <div className="w-full border border-slate-100 rounded-xl p-4 bg-slate-50/60 mb-5 max-h-[250px] overflow-y-auto text-left">
-                  <p className="text-xs font-bold text-red-800 mb-1">Terjadi Kesalahan:</p>
-                  <p className="text-xs text-slate-650 leading-relaxed">{apiError}</p>
-                </div>
-                <div className="flex gap-3 w-full">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setApiError(null);
-                      setShowModal(false);
+              <span className={`text-sm font-bold tracking-tight ${
+                inputMode === 'prompt' ? 'text-emerald-800' : 'text-slate-800'
+              }`}>
+                Prompt
+              </span>
+              <span className={`text-xs mt-0.5 font-medium ${
+                inputMode === 'prompt' ? 'text-emerald-600' : 'text-slate-400'
+              }`}>
+                Deskripsi & Spesifikasi Bangunan
+              </span>
+            </div>
+          </div>
+
+          {/* Sub-form: Upload or Textarea depending on selected card */}
+          <div className="flex-1">
+            {inputMode === 'file' ? (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-slate-700">
+                  Unggah File Gambar / Dokumen Desain (DED)
+                </label>
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`relative border-2 border-dashed rounded-xl transition-all p-6 md:p-8 flex flex-col items-center justify-center cursor-pointer text-center ${
+                    isDragging
+                      ? 'border-[#089613] bg-[#f0faf1] ring-2 ring-[#089613]/20'
+                      : file
+                        ? 'border-emerald-500 bg-emerald-50/40'
+                        : 'border-slate-250 hover:border-emerald-500 bg-slate-50/60 hover:bg-emerald-50/10'
+                  }`}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.dwg,.dxf,.dwt,.dwf,.dwfx,.svg,.plt,.hpgl,.hpg,.ifc,.rvt,.rfa,.nwd,.nwc,.skp,.jpeg,.png,.jpg"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setFile(e.target.files[0]);
+                      }
                     }}
-                    className="flex-1 border border-slate-200 text-slate-700 font-semibold py-2.5 rounded-lg text-xs hover:bg-slate-50 cursor-pointer"
-                  >
-                    Tutup
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSubmit}
-                    className="flex-1 bg-[#0fa83c] hover:bg-[#0c8a31] text-white font-semibold py-2.5 rounded-lg text-xs cursor-pointer"
-                  >
-                    Coba Ulang
-                  </button>
+                    className="hidden"
+                  />
+                  {file ? (
+                    <div className="flex flex-col items-center">
+                      <div className="w-12 h-12 rounded-full bg-[#089613] text-white flex items-center justify-center mb-2.5 shadow-xs">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                        </svg>
+                      </div>
+                      <span className="text-sm font-bold text-slate-800 break-all max-w-md mb-0.5">
+                        {file.name}
+                      </span>
+                      <span className="text-xs text-emerald-700 font-semibold">
+                        {(file.size / (1024 * 1024)).toFixed(2)} MB • Klik untuk ganti file
+                      </span>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="w-12 h-12 rounded-full bg-[#f0faf1] text-[#089613] border border-[#daf2dd] flex items-center justify-center mb-2.5">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                        </svg>
+                      </div>
+                      <span className="text-sm font-bold text-slate-700 mb-1">
+                        Pilih file dokumen DED atau seret kemari
+                      </span>
+                      <span className="text-xs text-slate-400 max-w-sm">
+                        Mendukung format: PDF, DWG, DXF, IFC, RVT, SKP, JPEG, PNG (Maks. 500MB)
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             ) : (
-              /* Modal Body: Form Inputs (Exact same as Project.jsx) */
-              <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4 overflow-y-auto">
-                {inputMode === 'file' ? (
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[12px] font-semibold text-slate-600">
-                      File Dokumen DED (Detail Engineering Design)
-                    </label>
-                    <div
-                      onClick={() => fileInputRef.current?.click()}
-                      className="relative border-2 border-dashed border-slate-200 rounded-lg hover:border-[#0fa83c] transition-colors p-6 flex flex-col items-center justify-center cursor-pointer bg-slate-50/50"
-                    >
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept=".pdf,.dwg,.dxf,.dwt,.dwf,.dwfx,.svg,.plt,.hpgl,.hpg,.ifc,.rvt,.rfa,.nwd,.nwc,.skp,.jpeg,.png,.jpg"
-                        onChange={(e) => {
-                          if (e.target.files && e.target.files[0]) {
-                            setFile(e.target.files[0]);
-                          }
-                        }}
-                        className="hidden"
-                      />
-                      <svg className="w-8 h-8 text-slate-400 mb-2" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
-                      </svg>
-                      <span className="text-xs font-semibold text-slate-600 mb-1">
-                        {file ? file.name : 'Pilih file atau seret kemari'}
-                      </span>
-                      <span className="text-[10.5px] text-slate-400 text-center">
-                        Mendukung format: PDF, DWG, DXF, IFC, RVT, SKP, JPEG, PNG, JPG (Maks. 500MB)
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-2.5">
-                    {/* Textarea Input */}
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[12px] font-semibold text-slate-700 flex items-center justify-between">
-                        <span>Deskripsi / Spesifikasi Bangunan</span>
-                        <span className="text-[10.5px] text-slate-400 font-normal">
-                          {promptText.length} karakter (Min. 15)
-                        </span>
-                      </label>
-                      <textarea
-                        rows="5"
-                        required
-                        placeholder="Tuliskan spesifikasi teknis atau gambaran bangunan...&#10;Contoh: Pembangunan rumah tinggal minimalis 2 lantai ukuran 8x15 meter. Lantai 1 terdapat carport, ruang tamu, ruang keluarga, 1 kamar tidur, dapur, dan kamar mandi..."
-                        value={promptText}
-                        onChange={(e) => setPromptText(e.target.value)}
-                        className="bg-white border border-slate-250 rounded-lg p-3 text-xs text-slate-700 focus:outline-none focus:border-[#0fa83c] leading-relaxed"
-                      />
-                    </div>
-
-                    {/* Rekomendasi Judul di Bawah Box Prompt */}
-                    <div className="flex flex-col gap-1.5 pt-0.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-semibold text-slate-600">
-                          Rekomendasi Contoh:
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-normal">
-                          Klik untuk isi otomatis
-                        </span>
-                      </div>
-
-                      <div className="flex flex-wrap gap-1.5">
-                        {PROMPT_RECOMMENDATIONS.map((item) => {
-                          const isSelected = promptText === item.prompt;
-                          return (
-                            <button
-                              key={item.id}
-                              type="button"
-                              onClick={() => setPromptText(item.prompt)}
-                              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer border flex items-center gap-1 select-none ${isSelected
-                                  ? 'bg-[#0fa83c] text-white border-[#0fa83c] shadow-3xs'
-                                  : 'bg-slate-50 text-slate-700 border-slate-250 hover:bg-slate-100 hover:border-slate-300'
-                                }`}
-                            >
-                              <span>{item.title}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Footer Buttons */}
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => setShowModal(false)}
-                    className="px-4 py-2 border border-slate-200 rounded-lg text-slate-650 hover:bg-slate-50 text-xs font-semibold cursor-pointer"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={inputMode === 'file' ? !file : (!promptText || promptText.trim().length < 15)}
-                    className={`px-4 py-2 rounded-lg text-xs font-semibold shadow-xs cursor-pointer flex items-center gap-1.5 ${(inputMode === 'file' ? file : (promptText && promptText.trim().length >= 15))
-                        ? 'bg-[#0fa83c] hover:bg-[#0c8a31] text-white'
-                        : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                      }`}
-                  >
-                    {inputMode === 'prompt' ? 'Deteksi Item Pekerjaan' : 'Proses Estimasi'}
-                  </button>
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
+                    <span>Deskripsi Konsep / Spesifikasi Bangunan</span>
+                    <span className="text-[11px] text-slate-400 font-normal">
+                      {promptText.length} karakter (Min. 15)
+                    </span>
+                  </label>
+                  <textarea
+                    rows="4"
+                    placeholder="Tuliskan spesifikasi teknis atau gambaran bangunan...&#10;Contoh: Pembangunan rumah tinggal minimalis 2 lantai ukuran 8x15 meter. Lantai 1 terdapat carport, ruang tamu, ruang keluarga, 1 kamar tidur, dapur, dan kamar mandi..."
+                    value={promptText}
+                    onChange={(e) => setPromptText(e.target.value)}
+                    className="w-full bg-slate-50/70 border border-slate-250 focus:bg-white rounded-xl p-3.5 text-xs text-slate-700 focus:outline-none focus:border-[#089613] focus:ring-1 focus:ring-[#089613] leading-relaxed transition-all resize-none"
+                  />
                 </div>
-              </form>
+
+                {/* Prompt Recommendations */}
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-xs font-semibold text-slate-600">
+                    Contoh Cepat (Klik untuk isi otomatis):
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {PROMPT_RECOMMENDATIONS.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setPromptText(item.prompt)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer border ${
+                          promptText === item.prompt
+                            ? 'bg-[#089613] text-white border-[#089613] shadow-2xs font-semibold'
+                            : 'bg-slate-50 text-slate-650 border-slate-250 hover:bg-emerald-50/50 hover:border-emerald-300 hover:text-emerald-900'
+                        }`}
+                      >
+                        {item.title}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
             )}
           </div>
-        </div>
+
+          {/* Action Button Footer */}
+          <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3 mt-2">
+            {onCancel && (
+              <button
+                type="button"
+                onClick={onCancel}
+                className="px-5 py-2.5 border border-slate-250 hover:bg-slate-50 text-slate-650 text-xs font-semibold rounded-lg cursor-pointer transition-all"
+              >
+                Batal
+              </button>
+            )}
+            <button
+              type="submit"
+              disabled={inputMode === 'file' ? !file : (!promptText || promptText.trim().length < 15)}
+              className={`px-7 py-2.5 rounded-lg text-xs font-bold transition-all shadow-xs flex items-center gap-2 ${
+                (inputMode === 'file' ? file : (promptText && promptText.trim().length >= 15))
+                  ? 'bg-[#089613] hover:bg-[#06730e] text-white cursor-pointer active:scale-98 shadow-sm hover:shadow'
+                  : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+              </svg>
+              <span>Mulai Deteksi</span>
+            </button>
+          </div>
+        </form>
       )}
-    </>
+    </div>
   );
 };
 
