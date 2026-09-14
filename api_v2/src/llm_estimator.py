@@ -18,7 +18,8 @@ from src.prompts import (
     CAD_SYSTEM_PROMPT, build_cad_user_prompt,
     PDF_SYSTEM_PROMPT, build_pdf_user_prompt,
     IMAGE_SYSTEM_PROMPT, build_image_user_prompt,
-    BIM_SYSTEM_PROMPT, build_bim_user_prompt
+    BIM_SYSTEM_PROMPT, build_bim_user_prompt,
+    PROMPT_SYSTEM_PROMPT, build_text_prompt_user_prompt
 )
 
 load_dotenv()
@@ -580,6 +581,79 @@ class CADLLMEstimator:
                         time.sleep(2 * (attempt + 1))
 
         return self._analyze_via_rest(prompt_content, system_prompt, project_name, client_name)
+
+    def analyze_prompt_text(
+        self,
+        prompt_text: str,
+        project_name: str = "Konsep Desain Rumah",
+        client_name: str = "Client"
+    ) -> DynamicTakeoffResponse:
+        """
+        Menganalisis deskripsi konsep / imajinasi bangunan dari pengguna via teks
+        dan menghasilkan daftar item pekerjaan WBS lengkap beserta satuannya.
+
+        Seluruh volume item DIJAMIN bernilai 0.0 (wajib 0).
+        """
+        system_prompt = PROMPT_SYSTEM_PROMPT
+        prompt_content = build_text_prompt_user_prompt(prompt_text, project_name, client_name)
+
+        takeoff_res: Optional[DynamicTakeoffResponse] = None
+
+        primary_res = self._analyze_via_primary_api(prompt_content, system_prompt, project_name, client_name)
+        if primary_res:
+            logger.info("Successfully obtained Prompt estimation from Primary API.")
+            takeoff_res = primary_res
+        else:
+            logger.warning("Primary API failed or skipped. Falling back to Gemini API.")
+
+            if self.client:
+                for model_name in self._get_model_candidates():
+                    for attempt in range(2):
+                        try:
+                            logger.info(f"Calling Gemini LLM ({model_name}) via SDK for Prompt Takeoff (Attempt {attempt+1})...")
+                            response = self.client.models.generate_content(
+                                model=model_name,
+                                contents=prompt_content,
+                                config=types.GenerateContentConfig(
+                                    system_instruction=system_prompt,
+                                    response_mime_type="application/json",
+                                    response_schema=DynamicTakeoffResponse,
+                                    temperature=0.2,
+                                    seed=42,
+                                    max_output_tokens=32768
+                                )
+                            )
+                            if response and response.text:
+                                parsed_json = self._clean_and_parse_json(response.text)
+                                takeoff_res = DynamicTakeoffResponse(**parsed_json)
+                                break
+                        except Exception as sdk_err:
+                            logger.warning(f"Gemini SDK Prompt call for {model_name} failed: {sdk_err}. Retrying/falling back...")
+                            time.sleep(2 * (attempt + 1))
+                    if takeoff_res:
+                        break
+
+            if not takeoff_res:
+                takeoff_res = self._analyze_via_rest(prompt_content, system_prompt, project_name, client_name)
+
+        # Check if LLM rejected as off-topic or empty
+        if not takeoff_res.wbs_sections or (takeoff_res.project_summary and "REJECTED" in takeoff_res.project_summary):
+            rejection_msg = takeoff_res.project_summary.replace("REJECTED:", "").strip() if takeoff_res.project_summary else ""
+            if not rejection_msg or "REJECTED" in rejection_msg:
+                rejection_msg = "Deskripsi teks yang Anda masukkan terdeteksi di luar lingkup konstruksi bangunan atau pekerjaan renovasi. Harap berikan konsep bangunan fisik (contoh: rumah tinggal, ruko, gedung, atau pekerjaan renovasi)."
+            from fastapi import HTTPException
+            raise HTTPException(status_code=400, detail=rejection_msg)
+
+        # STRICT ENFORCEMENT: Volume WAJIB 0.0 untuk seluruh item pekerjaan
+        for wbs in takeoff_res.wbs_sections:
+            for item in wbs.items:
+                item.volume = 0.0
+                if not item.warning_note:
+                    item.warning_note = "Volume 0.0 (Konsep imajinasi teks; dimensi riil belum dihitung)"
+                elif "0.0" not in item.warning_note and "volume" not in item.warning_note.lower():
+                    item.warning_note = f"{item.warning_note} | Volume 0.0 (Estimasi konsep)"
+
+        return takeoff_res
 
     @staticmethod
     def _clean_and_parse_json(text: str) -> dict:

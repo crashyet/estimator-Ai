@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { Icons } from '../components/Icons';
@@ -8,7 +8,6 @@ import {
   deleteEstimationItem
 } from '../services/api';
 import { useProject, DEFAULT_SECTIONS } from '../context/ProjectContext';
-import EstimationEmptyState from '../components/anggaran/EstimationEmptyState';
 
 // Currency and numbers formatter helpers (Indonesian format: 1.000,00)
 const formatNumber = (value) => {
@@ -18,7 +17,20 @@ const formatNumber = (value) => {
   });
 };
 
-const Anggaran = () => {
+const formatRupiah = (value) => {
+  const num = Number(value) || 0;
+  return 'Rp ' + num.toLocaleString('id-ID', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+};
+
+const formatPercentage = (value) => {
+  const num = Number(value) || 0;
+  return num.toFixed(2) + ' %';
+};
+
+const RabPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const queryParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
@@ -33,7 +45,6 @@ const Anggaran = () => {
     updateRow,
     estimationRun,
     setEstimationRun,
-    estimationRuns,
     isLoadingWbs,
     loadProjectAndEstimation,
     applyPendingRowUpdate
@@ -66,11 +77,11 @@ const Anggaran = () => {
   // Keep URL aligned with UUID if available
   useEffect(() => {
     if (projectDetail.uuid && projectId && projectId !== projectDetail.uuid) {
-      navigate(`/anggaran?id=${projectDetail.uuid}`, { replace: true });
+      navigate(`/rab?id=${projectDetail.uuid}`, { replace: true });
     }
   }, [projectDetail.uuid, projectId, navigate]);
 
-  // Read session toast triggers and apply any pending row updates (e.g. from Pemetaan AHSP)
+  // Read session toast triggers and apply any pending row updates
   useEffect(() => {
     const toastMsg = sessionStorage.getItem('estimator_toast_msg');
     if (toastMsg) {
@@ -101,12 +112,7 @@ const Anggaran = () => {
   }, [rows]);
 
   // Collapse / Expand state
-  // Default to expanded for all sections
   const [collapsedSections, setCollapsedSections] = useState({});
-  const isAllCollapsed = useMemo(() => {
-    if (sections.length === 0) return false;
-    return sections.every(s => (collapsedSections[s.code] !== undefined ? collapsedSections[s.code] : false));
-  }, [sections, collapsedSections]);
 
   const toggleSectionCollapse = (sectionCode) => {
     setCollapsedSections(prev => {
@@ -118,19 +124,34 @@ const Anggaran = () => {
     });
   };
 
+  // Collapse / Expand all sections
   const handleToggleCollapseAll = () => {
-    if (isAllCollapsed) {
-      // Expand all
-      const newMap = {};
-      sections.forEach(s => { newMap[s.code] = false; });
-      setCollapsedSections(newMap);
-    } else {
-      // Collapse all
-      const newMap = {};
-      sections.forEach(s => { newMap[s.code] = true; });
-      setCollapsedSections(newMap);
-    }
+    const allCodes = sections.map(s => s.code);
+    const isAllCollapsed = allCodes.every(code => collapsedSections[code] === true);
+    const newCollapsed = {};
+    allCodes.forEach(code => {
+      newCollapsed[code] = !isAllCollapsed;
+    });
+    setCollapsedSections(newCollapsed);
   };
+
+  // PPN rate (default 0.00% matching screenshot)
+  const [ppnRate, setPpnRate] = useState(0);
+
+  // Grand Total of all items across all sections
+  const grandTotal = useMemo(() => {
+    return rows.reduce((acc, r) => {
+      if (r.type === 'item') {
+        const vol = Number(r.volume) || 0;
+        const price = Number(r.unitPrice) || Number(r.unit_price) || 0;
+        return acc + (vol * price);
+      }
+      return acc;
+    }, 0);
+  }, [rows]);
+
+  const ppnAmount = useMemo(() => grandTotal * (ppnRate / 100), [grandTotal, ppnRate]);
+  const totalWithPpn = useMemo(() => grandTotal + ppnAmount, [grandTotal, ppnAmount]);
 
   // Search filter
   const [searchQuery, setSearchQuery] = useState("");
@@ -141,7 +162,6 @@ const Anggaran = () => {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showReorderModal, setShowReorderModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [isReDetecting, setIsReDetecting] = useState(false);
 
   const [selectedRow, setSelectedRow] = useState(null);
   const [targetSectionCode, setTargetSectionCode] = useState("A");
@@ -151,19 +171,13 @@ const Anggaran = () => {
   const [newCategoryName, setNewCategoryName] = useState("");
 
   const handleResetData = () => {
-    if (window.confirm("Apakah Anda yakin ingin mengembalikan struktur anggaran proyek ini ke default?")) {
+    if (window.confirm("Apakah Anda yakin ingin mengembalikan struktur RAB proyek ini ke default?")) {
       sessionStorage.clear();
       setRows(DEFAULT_SECTIONS);
       setSearchQuery("");
-      triggerToast("Data estimasi proyek telah direset ke default.", "success");
+      triggerToast("Data RAB proyek telah direset ke default.", "success");
     }
   };
-
-  const [showProceedModal, setShowProceedModal] = useState(false);
-
-  // Compute all items and unmapped items for alert / confirmation modal
-  const allItemRows = useMemo(() => rows.filter(r => r.type === 'item'), [rows]);
-  const unmappedItems = useMemo(() => allItemRows.filter(r => r.ahsp_status === 'unmapped'), [allItemRows]);
 
   const handleOpenAhspModal = (row) => {
     const activeProjectIdentifier = projectDetail.uuid || projectId;
@@ -171,18 +185,9 @@ const Anggaran = () => {
       state: {
         projectId: activeProjectIdentifier,
         targetRow: row,
-        returnUrl: `/anggaran?id=${activeProjectIdentifier}`
+        returnUrl: `/rab?id=${activeProjectIdentifier}`
       }
     });
-  };
-
-  const handleSaveEstimation = () => {
-    setShowProceedModal(true);
-  };
-
-  const proceedToRab = () => {
-    const activeProjectIdentifier = projectDetail.uuid || projectId;
-    navigate(`/rab?id=${activeProjectIdentifier}`);
   };
 
   // Add Item
@@ -225,7 +230,7 @@ const Anggaran = () => {
     const newRows = [...rows];
     newRows.splice(insertIdx, 0, newItem);
 
-    // Make sure section is expanded so user sees the newly added item
+    // Make sure section is expanded
     setCollapsedSections(prev => ({ ...prev, [targetSectionCode]: false }));
 
     setRows(newRows);
@@ -370,7 +375,6 @@ const Anggaran = () => {
     if (direction === 'down' && currentPos === secIdxList.length - 1) return;
 
     const targetPos = direction === 'up' ? currentPos - 1 : currentPos + 1;
-    const targetCode = secIdxList[targetPos].code;
 
     // Extract blocks
     const grouped = {};
@@ -437,20 +441,6 @@ const Anggaran = () => {
     return rows.filter(r => r.type === 'item').length;
   }, [estimationRun, rows]);
 
-  // Pengecekan apakah proyek belum memiliki riwayat/data estimasi (estimation_runs kosong)
-  const hasNoEstimationRuns = useMemo(() => {
-    if (isLoadingWbs) return false;
-    const runs = projectDetail?.estimation_runs || estimationRuns;
-    const hasZeroRuns = Array.isArray(runs) && runs.length === 0;
-    const hasNoRunData = !estimationRun || !estimationRun.sections || estimationRun.sections.length === 0;
-    return hasZeroRuns || (hasNoRunData && totalItemsCount === 0);
-  }, [isLoadingWbs, projectDetail?.estimation_runs, estimationRuns, estimationRun, totalItemsCount]);
-
-  const handleEstimationSuccess = async () => {
-    setIsReDetecting(false);
-    await loadProjectAndEstimation(projectId, null, true);
-  };
-
   // If no projectId provided, do not render contents while redirecting
   if (!projectId || projectId === 'undefined' || projectId === 'null') {
     return null;
@@ -459,7 +449,7 @@ const Anggaran = () => {
   return (
     <div className="min-h-screen bg-[#f7faf8] pb-16 antialiased text-slate-800">
       {/* Top Navigation */}
-      <Navbar onResetData={handleResetData} onNavigateToRab={handleSaveEstimation} />
+      <Navbar onResetData={handleResetData} />
 
       {/* Hero Banner with Green Wavy Pattern and Project Title */}
       <div className="w-full relative overflow-hidden h-10 md:h-28 flex items-center justify-center select-none bg-[#84c225] shadow-xs">
@@ -480,99 +470,89 @@ const Anggaran = () => {
 
       {/* Main Content Workspace Card */}
       <main className="max-w-[1360px] mx-auto px-4 mt-6">
-        {isLoadingWbs ? (
-          <div className="bg-white rounded-xl shadow-xs border border-slate-200/80 p-12 text-center text-slate-500 font-medium">
-            <div className="flex flex-col items-center justify-center gap-3">
-              <div className="w-8 h-8 border-3 border-[#0fa83c] border-t-transparent rounded-full animate-spin"></div>
-              <span className="text-sm font-semibold text-slate-700">Memuat data estimasi anggaran...</span>
+        <div className="bg-white rounded-xl shadow-xs border border-slate-200/80 p-5 md:p-6 space-y-4">
+          {/* Top Control Bar: Action Buttons Capsule & Search */}
+          <div className="flex flex-col md:flex-row md:items-center justify-end gap-3 select-none">
+            {/* Right: Search Filter */}
+            <div className="flex items-center gap-2">
+              <span className="text-[13px] text-slate-600 font-medium whitespace-nowrap">Cari Data:</span>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Masukkan kata kunci..."
+                className="px-3 py-1.5 text-[12px] bg-white border border-slate-300 rounded-md focus:outline-none focus:border-emerald-600 w-56 text-slate-700 placeholder:text-slate-400 shadow-3xs"
+              />
             </div>
           </div>
-        ) : (hasNoEstimationRuns || isReDetecting) ? (
-          <EstimationEmptyState
-            projectId={projectId}
-            projectDetail={projectDetail}
-            onEstimationSuccess={handleEstimationSuccess}
-            triggerToast={triggerToast}
-            onCancel={!hasNoEstimationRuns && isReDetecting ? () => setIsReDetecting(false) : null}
-          />
-        ) : (
-          <div className="bg-white rounded-xl shadow-xs border border-slate-200/80 p-5 md:p-6">
-            {/* Action Toolbar: Search & Action Buttons */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-150">
-              {/* Search and item count */}
-              <div className="flex items-center gap-3 flex-1 max-w-md">
-                <div className="relative w-full">
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Cari pekerjaan, seksi, atau kode AHSP..."
-                    className="w-full pl-9 pr-7 py-1.5 text-xs rounded-lg focus:outline-none transition-all bg-slate-50 border border-slate-250 focus:border-[#0fa83c] focus:bg-white text-slate-700 placeholder-slate-400"
-                  />
-                  <svg className="w-4 h-4 text-slate-400 absolute left-2.5 top-2 pointer-events-none" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-                  </svg>
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchQuery("")}
-                      className="absolute right-2.5 top-1.5 text-slate-400 hover:text-slate-600 text-sm font-bold cursor-pointer"
-                      title="Hapus pencarian"
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
 
-            {/* Table Container */}
-            <div className="overflow-x-auto border border-slate-200/90 rounded-sm shadow-3xs max-h-screen">
-              <table className="w-full border-collapse text-left text-[12.5px]">
-                {/* Header: Solid Dark Green */}
-                <thead className="bg-[#089613] text-white select-none sticky top-0 z-10">
+          {/* Table Container */}
+          <div className="overflow-x-auto border border-slate-200/90 rounded-sm shadow-3xs max-h-screen">
+            <table className="w-full border-collapse text-left text-[12.5px]">
+              {/* Header: Solid Dark Green */}
+              <thead className="bg-[#087f23] text-white select-none sticky top-0 z-10">
+                <tr>
+                  <th scope="col" className="py-2.5 px-3 text-center w-12 font-bold text-[12px] tracking-wide">
+                    No.
+                  </th>
+                  <th scope="col" className="py-2.5 px-4 text-left font-bold text-[12px] tracking-wide">
+                    Uraian Pekerjaan
+                  </th>
+                  <th scope="col" className="py-2.5 px-4 text-left font-bold text-[12px] tracking-wide">
+                    Kode AHSP
+                  </th>
+                  <th scope="col" className="py-2.5 px-3 text-center w-24 font-bold text-[12px] tracking-wide">
+                    Volume
+                  </th>
+                  <th scope="col" className="py-2.5 px-3 text-center w-20 font-bold text-[12px] tracking-wide">
+                    Satuan
+                  </th>
+                  <th scope="col" className="py-2.5 px-4 text-right w-32 font-bold text-[12px] tracking-wide">
+                    Harga Satuan
+                  </th>
+                  <th scope="col" className="py-2.5 px-4 text-right w-32 font-bold text-[12px] tracking-wide">
+                    Harga
+                  </th>
+                  <th scope="col" className="py-2.5 px-3 text-right w-20 font-bold text-[12px] tracking-wide">
+                    %
+                  </th>
+                  <th scope="col" className="py-2.5 px-3 text-center w-24 font-bold text-[12px] tracking-wide">
+                    Aksi
+                  </th>
+                </tr>
+              </thead>
+
+              {/* Table Body */}
+              <tbody className="divide-y divide-slate-100">
+                {isLoadingWbs ? (
                   <tr>
-                    <th scope="col" className="py-2.5 px-3 text-left w-12 font-bold text-[12px] tracking-wide">
-                      No.
-                    </th>
-                    <th scope="col" className="py-2.5 px-4 text-left font-bold text-[12px] tracking-wide">
-                      Uraian Pekerjaan
-                    </th>
-                    <th scope="col" className="py-2.5 px-3 text-center w-24 font-bold text-[12px] tracking-wide">
-                      Volume
-                    </th>
-                    <th scope="col" className="py-2.5 px-3 text-center w-20 font-bold text-[12px] tracking-wide">
-                      Satuan
-                    </th>
-                    <th scope="col" className="py-2.5 px-3 text-center w-24 font-bold text-[12px] tracking-wide">
-                      Aksi
-                    </th>
+                    <td colSpan={8} className="py-14 text-center text-slate-500 font-medium">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <div className="w-6 h-6 border-2 border-[#00802b] border-t-transparent rounded-full animate-spin"></div>
+                        <span>Memuat data RAB...</span>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-
-                {/* Table Body */}
-                <tbody className="divide-y divide-slate-100">
-                  {filteredSections.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="py-12 text-center text-slate-400 font-medium">
-                        {searchQuery ? `Tidak ada pekerjaan yang cocok dengan pencarian "${searchQuery}".` : 'Tidak ada data pekerjaan.'}
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredSections.map((sec, secIdx) => {
-
-                    const isCollapsed = collapsedSections[sec.code] !== undefined ? collapsedSections[sec.code] : false; // default expanded
+                ) : (
+                  filteredSections.map((sec) => {
+                    const isCollapsed = collapsedSections[sec.code] !== undefined ? collapsedSections[sec.code] : false;
+                    const secTotal = sec.items.reduce((acc, it) => {
+                      const v = Number(it.volume) || 0;
+                      const p = Number(it.unitPrice) || Number(it.unit_price) || 0;
+                      return acc + (v * p);
+                    }, 0);
+                    const secBobot = grandTotal > 0 ? (secTotal / grandTotal) * 100 : 0;
 
                     return (
                       <React.Fragment key={sec.id}>
                         {/* Category / Section Header Row */}
-                        <tr className="bg-white hover:bg-[#f4faf4] transition-colors group">
+                        <tr className="bg-white hover:bg-[#f0f7ec] transition-colors group">
                           {/* Col 1: Red Minus/Plus Circle Button */}
-                          <td className="py-2 px-3 text-center select-none align-middle">
+                          <td className="py-2.5 px-3 text-center select-none align-middle">
                             <button
                               type="button"
                               onClick={() => toggleSectionCollapse(sec.code)}
-                              className="w-4 h-4 rounded-full bg-[#d32f2f] hover:bg-red-700 flex items-center justify-center text-white cursor-pointer shadow-3xs transition-transform active:scale-95"
+                              className="w-4.5 h-4.5 rounded-full bg-[#d32f2f] hover:bg-red-700 flex items-center justify-center text-white cursor-pointer shadow-3xs transition-transform active:scale-95 mx-auto"
                               title={isCollapsed ? "Buka rincian pekerjaan kategori ini" : "Tutup rincian pekerjaan kategori ini"}
                             >
                               {isCollapsed ? (
@@ -595,37 +575,75 @@ const Anggaran = () => {
                             {sec.name}
                           </td>
 
-                          {/* Col 3: Volume (Blank) */}
-                          <td className="py-2.5 px-3 text-center text-slate-400 text-[12px] align-middle"></td>
+                          {/* Col 3: Kode AHSP */}
+                          <td className="py-2.5 px-3"></td>
 
-                          {/* Col 4: Satuan (Blank) */}
-                          <td className="py-2.5 px-3 text-center text-slate-400 text-[12px] align-middle"></td>
+                          {/* Col 4: Volume (Blank) */}
+                          <td className="py-2.5 px-3"></td>
 
-                          {/* Col 4: Satuan (Blank) */}
-                          <td className="py-2.5 px-3 text-center text-slate-400 text-[12px] align-middle"></td>
+                          {/* Col 5: Satuan (Blank) */}
+                          <td className="py-2.5 px-3"></td>
+
+                          {/* Col 6: Harga Satuan (Blank) */}
+                          <td className="py-2.5 px-4"></td>
+
+                          {/* Col 7: Harga (Section Total) */}
+                          <td className="py-2.5 px-4 text-right font-medium text-slate-800 text-[12px] tabular-nums">
+                            {formatRupiah(secTotal)}
+                          </td>
+
+                          {/* Col 8: % (Section Bobot) */}
+                          <td className="py-2.5 px-3 text-right font-medium text-slate-800 text-[12px] tabular-nums">
+                            {formatPercentage(secBobot)}
+                          </td>
+
+                          {/* Col 9: Aksi (Green + and Trash buttons) */}
+                          <td className="py-2.5 px-3 text-center align-middle">
+                            <div className="inline-flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setTargetSectionCode(sec.code);
+                                  setShowAddModal(true);
+                                }}
+                                className="w-5.5 h-5.5 rounded bg-[#689f38] hover:bg-[#558b2f] flex items-center justify-center text-white cursor-pointer shadow-3xs transition-colors"
+                                title="Tambah Pekerjaan"
+                              >
+                                <Icons.Plus className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteSection(sec)}
+                                className="w-5.5 h-5.5 rounded bg-[#689f38] hover:bg-[#558b2f] flex items-center justify-center text-white cursor-pointer shadow-3xs transition-colors"
+                                title="Hapus Kategori"
+                              >
+                                <Icons.Trash className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
                         </tr>
 
-                        {/* Items Rows in this Section */}
+                        {/* Sub-item Rows (Shown when Category is Expanded) */}
                         {!isCollapsed && sec.items.map((item, itemIdx) => {
                           const itemVolume = Number(item.volume) || 0;
+                          const itemPrice = Number(item.unitPrice) || Number(item.unit_price) || 0;
+                          const itemTotal = itemVolume * itemPrice;
+                          const itemBobot = grandTotal > 0 ? (itemTotal / grandTotal) * 100 : 0;
 
                           return (
-                            <tr
-                              key={item.id || itemIdx}
-                              className="bg-[#fafcfa] hover:bg-[#edf7ee] transition-colors"
-                            >
-                              {/* Col 1: Empty or Sub-number */}
-                              <td className="py-2.5 px-3 text-center text-slate-400 text-[11px] align-middle">
-                                {item.no || itemIdx + 1}
+                            <tr key={item.id} className="bg-slate-50/50 hover:bg-slate-100/60 transition-colors">
+                              {/* Col 1: Item Number */}
+                              <td className="py-2.5 px-3 text-center text-slate-500 font-semibold text-[11.5px] tabular-nums">
+                                {itemIdx + 1}
                               </td>
 
-                              {/* Col 2: Uraian Pekerjaan + Status Badge */}
-                              <td className="py-2.5 px-4 text-slate-800 align-middle">
+                              {/* Col 2: Item Name & AHSP Badge */}
+                              <td className="py-2.5 px-4 pl-8">
                                 <div className="flex gap-2">
                                   <span className="font-semibold text-slate-800 text-[12px]">
                                     {item.ahsp_name || item.name || ''}
                                   </span>
-                                  {item.ahsp_status == "unmapped" && (
+                                  {item.ahsp_status === "unmapped" && (
                                     <span className="text-xs font-medium text-red-800 bg-red-100 px-1.5 py-0.2 rounded border border-red-400 self-start" title="AHSP belum dipetakan">
                                       !
                                     </span>
@@ -633,19 +651,58 @@ const Anggaran = () => {
                                 </div>
                               </td>
 
-                              {/* Col 3: Volume */}
+                              {/* Col 3: Kode AHSP */}
+                              <td className="py-2.5 px-3 text-center text-slate-700 font-medium text-[12px] tabular-nums">
+                                {item.code}
+                              </td>
+
+                              {/* Col 4: Volume */}
                               <td className="py-2.5 px-3 text-center text-slate-700 font-medium text-[12px] tabular-nums">
                                 {formatNumber(itemVolume)}
                               </td>
 
-                              {/* Col 4: Satuan */}
+                              {/* Col 5: Satuan */}
                               <td className="py-2.5 px-3 text-center text-slate-600 text-[12px]">
                                 {item.ahsp_unit || item.unit || ''}
                               </td>
 
-                              {/* Col 5: Aksi (Edit, Pemetaan AHSP, Hapus) */}
+                              {/* Col 6: Harga Satuan */}
+                              <td className="py-2.5 px-4 text-right text-slate-700 font-medium text-[12px] tabular-nums">
+                                {formatRupiah(itemPrice)}
+                              </td>
+
+                              {/* Col 7: Harga (Total) */}
+                              <td className="py-2.5 px-4 text-right font-medium text-slate-800 text-[12px] tabular-nums">
+                                {formatRupiah(itemTotal)}
+                              </td>
+
+                              {/* Col 8: % (Bobot) */}
+                              <td className="py-2.5 px-3 text-right text-slate-700 font-medium text-[12px] tabular-nums">
+                                {formatPercentage(itemBobot)}
+                              </td>
+
+                              {/* Col 9: Aksi (Edit, Pemetaan AHSP, Hapus) */}
                               <td className="py-2.5 px-3 text-center">
                                 <div className="inline-flex items-center justify-center gap-1">
+                                  {/* Edit item button */}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedRow(item);
+                                      setFormData({
+                                        name: item.name,
+                                        volume: item.volume,
+                                        unit: item.unit,
+                                        unitPrice: itemPrice
+                                      });
+                                      setShowEditModal(true);
+                                    }}
+                                    className="p-1 rounded text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+                                    title="Ubah Item"
+                                  >
+                                    <Icons.Edit className="w-3.5 h-3.5" />
+                                  </button>
+
                                   {/* Pemetaan AHSP button */}
                                   <button
                                     type="button"
@@ -673,34 +730,52 @@ const Anggaran = () => {
                       </React.Fragment>
                     );
                   })
-                  )}
-                </tbody>
+                )}
+              </tbody>
 
-                {/* Table Footer: Total Items */}
-                <tfoot className="bg-[#00802b] text-white font-semibold text-[13px] select-none border-t border-[#006e24]/40 sticky bottom-0">
-                  {/* 3. TOTAL ITEMS */}
-                  <tr className="border-t border-[#006e24]/40">
-                    <td colSpan={4} className="py-2.5 px-4 text-right tracking-wide">
-                      Total Item
-                    </td>
-                    <td className="py-2.5 px-4 text-right tracking-wider tabular-nums font-bold">
-                      {totalItemsCount}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
+              {/* Table Footer: Solid Dark Green Summary */}
+              <tfoot className="bg-[#087f23] text-white font-bold select-none text-[12px] sticky -bottom-1 z-20 shadow-xs">
+                {/* Row 1: JUMLAH HARGA */}
+                <tr className="border-t border-[#006e24]/40">
+                  <td colSpan={6} className="py-2.5 px-4 text-right uppercase tracking-wider font-bold">
+                    JUMLAH HARGA
+                  </td>
+                  <td className="py-2.5 px-4 text-right tracking-wider tabular-nums font-bold">
+                    {formatRupiah(grandTotal)}
+                  </td>
+                  <td className="py-2.5 px-3 text-right tracking-wider tabular-nums font-bold">
+                    {formatPercentage(grandTotal > 0 ? 100 : 0)}
+                  </td>
+                  <td className="py-2.5 px-3"></td>
+                </tr>
 
-            <div className="p-4 flex justify-end">
-              <button
-                onClick={() => handleSaveEstimation()}
-                className="px-6 py-2 text-white bg-[#00802b] hover:bg-[#006e24] cursor-pointer active:scale-98 transition-colors rounded-full font-bold text-[13.5px] tracking-wide shadow-md"
-              >
-                Lanjut ke RAB
-              </button>
-            </div>
+                {/* Row 2: PPN 0.00 % */}
+                <tr className="border-t border-[#006e24]/30">
+                  <td colSpan={6} className="py-2 px-4 text-right uppercase tracking-wider font-bold">
+                    PPN {formatPercentage(ppnRate)}
+                  </td>
+                  <td className="py-2 px-4 text-right tracking-wider tabular-nums font-bold">
+                    {formatRupiah(ppnAmount)}
+                  </td>
+                  <td className="py-2 px-3"></td>
+                  <td className="py-2 px-3"></td>
+                </tr>
+
+                {/* Row 3: TOTAL HARGA */}
+                <tr className="border-t border-[#006e24]/30">
+                  <td colSpan={6} className="py-2.5 px-4 text-right uppercase tracking-wider font-extrabold">
+                    TOTAL HARGA
+                  </td>
+                  <td className="py-2.5 px-4 text-right tracking-wider tabular-nums font-extrabold">
+                    {formatRupiah(totalWithPpn)}
+                  </td>
+                  <td className="py-2.5 px-3"></td>
+                  <td className="py-2.5 px-3"></td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
-        )}
+        </div>
       </main>
 
       {/* Floating Toast Notification */}
@@ -713,226 +788,6 @@ const Anggaran = () => {
           }`}>
           <Icons.Info className="w-4 h-4" />
           <span className="text-[12.5px]">{toast.message}</span>
-        </div>
-      )}
-
-      {/* Modal: Konfirmasi Lanjut ke RAB */}
-      {showProceedModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-lg w-full overflow-hidden transform scale-100 transition-all">
-
-            {/* KASUS 1: Masih ada item yang belum dipetakan (UNMAPPED) */}
-            {unmappedItems.length > 0 ? (
-              <>
-                {/* Header Warning Amber */}
-                <div className="bg-amber-600 text-white px-5 py-3.5 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Icons.AlertTriangle className="w-5 h-5 text-amber-100" />
-                    <h3 className="font-bold text-[13.5px] uppercase tracking-wide">
-                      Perhatian: Item Belum Terpetakan
-                    </h3>
-                  </div>
-                  <button
-                    onClick={() => setShowProceedModal(false)}
-                    className="p-1 rounded-full hover:bg-amber-700 text-white transition-colors cursor-pointer"
-                  >
-                    <Icons.X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="p-5 space-y-4">
-                  {/* Alert banner */}
-                  <div className="bg-amber-50 border border-amber-200/80 rounded-xl p-3.5 flex gap-3 text-amber-900">
-                    <div className="w-7 h-7 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 font-bold text-sm">
-                      !
-                    </div>
-                    <div className="text-[12.5px] leading-relaxed">
-                      <p className="font-bold text-amber-950">
-                        Ada {unmappedItems.length} pekerjaan yang belum dipetakan ke AHSP
-                      </p>
-                      <p className="text-amber-800 text-[12px] mt-0.5">
-                        Item yang belum dipetakan tidak memiliki kode dan acuan harga satuan standar. Disarankan untuk memetakan seluruh pekerjaan terlebih dahulu.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* List of unmapped items */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[11.5px] font-bold text-slate-600 uppercase tracking-wider">
-                        Daftar Pekerjaan Belum Dipetakan ({unmappedItems.length}):
-                      </span>
-                      <span className="text-[11px] text-slate-400">
-                        Klik tombol untuk memetakan
-                      </span>
-                    </div>
-
-                    <div className="max-h-52 overflow-y-auto rounded-xl border border-slate-200 divide-y divide-slate-100 bg-slate-50/50 pr-1">
-                      {unmappedItems.map((item, idx) => (
-                        <div key={item.id || idx} className="p-2.5 flex items-center justify-between gap-3 hover:bg-white transition-colors">
-                          <div className="flex items-start gap-2.5 min-w-0 flex-1">
-                            <span className="w-5 h-5 rounded-full bg-red-100 text-red-700 font-bold text-[10.5px] flex items-center justify-center shrink-0 mt-0.5">
-                              !
-                            </span>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-[12px] font-semibold text-slate-800 truncate" title={item.name}>
-                                {item.name}
-                              </p>
-                              <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
-                                <span className="bg-slate-200/80 px-1.5 py-0.2 rounded text-[10px] font-medium text-slate-700">
-                                  Kategori {item.sectionCode || '-'}
-                                </span>
-                                <span>•</span>
-                                <span>Vol: {formatNumber(item.volume)} {item.unit}</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setShowProceedModal(false);
-                              handleOpenAhspModal(item);
-                            }}
-                            className="px-2.5 py-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg transition-colors cursor-pointer shrink-0 flex items-center gap-1 shadow-2xs"
-                            title="Petakan pekerjaan ini sekarang"
-                          >
-                            <Icons.Book className="w-3 h-3" />
-                            Petakan
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Confirmation prompt */}
-                  <div className="bg-slate-50 rounded-lg p-3 text-center border border-slate-200/70">
-                    <p className="text-[12.5px] font-semibold text-slate-700">
-                      Apakah Anda yakin ingin tetap melanjutkan ke halaman RAB?
-                    </p>
-                  </div>
-
-                  {/* Action buttons */}
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2.5">
-                    <button
-                      type="button"
-                      onClick={() => setShowProceedModal(false)}
-                      className="px-4 py-2 border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 text-[12px] font-semibold transition-colors cursor-pointer"
-                    >
-                      Periksa & Petakan Dulu
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowProceedModal(false);
-                        proceedToRab();
-                      }}
-                      className="px-4.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[12px] font-bold shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
-                    >
-                      <span>Tetap Lanjut ke RAB</span>
-                      <Icons.ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              </>
-            ) : allItemRows.length > 0 ? (
-              /* KASUS 2: Seluruh item sudah terpetakan (SIAP) */
-              <>
-                <div className="bg-[#00802b] text-white px-5 py-3.5 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Icons.CheckCircle className="w-5 h-5 text-emerald-200" />
-                    <h3 className="font-bold text-[13.5px] uppercase tracking-wide">
-                      Siap Lanjut ke RAB
-                    </h3>
-                  </div>
-                  <button
-                    onClick={() => setShowProceedModal(false)}
-                    className="p-1 rounded-full hover:bg-emerald-800 text-white transition-colors cursor-pointer"
-                  >
-                    <Icons.X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="p-5 space-y-4">
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex gap-3.5 text-emerald-900">
-                    <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 font-bold text-base">
-                      ✓
-                    </div>
-                    <div className="text-[12.5px] leading-relaxed">
-                      <p className="font-bold text-emerald-950">
-                        Seluruh Pekerjaan Telah Terpetakan ({allItemRows.length} item)
-                      </p>
-                      <p className="text-emerald-800 text-[12px] mt-0.5">
-                        Semua item pekerjaan telah berhasil dipetakan ke standar AHSP. Data siap disusun menjadi Rencana Anggaran Biaya (RAB).
-                      </p>
-                    </div>
-                  </div>
-
-                  <p className="text-[12.5px] font-semibold text-slate-700 text-center py-1">
-                    Lanjutkan ke halaman penyusunan Rencana Anggaran Biaya (RAB)?
-                  </p>
-
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2.5">
-                    <button
-                      type="button"
-                      onClick={() => setShowProceedModal(false)}
-                      className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 text-[12px] font-semibold transition-colors cursor-pointer"
-                    >
-                      Batal
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowProceedModal(false);
-                        proceedToRab();
-                      }}
-                      className="px-5 py-2 bg-[#00802b] hover:bg-emerald-700 text-white rounded-lg text-[12.5px] font-bold shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
-                    >
-                      <span>Lanjut ke RAB</span>
-                      <Icons.ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              </>
-            ) : (
-              /* KASUS 3: Tidak ada item sama sekali */
-              <>
-                <div className="bg-slate-700 text-white px-5 py-3.5 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Icons.Info className="w-5 h-5 text-slate-200" />
-                    <h3 className="font-bold text-[13.5px] uppercase tracking-wide">
-                      Data Pekerjaan Kosong
-                    </h3>
-                  </div>
-                  <button
-                    onClick={() => setShowProceedModal(false)}
-                    className="p-1 rounded-full hover:bg-slate-800 text-white transition-colors cursor-pointer"
-                  >
-                    <Icons.X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="p-5 space-y-4">
-                  <p className="text-[12.5px] text-slate-600 leading-relaxed">
-                    Belum ada item pekerjaan yang terdaftar pada proyek ini. Silakan tambahkan pekerjaan terlebih dahulu sebelum menyusun RAB.
-                  </p>
-
-                  <div className="pt-2 border-t border-slate-100 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => setShowProceedModal(false)}
-                      className="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md text-[12px] font-semibold transition-colors cursor-pointer"
-                    >
-                      Tutup
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
-
-          </div>
         </div>
       )}
 
@@ -1343,4 +1198,4 @@ const Anggaran = () => {
   );
 };
 
-export default Anggaran;
+export default RabPage;

@@ -149,3 +149,12 @@ class DynamicTakeoffResponse(BaseModel):
             "coverage_audit": [c.model_dump() for c in self.coverage_audit] if self.coverage_audit else None,
             "raw_llm_response": self.model_dump()
         }
+
+
+class PromptTakeoffRequest(BaseModel):
+    """Payload request untuk estimasi WBS dari imajinasi/konsep teks pengguna."""
+
+    name: Optional[str] = Field(default="Konsep Desain Rumah", description="Nama/judul proyek konstruksi")
+    client: Optional[str] = Field(default="Client", description="Nama klien atau pemilik proyek")
+    prompt: str = Field(..., min_length=3, description="Deskripsi teks konsep/imajinasi bangunan dari user")
+

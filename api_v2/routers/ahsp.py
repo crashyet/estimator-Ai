@@ -156,6 +156,7 @@ async def map_item_to_ahsp(req: MapItemRequest):
         "ahsp_code": mapping["ahsp_code"],
         "ahsp_name": mapping["ahsp_name"],
         "ahsp_unit": mapping["ahsp_unit"],
+        "unit": mapping.get("unit", mapping["ahsp_unit"] or req.item_unit),
         "ahsp_score": mapping["ahsp_score"],
         "ahsp_status": mapping["ahsp_status"],
         "ahsp_candidates": mapping["ahsp_candidates"],
