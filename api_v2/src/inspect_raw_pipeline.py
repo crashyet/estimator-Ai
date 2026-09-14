@@ -98,7 +98,8 @@ def inspect_single_item_cli(item_name: str, item_unit: str = "", top_k: int = 5)
     print(f"  - Status:     {status_fmt}")
     print(f"  - Code:       {final_map.get('ahsp_code') or 'None'}")
     print(f"  - Name:       {final_map.get('ahsp_name') or 'None'}")
-    print(f"  - Unit:       {final_map.get('ahsp_unit') or 'None'}")
+    print(f"  - AHSP Unit:  {final_map.get('ahsp_unit') or 'None'}")
+    print(f"  - Final Unit: {final_map.get('unit') or 'None'}")
     print(f"  - Final Score:{final_map.get('ahsp_score') or 0.0}")
 
     return result
@@ -151,6 +152,7 @@ def inspect_file_pipeline(file_path: str, project_name: str = "Proyek Evaluasi",
         initialize_mapper()
 
     inspection_report = mapper_engine.inspect_takeoff_response(takeoff_result)
+    takeoff_result = mapper_engine.map_takeoff_response(takeoff_result)
 
     summary = inspection_report.get("summary", {})
     print(f"\n{COLOR_CYAN}--- PIPELINE EVALUATION SUMMARY ---{COLOR_RESET}")
@@ -168,8 +170,11 @@ def inspect_file_pipeline(file_path: str, project_name: str = "Proyek Evaluasi",
         final_map = item["final_mapping"]
         status_fmt = format_status(final_map.get("ahsp_status"))
 
+        final_u = final_map.get("unit") or ai_item["unit"]
+        unit_info = f"{ai_item['unit']} → {final_u}" if (final_map.get("ahsp_status") in ["mapped_high", "mapped_medium"] and final_u and final_u != ai_item["unit"]) else ai_item["unit"]
+
         print(f"\n--------------------------------------------------------------------------------")
-        print(f"Item #{idx} [{item['section_code']}] {ai_item['name']} | Vol: {ai_item['volume']} {ai_item['unit']}")
+        print(f"Item #{idx} [{item['section_code']}] {ai_item['name']} | Vol: {ai_item['volume']} {unit_info}")
         print(f"  AI Warning/Formula: {ai_item.get('warning_note') or 'None'}")
         print(f"  Final Mapping Status: {status_fmt} (Score: {final_map.get('ahsp_score')})")
         print(f"  Assigned AHSP Code:   {final_map.get('ahsp_code')} — {final_map.get('ahsp_name')}")

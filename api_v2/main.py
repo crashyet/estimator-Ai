@@ -115,6 +115,7 @@ def main_cli():
     parser = argparse.ArgumentParser(description="Python Direct DWG/BIM AI Estimator CLI")
     parser.add_argument("command", choices=["analyze", "server"], help="Command to execute")
     parser.add_argument("--file", help="Path to input CAD/BIM/PDF/Image file")
+    parser.add_argument("--prompt", help="Deskripsi imajinasi/konsep bangunan dari user via teks")
     parser.add_argument("--project", default="Proyek Estimator", help="Project Title")
     parser.add_argument("--client", default="Client", help="Client Name")
     parser.add_argument("--excel", help="Output Excel file path (.xlsx)")
@@ -124,36 +125,39 @@ def main_cli():
     args = parser.parse_args()
 
     if args.command == "analyze":
-        if not args.file:
-            print("Error: --file argument is required for 'analyze' command.")
-            return
+        if args.prompt:
+            print(f"Analyzing building imagination prompt: '{args.prompt[:80]}...'")
+            takeoff = estimator_engine.analyze_prompt_text(args.prompt, project_name=args.project, client_name=args.client)
+        elif args.file:
+            print(f"Reading file: {args.file}...")
+            with open(args.file, "rb") as f:
+                file_bytes = f.read()
 
-        print(f"Reading file: {args.file}...")
-        with open(args.file, "rb") as f:
-            file_bytes = f.read()
-
-        ext = os.path.splitext(args.file)[1].lower()
-        if ext in [".ifc", ".rvt", ".rfa", ".nwd", ".nwc", ".skp"]:
-            print("Parsing 3D BIM quantities...")
-            bim_quantities = BIMEntityExtractor.process_bim_bytes(file_bytes, os.path.basename(args.file))
-            bim_payload = BIMEntityExtractor.format_to_llm_payload(bim_quantities)
-            print("Mapping BIM 3D quantities with Gemini LLM Engine...")
-            takeoff = estimator_engine.analyze_bim_payload(bim_payload, project_name=args.project, client_name=args.client)
-        elif ext in [".dwg", ".dxf", ".dwt", ".dwf", ".dwfx", ".svg", ".plt", ".hpgl", ".hpg"]:
-            cad_data = CADEntityExtractor.process_file_bytes(file_bytes, os.path.basename(args.file))
-            cad_payload = CADEntityExtractor.format_to_llm_payload(cad_data)
-            print("Analyzing CAD entities with Gemini LLM Engine...")
-            takeoff = estimator_engine.analyze_cad_payload(cad_payload, project_name=args.project, client_name=args.client)
-        elif ext in [".jpeg", ".png", ".jpg"]:
-            mime_map = {".jpeg": "image/jpeg", ".jpg": "image/jpeg", ".png": "image/png"}
-            mime_type = mime_map.get(ext, "image/jpeg")
-            print(f"Analyzing image document ({mime_type}) directly with Gemini LLM Engine...")
-            takeoff = estimator_engine.analyze_image_bytes(file_bytes, filename=os.path.basename(args.file), mime_type=mime_type, project_name=args.project, client_name=args.client)
-        elif ext == ".pdf":
-            print("Analyzing raw PDF document directly with Gemini LLM Engine...")
-            takeoff = estimator_engine.analyze_pdf_bytes(file_bytes, filename=os.path.basename(args.file), project_name=args.project, client_name=args.client)
+            ext = os.path.splitext(args.file)[1].lower()
+            if ext in [".ifc", ".rvt", ".rfa", ".nwd", ".nwc", ".skp"]:
+                print("Parsing 3D BIM quantities...")
+                bim_quantities = BIMEntityExtractor.process_bim_bytes(file_bytes, os.path.basename(args.file))
+                bim_payload = BIMEntityExtractor.format_to_llm_payload(bim_quantities)
+                print("Mapping BIM 3D quantities with Gemini LLM Engine...")
+                takeoff = estimator_engine.analyze_bim_payload(bim_payload, project_name=args.project, client_name=args.client)
+            elif ext in [".dwg", ".dxf", ".dwt", ".dwf", ".dwfx", ".svg", ".plt", ".hpgl", ".hpg"]:
+                cad_data = CADEntityExtractor.process_file_bytes(file_bytes, os.path.basename(args.file))
+                cad_payload = CADEntityExtractor.format_to_llm_payload(cad_data)
+                print("Analyzing CAD entities with Gemini LLM Engine...")
+                takeoff = estimator_engine.analyze_cad_payload(cad_payload, project_name=args.project, client_name=args.client)
+            elif ext in [".jpeg", ".png", ".jpg"]:
+                mime_map = {".jpeg": "image/jpeg", ".jpg": "image/jpeg", ".png": "image/png"}
+                mime_type = mime_map.get(ext, "image/jpeg")
+                print(f"Analyzing image document ({mime_type}) directly with Gemini LLM Engine...")
+                takeoff = estimator_engine.analyze_image_bytes(file_bytes, filename=os.path.basename(args.file), mime_type=mime_type, project_name=args.project, client_name=args.client)
+            elif ext == ".pdf":
+                print("Analyzing raw PDF document directly with Gemini LLM Engine...")
+                takeoff = estimator_engine.analyze_pdf_bytes(file_bytes, filename=os.path.basename(args.file), project_name=args.project, client_name=args.client)
+            else:
+                print(f"Error: Unsupported file extension {ext}")
+                return
         else:
-            print(f"Error: Unsupported file extension {ext}")
+            print("Error: Either --file or --prompt argument is required for 'analyze' command.")
             return
 
         print("\n--- DIRECT DYNAMIC AI WBS RESULTS SUMMARY ---")

@@ -1,14 +1,14 @@
 import os
-import json
-import time
 import logging
 from typing import Tuple, Optional, Dict, Any
 
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
-from src.schemas import DynamicTakeoffResponse
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Request
+from starlette.concurrency import run_in_threadpool
+from src.schemas import DynamicTakeoffResponse, PromptTakeoffRequest
 from src.cad_parser import CADEntityExtractor
 from src.bim_parser import BIMEntityExtractor
 from src.llm_estimator import CADLLMEstimator
+from src.prompt_validator import validate_construction_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,6 @@ async def read_upload_file_with_limit(ded_file: UploadFile) -> bytes:
 def apply_ahsp_mapping(takeoff_result: DynamicTakeoffResponse) -> Tuple[DynamicTakeoffResponse, Optional[Dict[str, Any]]]:
     """
     Apply AHSP mapping post-processing to a takeoff response if engine is ready.
-    Auto-saves debug log to 'debug_logs/latest_raw_pipeline.json'.
     """
     inspection_report = None
     if AHSP_AVAILABLE and mapper_engine and mapper_engine.is_ready():
@@ -80,29 +79,17 @@ def apply_ahsp_mapping(takeoff_result: DynamicTakeoffResponse) -> Tuple[DynamicT
                 v_str = f"[{v_top.get('id_pekerjaan', 'None')}] (score {v_top.get('base_score', 0.0)})" if v_top else "N/A"
                 r_str = f"[{r_top.get('id_pekerjaan', 'None')}] (score {r_top.get('reranked_score', 0.0)}, delta {r_top.get('score_delta', '0')})" if r_top else "N/A"
 
+                final_unit = final_map.get("unit") or ai_item["unit"]
+                unit_str = f"{ai_item['unit']} → {final_unit}" if (final_map.get("ahsp_status") in ["mapped_high", "mapped_medium"] and final_unit and final_unit != ai_item["unit"]) else ai_item["unit"]
+
                 logger.info(
-                    f"Item #{idx}: '{ai_item['name']}' ({ai_item['volume']} {ai_item['unit']}) "
+                    f"Item #{idx}: '{ai_item['name']}' ({ai_item['volume']} {unit_str}) "
                     f"| VectorDB Top-1: {v_str} "
                     f"| Reranked Top-1: {r_str} "
                     f"| STATUS: {final_map.get('ahsp_status', 'unmapped').upper()}"
                 )
 
             logger.info("=" * 85)
-
-            try:
-                os.makedirs("debug_logs", exist_ok=True)
-                latest_path = os.path.join("debug_logs", "latest_raw_pipeline.json")
-                timestamp_path = os.path.join("debug_logs", f"raw_pipeline_{int(time.time())}.json")
-
-                with open(latest_path, "w", encoding="utf-8") as f:
-                    json.dump(inspection_report, f, indent=2, ensure_ascii=False)
-
-                with open(timestamp_path, "w", encoding="utf-8") as f:
-                    json.dump(inspection_report, f, indent=2, ensure_ascii=False)
-
-                logger.info(f"💾 Saved raw pipeline debug log to '{latest_path}'")
-            except Exception as log_err:
-                logger.warning(f"Could not save debug log file: {log_err}")
 
         except Exception as e:
             logger.warning(f"AHSP mapping post-processing failed: {e}")
@@ -249,3 +236,82 @@ async def analyze_image_endpoint(
     except Exception as e:
         logger.error(f"Error processing {filename}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to process file: {str(e)}")
+
+
+@router.post("/api/rab/analyze-prompt")
+@router.post("/api/estimate-prompt")
+@router.post("/api/v2/takeoff/prompt")
+async def analyze_prompt_endpoint(request: Request):
+    """
+    Endpoint untuk mendeteksi item pekerjaan dan satuan konstruksi dari imajinasi/prompt teks pengguna.
+    Menerima JSON body (`{"name": "...", "client": "...", "prompt": "..."}`)
+    atau Form data (`name`, `client`, `prompt`).
+
+    Seluruh volume item dijamin bernilai 0.0 (wajib 0).
+    Dilengkapi pemetaan AHSP otomatis.
+    """
+    content_type = request.headers.get("content-type", "").lower()
+    name = "Konsep Desain Rumah"
+    client = "Client"
+    prompt_text = ""
+
+    if "application/json" in content_type:
+        try:
+            body_data = await request.json()
+            if isinstance(body_data, dict):
+                name = body_data.get("name") or name
+                client = body_data.get("client") or client
+                prompt_text = body_data.get("prompt") or body_data.get("description") or body_data.get("text") or ""
+        except Exception as err:
+            logger.warning(f"Could not parse JSON body: {err}")
+    else:
+        form_data = await request.form()
+        name = form_data.get("name") or name
+        client = form_data.get("client") or client
+        prompt_text = form_data.get("prompt") or form_data.get("description") or form_data.get("text") or ""
+
+    if not prompt_text or not prompt_text.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Deskripsi konsep bangunan / prompt teks tidak boleh kosong. Harap berikan gambaran bangunan yang ingin diestimasi."
+        )
+
+    # Validasi kelayakan domain konstruksi & pencegahan teks acak/off-topic
+    is_valid_prompt, validation_error = validate_construction_prompt(prompt_text)
+    if not is_valid_prompt:
+        logger.warning(f"Rejected invalid construction prompt for '{name}': {validation_error}")
+        raise HTTPException(
+            status_code=400,
+            detail=validation_error
+        )
+
+    logger.info(f"Received validated prompt takeoff request for project '{name}' (Client: '{client}'): {prompt_text[:100]}...")
+
+    try:
+        takeoff_result: DynamicTakeoffResponse = await run_in_threadpool(
+            estimator_engine.analyze_prompt_text,
+            prompt_text=prompt_text.strip(),
+            project_name=name,
+            client_name=client
+        )
+
+        takeoff_result, inspection_report = await run_in_threadpool(
+            apply_ahsp_mapping,
+            takeoff_result
+        )
+
+        response_data = takeoff_result.to_frontend_format()
+        response_data["processing_mode"] = "prompt_text_concept"
+        if inspection_report:
+            response_data["raw_pipeline_inspection"] = inspection_report
+
+        total_work_items = sum(len(wbs.items) for wbs in takeoff_result.wbs_sections)
+        logger.info(f"Prompt analysis complete for '{name}'. Generated {len(takeoff_result.wbs_sections)} WBS sections and {total_work_items} work items (all volume = 0.0).")
+        return response_data
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error processing prompt takeoff for '{name}': {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Gagal memproses estimasi dari prompt teks: {str(e)}")
+
