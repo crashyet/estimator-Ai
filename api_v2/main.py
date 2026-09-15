@@ -21,6 +21,7 @@ import argparse
 import logging
 from contextlib import asynccontextmanager
 
+import anyio.to_thread
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -53,17 +54,31 @@ async def lifespan(app: FastAPI):
     Mengelola siklus hidup aplikasi FastAPI.
 
     Startup:
+      - Menyesuaikan kapasitas worker threadpool (AnyIO) untuk menangani multi-request concurrent.
       - Menginisialisasi AHSP Mapping Engine (vector embeddings) jika dependensi tersedia.
       - Jika inisialisasi gagal (non-fatal), server tetap berjalan tanpa fitur AHSP mapping.
 
     Shutdown:
       - Mencatat log bahwa aplikasi sedang berhenti.
     """
+    max_threads = int(os.getenv("MAX_CONCURRENT_THREADS", "100"))
+    try:
+        limiter = anyio.to_thread.current_default_thread_limiter()
+        limiter.total_tokens = max_threads
+        logger.info(f"Threadpool capacity configured to {max_threads} concurrent threads.")
+    except Exception as e:
+        logger.warning(f"Could not adjust AnyIO thread limiter: {e}")
+
     if AHSP_AVAILABLE:
-        logger.info("Initializing AHSP Mapping Engine at startup...")
+        ahsp_mode = os.getenv("AHSP_MODE", "remote").lower()
+        if ahsp_mode in ("embedded", "local"):
+            logger.info("Initializing AHSP Mapping Engine (embedded local mode)...")
+        else:
+            ahsp_url = os.getenv("AHSP_SERVICE_URL", "http://127.0.0.1:8100")
+            logger.info(f"Connecting to AHSP Microservice at {ahsp_url}...")
         try:
             initialize_mapper()
-            logger.info("AHSP Mapping Engine initialized successfully.")
+            logger.info("AHSP Mapping Engine connected/initialized successfully.")
         except Exception as e:
             logger.warning(f"AHSP Mapping Engine init failed (non-fatal): {e}")
     else:
@@ -82,8 +97,11 @@ app = FastAPI(
 # Configuration defaults
 DEFAULT_HOST = os.getenv("HOST", "0.0.0.0")
 DEFAULT_PORT = int(os.getenv("PORT", 8200))
+DEFAULT_WORKERS = int(os.getenv("WORKERS", os.getenv("WEB_CONCURRENCY", "10")))
+DEFAULT_RELOAD = os.getenv("RELOAD", "false").lower() in ("true", "1", "yes")
 ALLOWED_ORIGINS = [origin.strip() for origin in os.getenv("ALLOWED_ORIGINS", "*").split(",")]
 MAX_UPLOAD_SIZE_MB = int(os.getenv("MAX_UPLOAD_SIZE_MB", "500"))
+MAX_CONCURRENT_THREADS = int(os.getenv("MAX_CONCURRENT_THREADS", "100"))
 
 # CORS middleware configuration
 app.add_middleware(
@@ -113,7 +131,7 @@ def read_root():
 def main_cli():
     """Command-line interface runner."""
     parser = argparse.ArgumentParser(description="Python Direct DWG/BIM AI Estimator CLI")
-    parser.add_argument("command", choices=["analyze", "server"], help="Command to execute")
+    parser.add_argument("command", choices=["analyze", "server", "start-all"], help="Command to execute")
     parser.add_argument("--file", help="Path to input CAD/BIM/PDF/Image file")
     parser.add_argument("--prompt", help="Deskripsi imajinasi/konsep bangunan dari user via teks")
     parser.add_argument("--project", default="Proyek Estimator", help="Project Title")
@@ -121,6 +139,8 @@ def main_cli():
     parser.add_argument("--excel", help="Output Excel file path (.xlsx)")
     parser.add_argument("--json", help="Output JSON file path (.json)")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT, help=f"API server port (default: {DEFAULT_PORT})")
+    parser.add_argument("--workers", type=int, default=DEFAULT_WORKERS, help=f"Number of worker processes (default: {DEFAULT_WORKERS})")
+    parser.add_argument("--reload", action=argparse.BooleanOptionalAction, default=None, help="Enable/disable auto-reload (default: enabled if workers=1)")
 
     args = parser.parse_args()
 
@@ -176,13 +196,96 @@ def main_cli():
             export_takeoff_to_json(takeoff, args.json)
             print(f"Exported to JSON: {args.json}")
 
+    elif args.command == "start-all":
+        import subprocess
+        from pathlib import Path
+        ahsp_port = int(os.getenv("AHSP_SERVICE_PORT", "8100"))
+        logger.info(f"Launching AHSP Microservice on port {ahsp_port}...")
+        ahsp_proc = subprocess.Popen(
+            [sys.executable, "service_ahsp.py", "--port", str(ahsp_port)],
+            cwd=str(Path(__file__).parent),
+        )
+        try:
+            import time
+            import requests
+            logger.info("Waiting for AHSP Microservice healthcheck...")
+            for _ in range(40):
+                if ahsp_proc.poll() is not None:
+                    logger.error("AHSP Microservice process exited unexpectedly!")
+                    return
+                try:
+                    r = requests.get(f"http://127.0.0.1:{ahsp_port}/health", timeout=1.0)
+                    if r.status_code == 200:
+                        logger.info(f"AHSP Microservice is online (ready={r.json().get('ready', False)})!")
+                        break
+                except Exception:
+                    pass
+                time.sleep(0.5)
+
+            workers = args.workers
+            should_reload = False if workers > 1 else (args.reload if args.reload is not None else DEFAULT_RELOAD)
+            uvicorn_kwargs = {
+                "app": "main:app",
+                "host": DEFAULT_HOST,
+                "port": args.port,
+                "timeout_keep_alive": 300,
+                "timeout_graceful_shutdown": 300,
+            }
+            if should_reload:
+                uvicorn_kwargs["reload"] = True
+                uvicorn_kwargs["reload_excludes"] = ["*.sqlite3*", "ahsp_vectordb/*", "*.log", "*.wal", "tests/*", "node_modules/*"]
+            else:
+                uvicorn_kwargs["workers"] = max(1, workers)
+
+            logger.info(f"Starting server on {DEFAULT_HOST}:{args.port} (workers={uvicorn_kwargs.get('workers', 1)}, reload={should_reload})...")
+            uvicorn.run(**uvicorn_kwargs)
+        finally:
+            logger.info("Stopping AHSP Microservice...")
+            ahsp_proc.terminate()
+            try:
+                ahsp_proc.wait(timeout=5)
+            except Exception:
+                ahsp_proc.kill()
+
     elif args.command == "server":
-        uvicorn.run("main:app", host=DEFAULT_HOST, port=args.port, reload=True, timeout_keep_alive=300, timeout_graceful_shutdown=300)
+        workers = args.workers
+        should_reload = False if workers > 1 else (args.reload if args.reload is not None else DEFAULT_RELOAD)
+        uvicorn_kwargs = {
+            "app": "main:app",
+            "host": DEFAULT_HOST,
+            "port": args.port,
+            "timeout_keep_alive": 300,
+            "timeout_graceful_shutdown": 300,
+        }
+        if should_reload:
+            uvicorn_kwargs["reload"] = True
+            uvicorn_kwargs["reload_excludes"] = ["*.sqlite3*", "ahsp_vectordb/*", "*.log", "*.wal", "tests/*", "node_modules/*"]
+        else:
+            uvicorn_kwargs["workers"] = max(1, workers)
+
+        logger.info(f"Starting server on {DEFAULT_HOST}:{args.port} (workers={uvicorn_kwargs.get('workers', 1)}, reload={should_reload})...")
+        uvicorn.run(**uvicorn_kwargs)
 
 
 if __name__ == "__main__":
     import sys
-    if len(sys.argv) > 1 and sys.argv[1] in ["analyze", "server"]:
+    if len(sys.argv) > 1 and sys.argv[1] in ["analyze", "server", "start-all"]:
         main_cli()
     else:
-        uvicorn.run("main:app", host=DEFAULT_HOST, port=DEFAULT_PORT, reload=True, timeout_keep_alive=300, timeout_graceful_shutdown=300)
+        workers = DEFAULT_WORKERS
+        should_reload = False if workers > 1 else DEFAULT_RELOAD
+        uvicorn_kwargs = {
+            "app": "main:app",
+            "host": DEFAULT_HOST,
+            "port": DEFAULT_PORT,
+            "timeout_keep_alive": 300,
+            "timeout_graceful_shutdown": 300,
+        }
+        if should_reload:
+            uvicorn_kwargs["reload"] = True
+            uvicorn_kwargs["reload_excludes"] = ["*.sqlite3*", "ahsp_vectordb/*", "*.log", "*.wal", "tests/*", "node_modules/*"]
+        else:
+            uvicorn_kwargs["workers"] = max(1, workers)
+
+        logger.info(f"Starting server on {DEFAULT_HOST}:{DEFAULT_PORT} (workers={uvicorn_kwargs.get('workers', 1)}, reload={should_reload})...")
+        uvicorn.run(**uvicorn_kwargs)

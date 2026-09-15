@@ -62,15 +62,18 @@ APS_CLIENT_ID=your-autodesk-client-id
 APS_CLIENT_SECRET=your-autodesk-client-secret
 RVT_TIMEOUT_SECONDS=300
 
-# === Server Config ===
+# === Server & Concurrency Config ===
 HOST=0.0.0.0
 PORT=8200
+WORKERS=1                   # Jumlah worker process Uvicorn (gunakan > 1 untuk production)
+MAX_CONCURRENT_THREADS=100  # Kapasitas threadpool AnyIO untuk menangani banyak request simultan
+RELOAD=true                 # Auto-reload untuk mode development (otomatis disabled jika WORKERS > 1)
 MAX_UPLOAD_SIZE_MB=500
 ```
 
 ---
 
-## 🚀 Menjalankan Backend
+## 🚀 Menjalankan Backend & Konkurensi Multi-Request
 
 ```bash
 cd api_v2
@@ -85,9 +88,20 @@ pip install -r requirements.txt
 # 3. Isi konfigurasi
 cp .env.example .env
 
-# 4. Jalankan server
+# 4. Jalankan server (Mode Dev - Single Worker dengan 100 Async Threads)
 python3 main.py server
+
+# Atau jalankan dalam mode Multi-Worker Process (misal 4 process workers):
+python3 main.py server --workers 4
 ```
+
+> **⚡ Arsitektur Konkurensi Multi-Request:**
+> - Seluruh endpoint pemrosesan file berat (CAD/BIM/PDF/Images), LLM Gemini (15–45s), dan pemetaan AHSP dieksekusi secara non-blocking melalui AnyIO worker threadpool (`run_in_threadpool`).
+> - Service dapat menerima dan memproses puluhan request bersamaan tanpa antrean sekuensial.
+> - **Catatan untuk Backend CodeIgniter 4 (PHP)**: Jika menjalankan PHP development server (`php spark serve`), secara default PHP CLI server hanya memproses 1 request dalam satu waktu. Jalankan CI4 dengan worker paralel:
+>   ```bash
+>   PHP_CLI_SERVER_WORKERS=4 php spark serve
+>   ```
 
 - **Swagger UI**: `http://localhost:8200/docs`
 - **ReDoc**: `http://localhost:8200/redoc`
