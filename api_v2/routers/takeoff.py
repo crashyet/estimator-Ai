@@ -97,6 +97,79 @@ def apply_ahsp_mapping(takeoff_result: DynamicTakeoffResponse) -> Tuple[DynamicT
     return takeoff_result, inspection_report
 
 
+def _process_bim_takeoff_sync(
+    file_bytes: bytes,
+    filename: str,
+    ext: str,
+    name: str,
+    client: str
+) -> Tuple[DynamicTakeoffResponse, str, Optional[Dict[str, Any]]]:
+    """Synchronous worker function to parse BIM quantities, invoke LLM, and apply AHSP mapping."""
+    logger.info(f"Parsing 3D BIM parametric quantities from {filename}...")
+    bim_quantities = BIMEntityExtractor.process_bim_bytes(file_bytes, filename)
+
+    if not bim_quantities:
+        raise HTTPException(status_code=400, detail=f"No readable structural/architectural BIM entities found in {filename}.")
+
+    bim_payload = BIMEntityExtractor.format_to_llm_payload(bim_quantities)
+
+    logger.info(f"Feeding {len(bim_quantities)} aggregated BIM items payload to Gemini LLM Engine...")
+    takeoff_result: DynamicTakeoffResponse = estimator_engine.analyze_bim_payload(
+        bim_payload, project_name=name, client_name=client
+    )
+
+    takeoff_result, inspection_report = apply_ahsp_mapping(takeoff_result)
+    processing_mode = f"native_{ext.replace('.', '')}_bim_3d"
+    return takeoff_result, processing_mode, inspection_report
+
+
+def _process_takeoff_file_sync(
+    file_bytes: bytes,
+    filename: str,
+    ext: str,
+    name: str,
+    client: str
+) -> Tuple[DynamicTakeoffResponse, str, Optional[Dict[str, Any]]]:
+    """Synchronous worker function to parse CAD/BIM/PDF/Images, invoke LLM, and apply AHSP mapping."""
+    if ext in [".ifc", ".rvt", ".rfa", ".nwd", ".nwc", ".skp"]:
+        return _process_bim_takeoff_sync(file_bytes, filename, ext, name, client)
+    elif ext in [".dwg", ".dxf", ".dwt", ".dwf", ".dwfx", ".svg", ".plt", ".hpgl", ".hpg"]:
+        logger.info(f"Parsing native CAD vector format ({ext.upper()})...")
+        cad_data = CADEntityExtractor.process_file_bytes(file_bytes, filename)
+
+        if cad_data.get("error"):
+            logger.error(f"CAD Extractor error for {filename}: {cad_data['error']}")
+            raise HTTPException(status_code=400, detail=cad_data["error"])
+
+        cad_payload = CADEntityExtractor.format_to_llm_payload(cad_data)
+
+        if not cad_payload.strip():
+            raise HTTPException(status_code=400, detail=f"No readable CAD entities or texts found in {filename}.")
+
+        logger.info("Feeding structured CAD payload to Gemini LLM Engine...")
+        takeoff_result: DynamicTakeoffResponse = estimator_engine.analyze_cad_payload(
+            cad_payload, project_name=name, client_name=client
+        )
+        processing_mode = f"native_{ext.replace('.', '')}_vector"
+    elif ext in [".jpeg", ".png", ".jpg"]:
+        mime_map = {".jpeg": "image/jpeg", ".jpg": "image/jpeg", ".png": "image/png"}
+        mime_type = mime_map.get(ext, "image/jpeg")
+        logger.info(f"Sending raw image bytes ({len(file_bytes)} bytes) to Gemini LLM Engine...")
+        takeoff_result: DynamicTakeoffResponse = estimator_engine.analyze_image_bytes(
+            file_bytes, filename=filename, mime_type=mime_type, project_name=name, client_name=client
+        )
+        processing_mode = f"direct_{ext.replace('.', '')}_multimodal"
+    else:
+        logger.info(f"Sending raw PDF bytes ({len(file_bytes)} bytes) to Gemini LLM Engine...")
+        takeoff_result: DynamicTakeoffResponse = estimator_engine.analyze_pdf_bytes(
+            file_bytes, filename=filename, project_name=name, client_name=client
+        )
+        processing_mode = "direct_pdf_multimodal"
+
+    takeoff_result, inspection_report = apply_ahsp_mapping(takeoff_result)
+    return takeoff_result, processing_mode, inspection_report
+
+
 @router.post("/api/rab/analyze-bim")
 async def analyze_bim_endpoint(
     name: str = Form(...),
@@ -106,6 +179,7 @@ async def analyze_bim_endpoint(
     """
     Endpoint for Revit / OpenBIM 3D Quantity Takeoff (.ifc and .rvt).
     Parses uploaded .ifc / .rvt file and returns standardized WBS volume takeoff data from Gemini AI.
+    Runs computation and LLM requests in a worker threadpool to handle multiple concurrent requests without blocking.
     """
     filename = ded_file.filename
     ext = os.path.splitext(filename)[1].lower()
@@ -121,23 +195,17 @@ async def analyze_bim_endpoint(
     file_bytes = await read_upload_file_with_limit(ded_file)
 
     try:
-        logger.info(f"Parsing 3D BIM parametric quantities from {filename}...")
-        bim_quantities = BIMEntityExtractor.process_bim_bytes(file_bytes, filename)
-
-        if not bim_quantities:
-            raise HTTPException(status_code=400, detail=f"No readable structural/architectural BIM entities found in {filename}.")
-
-        bim_payload = BIMEntityExtractor.format_to_llm_payload(bim_quantities)
-
-        logger.info(f"Feeding {len(bim_quantities)} aggregated BIM items payload to Gemini LLM Engine...")
-        takeoff_result: DynamicTakeoffResponse = estimator_engine.analyze_bim_payload(
-            bim_payload, project_name=name, client_name=client
+        takeoff_result, processing_mode, inspection_report = await run_in_threadpool(
+            _process_bim_takeoff_sync,
+            file_bytes=file_bytes,
+            filename=filename,
+            ext=ext,
+            name=name,
+            client=client
         )
 
-        takeoff_result, inspection_report = apply_ahsp_mapping(takeoff_result)
-
         response_data = takeoff_result.to_frontend_format()
-        response_data["processing_mode"] = f"native_{ext.replace('.', '')}_bim_3d"
+        response_data["processing_mode"] = processing_mode
         if inspection_report:
             response_data["raw_pipeline_inspection"] = inspection_report
 
@@ -162,6 +230,7 @@ async def analyze_image_endpoint(
     """
     Main endpoint for CI4 backend & Frontend integration.
     Processes uploaded DWG, DXF, IFC, RVT, SKP, PDF, or Image file and returns dynamic RAB WBS volume takeoff data from Gemini AI.
+    Runs parsing, AI generation, and AHSP mapping non-blockingly in threadpool workers to support multiple concurrent requests.
     """
     filename = ded_file.filename
     ext = os.path.splitext(filename)[1].lower()
@@ -181,48 +250,14 @@ async def analyze_image_endpoint(
     file_bytes = await read_upload_file_with_limit(ded_file)
 
     try:
-        if ext in [".ifc", ".rvt", ".rfa", ".nwd", ".nwc", ".skp"]:
-            logger.info(f"Routing {filename} to OpenBIM/Revit parser...")
-            bim_quantities = BIMEntityExtractor.process_bim_bytes(file_bytes, filename)
-            bim_payload = BIMEntityExtractor.format_to_llm_payload(bim_quantities)
-            takeoff_result: DynamicTakeoffResponse = estimator_engine.analyze_bim_payload(
-                bim_payload, project_name=name, client_name=client
-            )
-            processing_mode = f"native_{ext.replace('.', '')}_bim_3d"
-        elif ext in [".dwg", ".dxf", ".dwt", ".dwf", ".dwfx", ".svg", ".plt", ".hpgl", ".hpg"]:
-            logger.info(f"Parsing native CAD vector format ({ext.upper()})...")
-            cad_data = CADEntityExtractor.process_file_bytes(file_bytes, filename)
-
-            if cad_data.get("error"):
-                logger.error(f"CAD Extractor error for {filename}: {cad_data['error']}")
-                raise HTTPException(status_code=400, detail=cad_data["error"])
-
-            cad_payload = CADEntityExtractor.format_to_llm_payload(cad_data)
-
-            if not cad_payload.strip():
-                raise HTTPException(status_code=400, detail=f"No readable CAD entities or texts found in {filename}.")
-
-            logger.info("Feeding structured CAD payload to Gemini LLM Engine...")
-            takeoff_result: DynamicTakeoffResponse = estimator_engine.analyze_cad_payload(
-                cad_payload, project_name=name, client_name=client
-            )
-            processing_mode = f"native_{ext.replace('.', '')}_vector"
-        elif ext in [".jpeg", ".png", ".jpg"]:
-            mime_map = {".jpeg": "image/jpeg", ".jpg": "image/jpeg", ".png": "image/png"}
-            mime_type = mime_map.get(ext, "image/jpeg")
-            logger.info(f"Sending raw image bytes ({len(file_bytes)} bytes) to Gemini LLM Engine...")
-            takeoff_result: DynamicTakeoffResponse = estimator_engine.analyze_image_bytes(
-                file_bytes, filename=filename, mime_type=mime_type, project_name=name, client_name=client
-            )
-            processing_mode = f"direct_{ext.replace('.', '')}_multimodal"
-        else:
-            logger.info(f"Sending raw PDF bytes ({len(file_bytes)} bytes) to Gemini LLM Engine...")
-            takeoff_result: DynamicTakeoffResponse = estimator_engine.analyze_pdf_bytes(
-                file_bytes, filename=filename, project_name=name, client_name=client
-            )
-            processing_mode = "direct_pdf_multimodal"
-
-        takeoff_result, inspection_report = apply_ahsp_mapping(takeoff_result)
+        takeoff_result, processing_mode, inspection_report = await run_in_threadpool(
+            _process_takeoff_file_sync,
+            file_bytes=file_bytes,
+            filename=filename,
+            ext=ext,
+            name=name,
+            client=client
+        )
 
         response_data = takeoff_result.to_frontend_format()
         response_data["processing_mode"] = processing_mode
@@ -233,6 +268,8 @@ async def analyze_image_endpoint(
         logger.info(f"Analysis complete for '{name}'. Generated {len(takeoff_result.wbs_sections)} WBS sections and {total_work_items} work items.")
         return response_data
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error processing {filename}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to process file: {str(e)}")

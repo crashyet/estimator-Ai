@@ -3,6 +3,7 @@ import logging
 from typing import Optional, List, Dict, Any
 
 from fastapi import APIRouter, Form, HTTPException, Query
+from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -103,11 +104,12 @@ async def search_ahsp_post(
 ):
     """
     Semantic search AHSP items by name query (POST).
+    Executed via threadpool to handle multiple concurrent search requests without blocking.
     """
     if not AHSP_AVAILABLE or not mapper_engine or not mapper_engine.is_ready():
         raise HTTPException(status_code=503, detail="AHSP Mapping Engine is not available or not initialized.")
 
-    results = mapper_engine.search(query.strip(), top_k=min(top_k, 50))
+    results = await run_in_threadpool(mapper_engine.search, query.strip(), top_k=min(top_k, 50))
     return {
         "query": query,
         "results": results,
@@ -123,6 +125,7 @@ async def search_ahsp_get(
     """
     Manual Keyword Search based on AI item name (GET).
     Strips filler action verbs to isolate core work object, then performs text string matching against master AHSP items.
+    Executed via threadpool to prevent event loop bottlenecks.
     """
     if not AHSP_AVAILABLE or not mapper_engine or not mapper_engine.is_ready():
         raise HTTPException(status_code=503, detail="AHSP Mapping Engine is not available.")
@@ -130,9 +133,13 @@ async def search_ahsp_get(
     raw_q = q.strip()
     core_q = extract_core_keywords(raw_q)
 
-    results = manual_keyword_search(mapper_engine._ahsp_items, core_q, limit=limit)
-    if not results and core_q != raw_q:
-        results = manual_keyword_search(mapper_engine._ahsp_items, raw_q, limit=limit)
+    def _sync_search():
+        res = manual_keyword_search(mapper_engine._ahsp_items, core_q, limit=limit)
+        if not res and core_q != raw_q:
+            res = manual_keyword_search(mapper_engine._ahsp_items, raw_q, limit=limit)
+        return res
+
+    results = await run_in_threadpool(_sync_search)
 
     return {
         "query": raw_q,
@@ -146,11 +153,16 @@ async def search_ahsp_get(
 async def map_item_to_ahsp(req: MapItemRequest):
     """
     Map a single work item name to the best matching AHSP code.
+    Executed via threadpool.
     """
     if not AHSP_AVAILABLE or not mapper_engine or not mapper_engine.is_ready():
         raise HTTPException(status_code=503, detail="AHSP Mapping Engine is not available or not initialized.")
 
-    mapping = mapper_engine.map_single_item(req.item_name.strip(), (req.item_unit or "").strip())
+    mapping = await run_in_threadpool(
+        mapper_engine.map_single_item,
+        req.item_name.strip(),
+        (req.item_unit or "").strip()
+    )
     return {
         "input": {"item_name": req.item_name, "item_unit": req.item_unit},
         "ahsp_code": mapping["ahsp_code"],
@@ -172,7 +184,12 @@ async def inspect_ahsp_item(req: MapItemRequest):
     if not AHSP_AVAILABLE or not mapper_engine or not mapper_engine.is_ready():
         raise HTTPException(status_code=503, detail="AHSP Mapping Engine is not available or not initialized.")
 
-    return mapper_engine.inspect_single_item(req.item_name.strip(), (req.item_unit or "").strip(), top_k=5)
+    return await run_in_threadpool(
+        mapper_engine.inspect_single_item,
+        req.item_name.strip(),
+        (req.item_unit or "").strip(),
+        top_k=5
+    )
 
 
 @router.get("/api/ahsp/list")
@@ -187,7 +204,12 @@ async def list_ahsp_items(
     if not AHSP_AVAILABLE or not mapper_engine or not mapper_engine.is_ready():
         raise HTTPException(status_code=503, detail="AHSP Mapping Engine is not available or not initialized.")
 
-    return mapper_engine.get_all_items(page=page, limit=limit, search_query=search)
+    return await run_in_threadpool(
+        mapper_engine.get_all_items,
+        page=page,
+        limit=limit,
+        search_query=search
+    )
 
 
 @router.get("/api/ahsp/items")
@@ -201,20 +223,22 @@ async def get_all_ahsp_items(
     if not AHSP_AVAILABLE or not mapper_engine or not mapper_engine.is_ready():
         raise HTTPException(status_code=503, detail="AHSP Mapping Engine is not available.")
 
-    if search and search.strip():
-        results = manual_keyword_search(mapper_engine._ahsp_items, search.strip(), limit=limit)
+    def _sync_get_all():
+        if search and search.strip():
+            res = manual_keyword_search(mapper_engine._ahsp_items, search.strip(), limit=limit)
+            return {
+                "search": search.strip(),
+                "total_results": len(res),
+                "items": res
+            }
+        all_items = [item.to_dict() for item in mapper_engine._ahsp_items[:limit]]
         return {
-            "search": search.strip(),
-            "total_results": len(results),
-            "items": results
+            "total_items": len(mapper_engine._ahsp_items),
+            "returned": len(all_items),
+            "items": all_items
         }
 
-    all_items = [item.to_dict() for item in mapper_engine._ahsp_items[:limit]]
-    return {
-        "total_items": len(mapper_engine._ahsp_items),
-        "returned": len(all_items),
-        "items": all_items
-    }
+    return await run_in_threadpool(_sync_get_all)
 
 
 @router.post("/api/ahsp/override")
@@ -229,10 +253,15 @@ async def override_ahsp_mapping(
     if not AHSP_AVAILABLE or not mapper_engine or not mapper_engine.is_ready():
         raise HTTPException(status_code=503, detail="AHSP Mapping Engine is not available or not initialized.")
 
-    if not ahsp_name:
-        results = mapper_engine.search(ahsp_code, top_k=1)
-        if results:
-            ahsp_name = results[0].get("nama_pekerjaan", ahsp_code)
+    def _sync_override():
+        nonlocal ahsp_name
+        if not ahsp_name:
+            results = mapper_engine.search(ahsp_code, top_k=1)
+            if results:
+                ahsp_name = results[0].get("nama_pekerjaan", ahsp_code)
+        return ahsp_name
+
+    ahsp_name = await run_in_threadpool(_sync_override)
 
     return {
         "item_id": item_id,
@@ -260,7 +289,7 @@ async def ahsp_stats():
     if not mapper_engine:
         return {"available": False, "message": "AHSP Mapper engine not loaded."}
 
-    stats = mapper_engine.get_stats()
+    stats = await run_in_threadpool(mapper_engine.get_stats)
     stats["available"] = True
     return stats
 
@@ -273,7 +302,7 @@ async def reindex_ahsp():
     if not AHSP_AVAILABLE or not mapper_engine:
         raise HTTPException(status_code=503, detail="AHSP Mapping Engine is not available.")
 
-    result = mapper_engine.reindex()
+    result = await run_in_threadpool(mapper_engine.reindex)
     if result.get("success"):
         return result
     else:

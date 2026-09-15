@@ -36,19 +36,97 @@ class EstimationController extends ResourceController
         $db->transStart();
 
         try {
-            // 1. Prepare & Insert estimation_runs
-            $summaryMetrics = $json['summary_metrics'] ?? [];
-            $engineStats    = $json['engine_stats'] ?? ($json['metadata']['engine_stats'] ?? null);
+            // Normalize sections from various payload structures:
+            $rawSections = $json['sections'] 
+                ?? ($json['wbs_sections'] 
+                ?? ($json['raw_llm_response']['wbs_sections'] 
+                ?? ($json['raw_llm_response']['sections'] ?? null)));
+
+            $sections = [];
+
+            if (!empty($rawSections) && is_array($rawSections)) {
+                foreach ($rawSections as $sIdx => $sec) {
+                    $secHeader = $sec['section'] ?? $sec;
+                    $secItems  = $sec['items'] ?? [];
+                    $sections[] = [
+                        'id'    => $secHeader['id'] ?? ('sec-' . ($secHeader['code'] ?? ($sIdx + 1))),
+                        'code'  => $secHeader['code'] ?? chr(65 + $sIdx),
+                        'name'  => $secHeader['name'] ?? 'PEKERJAAN',
+                        'items' => $secItems,
+                    ];
+                }
+            } elseif (!empty($json['items']) && is_array($json['items'])) {
+                // Flat items array (e.g. to_frontend_format)
+                $currentSec = null;
+                foreach ($json['items'] as $row) {
+                    $isSection = (isset($row['type']) && $row['type'] === 'section')
+                        || (!isset($row['volume']) && !empty($row['name']) && !empty($row['code']) && strlen($row['code']) <= 2);
+
+                    if ($isSection) {
+                        if ($currentSec !== null) {
+                            $sections[] = $currentSec;
+                        }
+                        $currentSec = [
+                            'id'    => $row['id'] ?? ('sec-' . ($row['code'] ?? (count($sections) + 1))),
+                            'code'  => $row['code'] ?? chr(65 + count($sections)),
+                            'name'  => $row['name'] ?? 'PEKERJAAN',
+                            'items' => [],
+                        ];
+                    } else {
+                        if ($currentSec === null) {
+                            $currentSec = [
+                                'id'    => 'sec-A',
+                                'code'  => 'A',
+                                'name'  => 'PEKERJAAN UTAMA',
+                                'items' => [],
+                            ];
+                        }
+                        $currentSec['items'][] = $row;
+                    }
+                }
+                if ($currentSec !== null) {
+                    $sections[] = $currentSec;
+                }
+            }
+
+            // Summary metrics calculation & fallback
+            $totalCount = 0;
+            $mHigh = 0;
+            $mMedium = 0;
+            $mUnmapped = 0;
+            foreach ($sections as $s) {
+                foreach ($s['items'] as $it) {
+                    $totalCount++;
+                    $status = $it['ahsp_status'] ?? ($it['ahsp_mapping']['ahsp_status'] ?? ($it['final_mapping']['ahsp_status'] ?? 'unmapped'));
+                    if ($status === 'mapped_high') $mHigh++;
+                    elseif ($status === 'mapped_medium') $mMedium++;
+                    else $mUnmapped++;
+                }
+            }
+
+            $summaryMetrics = $json['summary_metrics'] 
+                ?? ($json['raw_llm_response']['summary_metrics'] 
+                ?? ($json['metadata']['summary_metrics'] ?? []));
+
+            $totalItems   = (int) ($summaryMetrics['total_items'] ?? $totalCount);
+            $mappedHigh   = (int) ($summaryMetrics['mapped_high'] ?? $mHigh);
+            $mappedMedium = (int) ($summaryMetrics['mapped_medium'] ?? $mMedium);
+            $unmapped     = (int) ($summaryMetrics['unmapped'] ?? $mUnmapped);
+            $highRatio    = isset($summaryMetrics['high_ratio']) 
+                ? (float) $summaryMetrics['high_ratio'] 
+                : ($totalItems > 0 ? round($mappedHigh / $totalItems, 4) : 0);
+
+            $engineStats  = $json['engine_stats'] ?? ($json['metadata']['engine_stats'] ?? null);
 
             $runData = [
                 'project_id'    => (int) $project['id'],
                 'project_uuid'  => $project['uuid'],
                 'run_timestamp' => date('Y-m-d H:i:s'),
-                'total_items'   => (int) ($summaryMetrics['total_items'] ?? 0),
-                'mapped_high'   => (int) ($summaryMetrics['mapped_high'] ?? 0),
-                'mapped_medium' => (int) ($summaryMetrics['mapped_medium'] ?? 0),
-                'unmapped'      => (int) ($summaryMetrics['unmapped'] ?? 0),
-                'high_ratio'    => isset($summaryMetrics['high_ratio']) ? (float) $summaryMetrics['high_ratio'] : null,
+                'total_items'   => $totalItems,
+                'mapped_high'   => $mappedHigh,
+                'mapped_medium' => $mappedMedium,
+                'unmapped'      => $unmapped,
+                'high_ratio'    => $highRatio,
                 'engine_stats'  => $engineStats ? json_encode($engineStats) : null,
                 'created_at'    => date('Y-m-d H:i:s'),
             ];
@@ -59,7 +137,6 @@ class EstimationController extends ResourceController
             $runUuid  = $run['uuid'];
 
             // 2. Insert WBS Sections & Items
-            $sections            = $json['sections'] ?? [];
             $wbsSectionModel     = new WbsSectionModel();
             $estimationItemModel = new EstimationItemModel();
             $candidateModel      = new ItemAhspCandidateModel();
@@ -70,7 +147,7 @@ class EstimationController extends ResourceController
                     'run_id'          => (int) $runId,
                     'run_uuid'        => $runUuid,
                     'section_id_code' => $sec['id'] ?? ('sec-' . ($sec['code'] ?? $sortOrder)),
-                    'code'            => $sec['code'] ?? '',
+                    'code'            => $sec['code'] ?? chr(64 + $sortOrder),
                     'name'            => $sec['name'] ?? '',
                     'sort_order'      => $sortOrder++,
                 ];
@@ -81,7 +158,13 @@ class EstimationController extends ResourceController
                 // Insert Items
                 $items = $sec['items'] ?? [];
                 foreach ($items as $item) {
-                    $itemAhsp = $item['ahsp_mapping'] ?? [];
+                    $itemAhsp = $item['ahsp_mapping'] ?? ($item['final_mapping'] ?? []);
+
+                    $ahspCode   = $item['ahsp_code'] ?? ($itemAhsp['ahsp_code'] ?? null);
+                    $ahspName   = $item['ahsp_name'] ?? ($itemAhsp['ahsp_name'] ?? null);
+                    $ahspUnit   = $item['ahsp_unit'] ?? ($itemAhsp['ahsp_unit'] ?? ($item['unit'] ?? null));
+                    $ahspScore  = isset($item['ahsp_score']) ? (float) $item['ahsp_score'] : (isset($itemAhsp['ahsp_score']) ? (float) $itemAhsp['ahsp_score'] : null);
+                    $ahspStatus = $item['ahsp_status'] ?? ($itemAhsp['ahsp_status'] ?? 'unmapped');
 
                     $itemData = [
                         'section_id'         => (int) $sectionId,
@@ -94,11 +177,11 @@ class EstimationController extends ResourceController
                         'unit'               => $item['unit'] ?? '',
                         'confidence'         => $item['confidence'] ?? 'high',
                         'warning_note'       => $item['warning_note'] ?? null,
-                        'ahsp_code'          => $itemAhsp['ahsp_code'] ?? ($item['ahsp_code'] ?? null),
-                        'ahsp_name'          => $itemAhsp['ahsp_name'] ?? ($item['ahsp_name'] ?? null),
-                        'ahsp_unit'          => $itemAhsp['ahsp_unit'] ?? ($item['ahsp_unit'] ?? null),
-                        'ahsp_score'         => isset($itemAhsp['ahsp_score']) ? (float) $itemAhsp['ahsp_score'] : (isset($item['ahsp_score']) ? (float) $item['ahsp_score'] : null),
-                        'ahsp_status'        => $itemAhsp['ahsp_status'] ?? ($item['ahsp_status'] ?? 'unmapped'),
+                        'ahsp_code'          => $ahspCode,
+                        'ahsp_name'          => $ahspName,
+                        'ahsp_unit'          => $ahspUnit,
+                        'ahsp_score'         => $ahspScore,
+                        'ahsp_status'        => $ahspStatus,
                         'unit_price'         => (float) ($item['unit_price'] ?? 0),
                         'pipeline_debug_log' => isset($item['pipeline_debug_log']) ? json_encode($item['pipeline_debug_log']) : null,
                     ];
@@ -108,7 +191,11 @@ class EstimationController extends ResourceController
                     $itemUuid = $dbItem['uuid'];
 
                     // Insert Candidates if available
-                    $candidates = $itemAhsp['candidates'] ?? ($item['candidates'] ?? []);
+                    $candidates = $item['ahsp_candidates'] 
+                        ?? ($itemAhsp['candidates'] 
+                        ?? ($itemAhsp['ahsp_candidates'] 
+                        ?? ($item['candidates'] ?? [])));
+
                     if (!empty($candidates) && is_array($candidates)) {
                         $rank = 1;
                         foreach ($candidates as $cand) {
@@ -129,10 +216,14 @@ class EstimationController extends ResourceController
                 }
             }
 
-            // Update project summary if provided in metadata
-            if (!empty($json['metadata']['project_summary'])) {
+            // Update project summary if provided
+            $projectSummary = $json['project_summary'] 
+                ?? ($json['raw_llm_response']['project_summary'] 
+                ?? ($json['metadata']['project_summary'] ?? null));
+
+            if (!empty($projectSummary)) {
                 $projectModel->update($project['id'], [
-                    'summary' => $json['metadata']['project_summary'],
+                    'summary' => $projectSummary,
                 ]);
             }
 

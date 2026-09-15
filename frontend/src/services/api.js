@@ -59,7 +59,25 @@ const request = async (endpoint, options = {}) => {
   if (!response.ok) {
     let message = `Request error (${response.status})`;
     if (typeof data === 'object' && data !== null) {
-      const details = data.message || data.detail || data.error || data.title || '';
+      let details = '';
+      if (data.messages) {
+        if (typeof data.messages === 'object') {
+          details = Object.entries(data.messages)
+            .map(([field, msg]) => `${field}: ${msg}`)
+            .join(', ');
+        } else {
+          details = String(data.messages);
+        }
+      } else if (data.message) {
+        details = data.message;
+      } else if (data.detail) {
+        details = typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail);
+      } else if (data.error && typeof data.error === 'string') {
+        details = data.error;
+      } else if (data.title) {
+        details = data.title;
+      }
+
       if (details) {
         message = `${message}: ${details}`;
       }
@@ -223,55 +241,37 @@ export const getPythonBaseUrl = () => {
 };
 
 /**
- * Mengirim file DED ke backend untuk dianalisis oleh AI
+ * Mengambil daftar master data AHSP (PUPR Cipta Karya) via Backend CI4
+ * GET /api/ahsp/list
+ */
+export const getAhspList = async (page = 1, limit = 50, search = '') => {
+  const params = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+    search: search.trim()
+  });
+  return request(`/api/ahsp/list?${params.toString()}`);
+};
+
+/**
+ * Mengirim file DED ke backend CI4 untuk dianalisis oleh AI
  * POST /api/rab/analyze-image
- * Mendukung fallback otomatis ke direct Python API jika CI4 backend tidak merespon / offline.
  */
 export const analyzeDED = async (projectName, clientName, file) => {
-  const primaryUrl = import.meta.env.VITE_BACKEND_API_URL || `${getBackendBaseUrl()}/api/rab/analyze-image`;
-  const pythonDirectUrl = `${getPythonBaseUrl()}/api/rab/analyze-image`;
+  const url = `${getBackendBaseUrl()}/api/rab/analyze-image`;
 
-  const createFormData = () => {
-    const fd = new FormData();
-    fd.append('name', projectName);
-    fd.append('client', clientName);
-    fd.append('ded_file', file);
-    return fd;
-  };
+  const fd = new FormData();
+  fd.append('name', projectName);
+  fd.append('client', clientName);
+  fd.append('ded_file', file);
 
-  let response;
-  try {
-    response = await fetch(primaryUrl, {
-      method: 'POST',
-      body: createFormData()
-    });
-  } catch (netErr) {
-    console.warn(`Primary URL ${primaryUrl} failed (${netErr.message}). Mencoba direct Python API di ${pythonDirectUrl}...`);
-    try {
-      response = await fetch(pythonDirectUrl, {
-        method: 'POST',
-        body: createFormData()
-      });
-    } catch (fallbackErr) {
-      throw new Error(`Tidak dapat terhubung ke server backend (${primaryUrl}) maupun AI engine (${pythonDirectUrl}): ${fallbackErr.message}`);
-    }
-  }
+  const response = await fetch(url, {
+    method: 'POST',
+    body: fd
+  });
 
   if (!response.ok) {
-    if (response.status === 404 || response.status === 502 || response.status === 503) {
-      try {
-        console.warn(`Backend returned ${response.status}. Mencoba direct Python API fallback...`);
-        const fallbackResp = await fetch(pythonDirectUrl, {
-          method: 'POST',
-          body: createFormData()
-        });
-        if (fallbackResp.ok) {
-          return await fallbackResp.json();
-        }
-      } catch (_e) {}
-    }
-
-    let errorMessage = `Server returned error ${response.status}`;
+    let errorMessage = `Server error (Status ${response.status})`;
     try {
       const errorJson = await response.json();
       if (errorJson && errorJson.detail) {
@@ -282,25 +282,20 @@ export const analyzeDED = async (projectName, clientName, file) => {
     } catch (_e) {
       if (response.statusText) {
         errorMessage = `Error ${response.status}: ${response.statusText}`;
-      } else {
-        errorMessage = `Error ${response.status}: Koneksi terputus atau server tidak merespon`;
       }
     }
     throw new Error(errorMessage);
   }
 
-  const result = await response.json();
-  return result;
+  return await response.json();
 };
 
 /**
- * Mengirim prompt teks / konsep imajinasi rumah ke backend untuk dianalisis oleh AI
+ * Mengirim prompt teks / konsep imajinasi rumah ke backend CI4 untuk dianalisis oleh AI
  * POST /api/rab/analyze-prompt
- * Mendukung fallback otomatis ke direct Python API jika CI4 backend tidak merespon / offline.
  */
 export const analyzePrompt = async (projectName, clientName, promptText) => {
-  const primaryUrl = `${getBackendBaseUrl()}/api/rab/analyze-prompt`;
-  const pythonDirectUrl = `${getPythonBaseUrl()}/api/rab/analyze-prompt`;
+  const url = `${getBackendBaseUrl()}/api/rab/analyze-prompt`;
 
   const payload = JSON.stringify({
     name: projectName,
@@ -308,41 +303,17 @@ export const analyzePrompt = async (projectName, clientName, promptText) => {
     prompt: promptText
   });
 
-  const sendRequest = async (url) => {
-    return await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: payload
-    });
-  };
-
-  let response;
-  try {
-    response = await sendRequest(primaryUrl);
-  } catch (netErr) {
-    console.warn(`Primary URL ${primaryUrl} failed (${netErr.message}). Mencoba direct Python API di ${pythonDirectUrl}...`);
-    try {
-      response = await sendRequest(pythonDirectUrl);
-    } catch (fallbackErr) {
-      throw new Error(`Tidak dapat terhubung ke server backend (${primaryUrl}) maupun AI engine (${pythonDirectUrl}): ${fallbackErr.message}`);
-    }
-  }
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: payload
+  });
 
   if (!response.ok) {
-    if (response.status === 404 || response.status === 502 || response.status === 503) {
-      try {
-        console.warn(`Backend returned ${response.status}. Mencoba direct Python API fallback...`);
-        const fallbackResp = await sendRequest(pythonDirectUrl);
-        if (fallbackResp.ok) {
-          return await fallbackResp.json();
-        }
-      } catch (_e) {}
-    }
-
-    let errorMessage = `Server returned error ${response.status}`;
+    let errorMessage = `Server error (Status ${response.status})`;
     try {
       const errorJson = await response.json();
       if (errorJson && errorJson.detail) {
@@ -353,16 +324,14 @@ export const analyzePrompt = async (projectName, clientName, promptText) => {
     } catch (_e) {
       if (response.statusText) {
         errorMessage = `Error ${response.status}: ${response.statusText}`;
-      } else {
-        errorMessage = `Error ${response.status}: Koneksi terputus atau server tidak merespon`;
       }
     }
     throw new Error(errorMessage);
   }
 
-  const result = await response.json();
-  return result;
+  return await response.json();
 };
+
 
 // ==========================================
 // 5. Transformasi & Adapter Format Data

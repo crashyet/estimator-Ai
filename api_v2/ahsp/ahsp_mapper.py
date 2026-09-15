@@ -17,6 +17,7 @@ import json
 import hashlib
 import logging
 import time
+import threading
 from typing import List, Dict, Any, Optional, Tuple
 from pathlib import Path
 
@@ -52,10 +53,9 @@ BGE_RERANKER_MODEL_NAME = "BAAI/bge-reranker-v2-m3"
 THRESHOLD_HIGH = 0.80
 THRESHOLD_MEDIUM = 0.65
 
-# Number of candidates to return for medium confidence
 TOP_K_CANDIDATES = 3
 TOP_K_SEARCH_DEFAULT = 5
-TOP_K_VECTOR_RETRIEVAL = 50  # Retrieve 50 candidates for reranking
+TOP_K_VECTOR_RETRIEVAL = int(os.getenv("TOP_K_VECTOR_RETRIEVAL", "15"))  # Optimal candidates for rapid reranking
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -363,6 +363,70 @@ class AHSPItem:
         }
 
 
+def parse_ahsp_code_key(code_str: str):
+    """
+    Parses AHSP code like '1.2.1.1.2' or 'A.2.1.10' into a tuple of integers/strings
+    for natural numerical sorting.
+    """
+    if not code_str:
+        return ()
+    parts = re.split(r'[\.\-\/\s]+', str(code_str).strip())
+    key = []
+    for p in parts:
+        if p.isdigit():
+            key.append((0, int(p)))
+        else:
+            key.append((1, p.lower()))
+    return tuple(key)
+
+
+def extract_core_keywords(query: str) -> str:
+    """
+    Strips noise & filler verbs/words (pemasangan, pengukuran, dan, uitzet, pembuatan, dll)
+    to isolate the core material / work object.
+    """
+    text = query.strip()
+    noise_pattern = r'\b(?:pengukuran|pemasangan|penggalian|pengurugan|pengecoran|pembuatan|pembersihan|plesteran|acian|pengecatan|pembongkaran|penulangan|bekisting|uitzet|perataan|dan|pekerjaan|pasang|gali|urug|cor|buat)\b'
+    cleaned = re.sub(noise_pattern, '', text, flags=re.IGNORECASE).strip()
+    cleaned = re.sub(r'\s+', ' ', cleaned)
+    return cleaned if len(cleaned) >= 2 else text
+
+
+def load_ahsp_from_excel(excel_path: Optional[Path] = None) -> List[AHSPItem]:
+    """Parse the AHSP Excel file and return list of AHSPItem."""
+    target_path = excel_path or AHSP_EXCEL_PATH
+    if not target_path.exists():
+        logger.error(f"AHSP Excel file not found: {target_path}")
+        return []
+
+    try:
+        import openpyxl
+        wb = openpyxl.load_workbook(str(target_path), data_only=True, read_only=True)
+        ws = wb.active
+
+        items = []
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            id_val = row[0]
+            nama_val = row[1]
+            satuan_val = row[2] if len(row) > 2 else None
+
+            if id_val is None or nama_val is None:
+                continue
+
+            items.append(AHSPItem(
+                id_pekerjaan=str(id_val).strip(),
+                nama_pekerjaan=str(nama_val).strip(),
+                satuan=str(satuan_val).strip() if satuan_val else "",
+            ))
+
+        wb.close()
+        return items
+
+    except Exception as e:
+        logger.error(f"Error loading AHSP Excel: {e}", exc_info=True)
+        return []
+
+
 # ─────────────────────────────────────────────────────────────────────
 # AHSP Mapping Engine Core Class
 # ─────────────────────────────────────────────────────────────────────
@@ -384,6 +448,7 @@ class AHSPMapperEngine:
         self._cohere_disabled_until: float = 0.0
         self._last_cohere_call_time: float = 0.0
         self._rerank_cache: Dict[tuple, List[Dict[str, Any]]] = {}
+        self._reranker_lock = threading.Lock()
 
     def is_ready(self) -> bool:
         """Check if the mapping engine is initialized and ready for queries."""
@@ -488,36 +553,7 @@ class AHSPMapperEngine:
 
     def _load_ahsp_from_excel(self) -> List[AHSPItem]:
         """Parse the AHSP Excel file and return list of AHSPItem."""
-        if not AHSP_EXCEL_PATH.exists():
-            logger.error(f"AHSP Excel file not found: {AHSP_EXCEL_PATH}")
-            return []
-
-        try:
-            import openpyxl
-            wb = openpyxl.load_workbook(str(AHSP_EXCEL_PATH), data_only=True, read_only=True)
-            ws = wb.active
-
-            items = []
-            for row in ws.iter_rows(min_row=2, values_only=True):
-                id_val = row[0]
-                nama_val = row[1]
-                satuan_val = row[2] if len(row) > 2 else None
-
-                if id_val is None or nama_val is None:
-                    continue
-
-                items.append(AHSPItem(
-                    id_pekerjaan=str(id_val).strip(),
-                    nama_pekerjaan=str(nama_val).strip(),
-                    satuan=str(satuan_val).strip() if satuan_val else "",
-                ))
-
-            wb.close()
-            return items
-
-        except Exception as e:
-            logger.error(f"Error loading AHSP Excel: {e}", exc_info=True)
-            return []
+        return load_ahsp_from_excel(AHSP_EXCEL_PATH)
 
     def _compute_excel_hash(self) -> str:
         """Compute MD5 hash of the Excel file + cleaner code version for change detection."""
@@ -598,26 +634,34 @@ class AHSPMapperEngine:
         logger.info(f"Vector index built successfully. Total items: {self._collection.count()}")
 
     def _get_bge_reranker(self):
-        """Lazy load local BAAI/bge-reranker-v2-m3 model once."""
+        """Lazy load local BAAI/bge-reranker-v2-m3 model once with thread-safety."""
         if self._bge_reranker is not None:
             return self._bge_reranker
         if self._bge_failed:
             return None
 
-        try:
-            logger.info(f"Loading local BGE Reranker model: '{BGE_RERANKER_MODEL_NAME}'...")
-            from sentence_transformers import CrossEncoder
-            import torch
+        with self._reranker_lock:
+            if self._bge_reranker is not None:
+                return self._bge_reranker
+            try:
+                logger.info(f"Loading local BGE Reranker model: '{BGE_RERANKER_MODEL_NAME}'...")
+                from sentence_transformers import CrossEncoder
+                import torch
 
-            device = "cuda" if torch.cuda.is_available() else "cpu"
-            self._bge_reranker = CrossEncoder(BGE_RERANKER_MODEL_NAME, max_length=512, device=device)
-            logger.info(f"✅ BGE Reranker model '{BGE_RERANKER_MODEL_NAME}' successfully loaded on {device}.")
-            return self._bge_reranker
-        except Exception as e:
-            logger.warning(f"BGE Reranker loading skipped/failed ({e}). Will use Cohere/Local Heuristic fallback.")
-            self._bge_failed = True
-            self._bge_reranker = None
-            return None
+                # Configure CPU thread count per inference to allow parallel non-blocking execution
+                num_threads = int(os.getenv("TORCH_NUM_THREADS", "2"))
+                torch.set_num_threads(num_threads)
+                logger.info(f"PyTorch CPU inference concurrency configured to {num_threads} threads per task.")
+
+                device = "cuda" if torch.cuda.is_available() else "cpu"
+                self._bge_reranker = CrossEncoder(BGE_RERANKER_MODEL_NAME, max_length=512, device=device)
+                logger.info(f"✅ BGE Reranker model '{BGE_RERANKER_MODEL_NAME}' successfully loaded on {device}.")
+                return self._bge_reranker
+            except Exception as e:
+                logger.warning(f"BGE Reranker loading skipped/failed ({e}). Will use Cohere/Local Heuristic fallback.")
+                self._bge_failed = True
+                self._bge_reranker = None
+                return None
 
     def _retrieve_keyword_candidates(
         self, query_text: str, query_unit: str = "", top_k: int = 30
@@ -1245,33 +1289,75 @@ class AHSPMapperEngine:
         med_cnt = 0
         unmap_cnt = 0
 
+        # Flatten all items to process them in parallel
+        all_item_entries = []
         for sec in takeoff_response.wbs_sections:
             for item in sec.items:
-                item_insp = self.inspect_single_item(item.name, item.unit or "", top_k=5)
-                final_map = item_insp.get("final_mapping", {})
-                status = final_map.get("ahsp_status", "unmapped")
-                if status == "mapped_high":
-                    high_cnt += 1
-                elif status == "mapped_medium":
-                    med_cnt += 1
-                else:
-                    unmap_cnt += 1
+                all_item_entries.append((sec, item))
 
-                items_inspection.append({
-                    "section_code": sec.section.code,
-                    "section_name": sec.section.name,
-                    "item_id": item.id,
-                    "ai_raw_item": {
-                        "name": item.name,
-                        "volume": item.volume,
-                        "unit": item.unit,
-                        "confidence": item.confidence,
-                        "warning_note": item.warning_note,
-                    },
-                    "raw_vectordb_candidates": item_insp.get("raw_vectordb_candidates", []),
-                    "raw_reranked_candidates": item_insp.get("raw_reranked_candidates", []),
-                    "final_mapping": final_map,
-                })
+        def _process_single_entry(entry):
+            sec, item = entry
+            item_insp = self.inspect_single_item(item.name, item.unit or "", top_k=5)
+            final_map = item_insp.get("final_mapping", {})
+
+            # Enrich work item in-place directly
+            item.ahsp_code = final_map.get("ahsp_code")
+            item.ahsp_name = final_map.get("ahsp_name")
+            item.ahsp_unit = final_map.get("ahsp_unit")
+            item.ahsp_score = final_map.get("ahsp_score")
+            item.ahsp_status = final_map.get("ahsp_status")
+
+            raw_cands = final_map.get("ahsp_candidates")
+            if raw_cands:
+                if AHSPCandidateItem is not None:
+                    item.ahsp_candidates = [
+                        AHSPCandidateItem(**c) if isinstance(c, dict) else c
+                        for c in raw_cands
+                    ]
+                else:
+                    item.ahsp_candidates = raw_cands
+            else:
+                item.ahsp_candidates = None
+
+            if final_map.get("ahsp_code") and final_map.get("ahsp_status") in ["mapped_high", "mapped_medium"]:
+                item.code = final_map["ahsp_code"]
+                if final_map.get("ahsp_unit"):
+                    item.unit = final_map["ahsp_unit"]
+
+            return (sec, item, item_insp, final_map)
+
+        if all_item_entries:
+            import concurrent.futures
+            max_workers = min(6, len(all_item_entries))
+            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                processed_entries = list(executor.map(_process_single_entry, all_item_entries))
+        else:
+            processed_entries = []
+
+        for sec, item, item_insp, final_map in processed_entries:
+            status = final_map.get("ahsp_status", "unmapped")
+            if status == "mapped_high":
+                high_cnt += 1
+            elif status == "mapped_medium":
+                med_cnt += 1
+            else:
+                unmap_cnt += 1
+
+            items_inspection.append({
+                "section_code": sec.section.code,
+                "section_name": sec.section.name,
+                "item_id": item.id,
+                "ai_raw_item": {
+                    "name": item.name,
+                    "volume": item.volume,
+                    "unit": item.unit,
+                    "confidence": item.confidence,
+                    "warning_note": item.warning_note,
+                },
+                "raw_vectordb_candidates": item_insp.get("raw_vectordb_candidates", []),
+                "raw_reranked_candidates": item_insp.get("raw_reranked_candidates", []),
+                "final_mapping": final_map,
+            })
 
         total = len(items_inspection)
         return {
@@ -1292,6 +1378,7 @@ class AHSPMapperEngine:
         """
         Bulk map all work items in a DynamicTakeoffResponse to AHSP codes.
         Modifies items in-place and returns the enriched response.
+        If items were already mapped by inspect_takeoff_response, skips redundant re-mapping.
         """
         if not self._ready:
             logger.warning("AHSP Mapper not ready. Skipping bulk mapping.")
@@ -1305,6 +1392,16 @@ class AHSPMapperEngine:
 
         for wbs_section in takeoff_response.wbs_sections:
             for item in wbs_section.items:
+                if getattr(item, "ahsp_status", None):
+                    # Already mapped in inspect_takeoff_response
+                    if item.ahsp_status == "mapped_high":
+                        mapped_high_count += 1
+                    elif item.ahsp_status == "mapped_medium":
+                        mapped_medium_count += 1
+                    else:
+                        unmapped_count += 1
+                    continue
+
                 mapping = self.map_single_item(item.name, item.unit)
 
                 item.ahsp_code = mapping["ahsp_code"]
@@ -1411,11 +1508,367 @@ class AHSPMapperEngine:
             return {"success": False, "error": str(e)}
 
 
-# Module-level singleton instance
-mapper_engine = AHSPMapperEngine()
+# ─────────────────────────────────────────────────────────────────────
+# AHSP Remote Microservice Client
+# ─────────────────────────────────────────────────────────────────────
+
+class AHSPRemoteClient:
+    """
+    Lightweight HTTP Client for AHSP & ChromaDB Microservice.
+    Delegates heavy vector search, embedding generation, and cross-encoder reranking
+    to the standalone AHSP microservice on port 8100.
+    Avoids loading PyTorch and transformer weights into api_v2 worker processes.
+    """
+
+    def __init__(self, service_url: str = "http://127.0.0.1:8100"):
+        self.service_url = service_url.rstrip("/")
+        self._ahsp_items: List[AHSPItem] = []
+        self._total_items: int = 0
+        self._ready: bool = False
+        self._last_health_check: float = 0.0
+        self._health_cache_ttl: float = 3.0
+        self._session = None
+        self._init_lock = threading.Lock()
+
+    @property
+    def session(self):
+        if self._session is None:
+            with self._init_lock:
+                if self._session is None:
+                    import requests
+                    from requests.adapters import HTTPAdapter
+                    from urllib3.util.retry import Retry
+                    s = requests.Session()
+                    retries = Retry(total=2, backoff_factor=0.2, status_forcelist=[502, 503, 504])
+                    adapter = HTTPAdapter(pool_connections=25, pool_maxsize=50, max_retries=retries)
+                    s.mount("http://", adapter)
+                    s.mount("https://", adapter)
+                    self._session = s
+        return self._session
+
+    def initialize(self):
+        """
+        Initialize the remote client:
+        1. Loads AHSP item list from Excel (fast, ~15MB memory) for instant in-memory keyword searches.
+        2. Verifies connectivity to the AHSP microservice at self.service_url.
+        """
+        try:
+            self._ahsp_items = load_ahsp_from_excel(AHSP_EXCEL_PATH)
+            self._total_items = len(self._ahsp_items)
+            logger.info(f"[AHSPRemoteClient] Loaded {self._total_items} items from Excel for instant keyword search.")
+        except Exception as e:
+            logger.warning(f"[AHSPRemoteClient] Could not load local Excel: {e}")
+            self._ahsp_items = []
+            self._total_items = 0
+
+        self.check_connection(log_info=True)
+
+    def check_connection(self, log_info: bool = False) -> bool:
+        """Ping the AHSP microservice to check readiness."""
+        try:
+            resp = self.session.get(f"{self.service_url}/health", timeout=1.5)
+            if resp.status_code == 200:
+                data = resp.json()
+                self._ready = bool(data.get("ready", False))
+                if not self._ahsp_items and data.get("total_items"):
+                    self._total_items = data.get("total_items", 0)
+                self._last_health_check = time.time()
+                if log_info:
+                    logger.info(
+                        f"[AHSPRemoteClient] Connected to AHSP Microservice at {self.service_url} "
+                        f"(Ready: {self._ready}, Items: {self._total_items})"
+                    )
+                return self._ready
+        except Exception as e:
+            self._ready = False
+            self._last_health_check = time.time()
+            if log_info:
+                logger.warning(
+                    f"[AHSPRemoteClient] AHSP Microservice not reachable at {self.service_url}: {e}. "
+                    f"To enable semantic AHSP mapping, start 'python service_ahsp.py'"
+                )
+        return False
+
+    def is_ready(self) -> bool:
+        """Check if remote microservice is online (cached for 3s to minimize overhead)."""
+        now = time.time()
+        if now - self._last_health_check > self._health_cache_ttl:
+            self.check_connection(log_info=False)
+        return self._ready
+
+    def search(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
+        """Delegate vector semantic search to remote microservice."""
+        if not self.is_ready():
+            return []
+        try:
+            resp = self.session.post(
+                f"{self.service_url}/api/ahsp/search",
+                data={"query": query, "top_k": top_k},
+                timeout=15.0,
+            )
+            if resp.status_code == 200:
+                return resp.json().get("results", [])
+        except Exception as e:
+            logger.error(f"[AHSPRemoteClient] Remote search error: {e}")
+        return []
+
+    def map_single_item(self, item_name: str, item_unit: str = "") -> Dict[str, Any]:
+        """Delegate single item mapping to remote microservice."""
+        if not self.is_ready():
+            return {
+                "ahsp_code": None,
+                "ahsp_name": None,
+                "ahsp_unit": None,
+                "ahsp_score": 0.0,
+                "ahsp_status": "unmapped",
+                "ahsp_candidates": None,
+            }
+        try:
+            resp = self.session.post(
+                f"{self.service_url}/api/ahsp/map/single",
+                json={"item_name": item_name, "item_unit": item_unit},
+                timeout=45.0,
+            )
+            if resp.status_code == 200:
+                return resp.json()
+        except Exception as e:
+            logger.error(f"[AHSPRemoteClient] Remote map_single_item error: {e}")
+        return {
+            "ahsp_code": None,
+            "ahsp_name": None,
+            "ahsp_unit": None,
+            "ahsp_score": 0.0,
+            "ahsp_status": "unmapped",
+            "ahsp_candidates": None,
+        }
+
+    def inspect_single_item(self, item_name: str, item_unit: str = "", top_k: int = 5) -> Dict[str, Any]:
+        """Delegate single item candidate inspection to remote microservice."""
+        if not self.is_ready():
+            return {"error": "AHSP microservice is not ready or offline."}
+        try:
+            resp = self.session.post(
+                f"{self.service_url}/api/ahsp/inspect/single",
+                json={"item_name": item_name, "item_unit": item_unit, "top_k": top_k},
+                timeout=45.0,
+            )
+            if resp.status_code == 200:
+                return resp.json()
+        except Exception as e:
+            logger.error(f"[AHSPRemoteClient] Remote inspect_single_item error: {e}")
+            return {"error": str(e)}
+        return {"error": "Failed to inspect item via remote microservice"}
+
+    def inspect_takeoff_response(self, takeoff_response) -> Dict[str, Any]:
+        """
+        Delegate full takeoff response inspection and mapping to remote microservice.
+        Applies mapping updates to the takeoff_response in-place and returns inspection report.
+        """
+        if not self.is_ready():
+            logger.warning("[AHSPRemoteClient] AHSP microservice offline. Skipping inspect_takeoff_response.")
+            return {}
+        try:
+            payload = takeoff_response.model_dump()
+            resp = self.session.post(
+                f"{self.service_url}/api/ahsp/inspect/takeoff",
+                json=payload,
+                timeout=300.0,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                mapped_takeoff = data.get("takeoff", {})
+                inspection_report = data.get("inspection_report", {})
+                self._apply_mapped_data_to_takeoff(takeoff_response, mapped_takeoff)
+                return inspection_report
+            else:
+                logger.error(f"[AHSPRemoteClient] Remote inspect_takeoff failed: HTTP {resp.status_code} - {resp.text}")
+        except Exception as e:
+            logger.error(f"[AHSPRemoteClient] Remote inspect_takeoff_response error: {e}", exc_info=True)
+        return {}
+
+    def map_takeoff_response(self, takeoff_response) -> Any:
+        """
+        Bulk map takeoff response via remote microservice.
+        If items were already mapped by inspect_takeoff_response, skips redundant re-mapping.
+        """
+        for sec in getattr(takeoff_response, "wbs_sections", []):
+            for itm in getattr(sec, "items", []):
+                if getattr(itm, "ahsp_status", None) and itm.ahsp_status in ("mapped_high", "mapped_medium", "unmapped"):
+                    return takeoff_response
+
+        if not self.is_ready():
+            return takeoff_response
+
+        try:
+            payload = takeoff_response.model_dump()
+            resp = self.session.post(
+                f"{self.service_url}/api/ahsp/map/takeoff",
+                json=payload,
+                timeout=300.0,
+            )
+            if resp.status_code == 200:
+                mapped_takeoff = resp.json()
+                self._apply_mapped_data_to_takeoff(takeoff_response, mapped_takeoff)
+        except Exception as e:
+            logger.error(f"[AHSPRemoteClient] Remote map_takeoff_response error: {e}")
+        return takeoff_response
+
+    def _apply_mapped_data_to_takeoff(self, takeoff_response, mapped_takeoff_dict: Dict[str, Any]):
+        """Helper to sync returned mapped fields back onto local Pydantic takeoff items."""
+        if not mapped_takeoff_dict:
+            return
+        item_map = {}
+        for sec in mapped_takeoff_dict.get("wbs_sections", []):
+            for itm in sec.get("items", []):
+                item_map[itm.get("id")] = itm
+
+        for sec in getattr(takeoff_response, "wbs_sections", []):
+            for item in getattr(sec, "items", []):
+                m = item_map.get(item.id)
+                if not m:
+                    continue
+                item.ahsp_code = m.get("ahsp_code")
+                item.ahsp_name = m.get("ahsp_name")
+                item.ahsp_unit = m.get("ahsp_unit")
+                item.ahsp_score = m.get("ahsp_score")
+                item.ahsp_status = m.get("ahsp_status", "unmapped")
+                if m.get("code") and m.get("ahsp_status") in ("mapped_high", "mapped_medium"):
+                    item.code = m.get("code")
+                if m.get("unit") and m.get("ahsp_status") in ("mapped_high", "mapped_medium"):
+                    item.unit = m.get("unit")
+
+                raw_cands = m.get("ahsp_candidates")
+                if raw_cands:
+                    if AHSPCandidateItem is not None:
+                        item.ahsp_candidates = [
+                            AHSPCandidateItem(**c) if isinstance(c, dict) else c
+                            for c in raw_cands
+                        ]
+                    else:
+                        item.ahsp_candidates = raw_cands
+                else:
+                    item.ahsp_candidates = None
+
+    def get_all_items(
+        self,
+        page: int = 1,
+        limit: int = 50,
+        search_query: str = "",
+        sort_by_code: bool = True,
+        **kwargs,
+    ) -> Dict[str, Any]:
+        """Return master AHSP items, preferring local fast cache, or remote microservice."""
+        if "search" in kwargs and not search_query:
+            search_query = kwargs["search"]
+
+        # Ensure local cache is loaded if possible
+        if not self._ahsp_items:
+            try:
+                self._ahsp_items = load_ahsp_from_excel(AHSP_EXCEL_PATH)
+                self._total_items = len(self._ahsp_items)
+            except Exception as e:
+                logger.warning(f"[AHSPRemoteClient] Fallback Excel load error: {e}")
+
+        if self._ahsp_items:
+            if search_query and search_query.strip():
+                matched_items = manual_keyword_search(self._ahsp_items, search_query.strip(), limit=5000)
+                if sort_by_code:
+                    matched_items.sort(key=lambda x: parse_ahsp_code_key(x.get("id_pekerjaan", "")))
+                total = len(matched_items)
+                start = (page - 1) * limit
+                end = start + limit
+                paged = matched_items[start:end]
+                return {
+                    "items": paged,
+                    "total": total,
+                    "page": page,
+                    "limit": limit,
+                    "total_pages": max(1, (total + limit - 1) // limit),
+                }
+            else:
+                items_list = [i.to_dict() if hasattr(i, "to_dict") else i for i in self._ahsp_items]
+                if sort_by_code:
+                    items_list.sort(key=lambda x: parse_ahsp_code_key(x.get("id_pekerjaan", "")))
+                total = len(items_list)
+                start = (page - 1) * limit
+                end = start + limit
+                paged = items_list[start:end]
+                return {
+                    "items": paged,
+                    "total": total,
+                    "page": page,
+                    "limit": limit,
+                    "total_pages": max(1, (total + limit - 1) // limit),
+                }
+
+        try:
+            resp = self.session.get(
+                f"{self.service_url}/api/ahsp/items",
+                params={"limit": 5000, "search": search_query, "sort_by_code": str(sort_by_code).lower()},
+                timeout=10.0,
+            )
+            if resp.status_code == 200:
+                raw_items = resp.json().get("items", [])
+                total = len(raw_items)
+                start = (page - 1) * limit
+                end = start + limit
+                return {
+                    "items": raw_items[start:end],
+                    "total": total,
+                    "page": page,
+                    "limit": limit,
+                    "total_pages": max(1, (total + limit - 1) // limit),
+                }
+        except Exception as e:
+            logger.error(f"[AHSPRemoteClient] Remote get_all_items error: {e}")
+
+        return {"items": [], "total": 0, "page": page, "limit": limit, "total_pages": 1}
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Fetch remote stats from microservice."""
+        if not self.is_ready():
+            return {"ready": False, "mode": "remote", "service_url": self.service_url}
+        try:
+            resp = self.session.get(f"{self.service_url}/api/ahsp/stats", timeout=5.0)
+            if resp.status_code == 200:
+                stats = resp.json()
+                stats["client_mode"] = "remote"
+                return stats
+        except Exception as e:
+            logger.error(f"[AHSPRemoteClient] Remote get_stats error: {e}")
+        return {"ready": False, "mode": "remote", "service_url": self.service_url}
+
+    def reindex(self) -> Dict[str, Any]:
+        """Trigger remote reindexing."""
+        if not self.is_ready():
+            return {"success": False, "error": "AHSP microservice is offline"}
+        try:
+            resp = self.session.post(f"{self.service_url}/api/ahsp/reindex", timeout=300.0)
+            if resp.status_code == 200:
+                return resp.json()
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+        return {"success": False, "error": "Failed to trigger reindex via remote microservice"}
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Engine Mode Selection & Initialization
+# ─────────────────────────────────────────────────────────────────────
+
+# Select engine mode: 'remote' (default microservice) or 'embedded' (local in-process)
+AHSP_MODE = os.getenv("AHSP_MODE", "remote").lower()
+AHSP_SERVICE_URL = os.getenv("AHSP_SERVICE_URL", "http://127.0.0.1:8100").rstrip("/")
+
+if AHSP_MODE in ("embedded", "local"):
+    logger.info("AHSP Mapping Engine operating in EMBEDDED local mode.")
+    mapper_engine = AHSPMapperEngine()
+else:
+    logger.info(f"AHSP Mapping Engine operating in REMOTE microservice mode (URL: {AHSP_SERVICE_URL}).")
+    mapper_engine = AHSPRemoteClient(service_url=AHSP_SERVICE_URL)
 
 
 def initialize_mapper():
-    """Initialize the global mapper engine."""
+    """Initialize the global mapper engine (embedded or remote client)."""
     global mapper_engine
     mapper_engine.initialize()
+

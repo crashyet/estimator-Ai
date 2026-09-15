@@ -2,13 +2,27 @@
 
 use CodeIgniter\Router\RouteCollection;
 
-/** @var RouteCollection $routes */
-$routes->get('/', 'Home::index');
+$routes->get('/', 'ProjectWebController::index');
+$routes->get('proyek', 'ProjectWebController::index');
+$routes->get('projects', 'ProjectWebController::index');
+$routes->get('buat_proyek', 'ProjectWebController::create');
+$routes->get('proyek/create', 'ProjectWebController::create');
+$routes->get('anggaran', 'ProjectWebController::anggaran');
+$routes->get('proyek/(:segment)/anggaran', 'ProjectWebController::anggaran/$1');
+$routes->get('proyek/(:segment)/deteksi', 'ProjectWebController::anggaran/$1');
+$routes->get('pemetaan-ahsp', 'ProjectWebController::pemetaanAhsp');
+$routes->get('proyek/(:segment)/pemetaan-ahsp', 'ProjectWebController::pemetaanAhsp/$1');
 
 // AI Estimator Analysis Proxy Endpoints
-$routes->post('api/rab/analyze', 'RabController::analyze');
-$routes->post('api/rab/analyze-image', 'RabController::analyzeImage');
+$routes->post('api/rab/analyze', 'RABController::analyze');
+$routes->post('api/rab/analyze-image', 'RABController::analyzeImage');
 $routes->post('api/rab/analyze-prompt', 'RABController::analyzePrompt');
+
+// AHSP Master Data & Mapping Proxy Endpoints
+$routes->get('api/ahsp/list', 'AHSPController::list');
+$routes->get('api/ahsp/search', 'AHSPController::search');
+$routes->post('api/ahsp/map-item', 'AHSPController::mapItem');
+$routes->get('api/ahsp/stats', 'AHSPController::stats');
 
 // Projects CRUD Endpoints (Supports both Integer ID and UUID)
 $routes->group('api/projects', function ($routes) {
