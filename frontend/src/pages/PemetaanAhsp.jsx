@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { Icons } from '../components/Icons';
 import proyekBg from '../assets/proyek-bg13.png';
-import { updateEstimationItem } from '../services/api';
+import { updateEstimationItem, getBackendBaseUrl } from '../services/api';
 import { useProject } from '../context/ProjectContext';
 
 const PemetaanAhsp = () => {
@@ -93,12 +93,10 @@ const PemetaanAhsp = () => {
       setIsLoading(true);
     }
 
-    const PYTHON_API_BASE = typeof window !== 'undefined'
-      ? `http://${window.location.hostname}:8200`
-      : (import.meta.env.VITE_PYTHON_API_URL || 'http://localhost:8200');
+    const API_BASE = getBackendBaseUrl();
 
     try {
-      const url = `${PYTHON_API_BASE}/api/ahsp/list?page=${targetPage}&limit=${pageSize}&search=${encodeURIComponent(activeSearch.trim())}`;
+      const url = `${API_BASE}/api/ahsp/list?page=${targetPage}&limit=${pageSize}&search=${encodeURIComponent(activeSearch.trim())}`;
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
@@ -172,13 +170,9 @@ const PemetaanAhsp = () => {
 
   const handleSearchSubmit = () => {
     setActiveSearch(searchQuery);
-    // Fetch with new query reset
-    const PYTHON_API_BASE = typeof window !== 'undefined'
-      ? `http://${window.location.hostname}:8200`
-      : (import.meta.env.VITE_PYTHON_API_URL || 'http://localhost:8200');
-
+    const API_BASE = getBackendBaseUrl();
     setIsLoading(true);
-    fetch(`${PYTHON_API_BASE}/api/ahsp/list?page=1&limit=${pageSize}&search=${encodeURIComponent(searchQuery.trim())}`)
+    fetch(`${API_BASE}/api/ahsp/list?page=1&limit=${pageSize}&search=${encodeURIComponent(searchQuery.trim())}`)
       .then((res) => res.json())
       .then((data) => {
         setAhspItems(data.items || []);
