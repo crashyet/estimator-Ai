@@ -13,7 +13,7 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
     background-color: #79bf39;
     background: linear-gradient(135deg, #74b836 0%, #88c946 50%, #68a82d 100%);
     position: relative;
-    padding: 38px 20px 75px 20px;
+    padding: 32px 20px 32px 20px;
     text-align: center;
     overflow: hidden;
     box-shadow: inset 0 -2px 6px rgba(0, 0, 0, 0.04);
@@ -46,7 +46,7 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
     border-radius: 16px;
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
     padding: 28px 32px;
-    margin: 45px auto 50px auto;
+    margin: 0px auto 50px auto;
     position: relative;
     z-index: 5;
   }
@@ -516,6 +516,26 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
   .btn-lanjut-rab:active {
     transform: translateY(0);
   }
+
+  /* Backdrop Blur & Precision Card for Proceed RAB Modal */
+  .modal-backdrop.show {
+    background-color: rgba(15, 23, 42, 0.65) !important;
+    backdrop-filter: blur(6px) !important;
+    -webkit-backdrop-filter: blur(6px) !important;
+    opacity: 1 !important;
+  }
+  #proceedRabModal .modal-dialog {
+    max-width: 512px !important;
+    width: calc(100% - 2rem) !important;
+    margin: 1.75rem auto;
+  }
+  #proceedRabModal .modal-content {
+    background: #ffffff !important;
+    border-radius: 16px !important;
+    border: 1px solid #f1f5f9 !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+    overflow: hidden !important;
+  }
 </style>
 <?= $this->endSection() ?>
 
@@ -861,7 +881,7 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
                     data-ahsp-code="<?= esc($item['ahsp_code'] ?? '') ?>"
                     data-ahsp-name="<?= esc($item['ahsp_name'] ?? '') ?>"
                     data-ahsp-status="<?= esc($item['ahsp_status'] ?? 'mapped_high') ?>"
-                    data-has-warning="<?= !empty($item['has_warning']) ? '1' : '0' ?>"
+                    data-has-warning="<?= (($item['ahsp_status'] ?? '') === 'unmapped') ? '1' : '0' ?>"
                   >
                     <!-- No. -->
                     <td class="py-2.5 px-3 wbs-item-no align-middle">
@@ -872,7 +892,7 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
                     <td class="py-2.5 px-3 align-middle">
                       <div class="d-flex align-items-center">
                         <span class="wbs-item-name"><?= esc($item['ahsp_name']) ?></span>
-                        <?php if (!empty($item['has_warning'])): ?>
+                        <?php if (($item['ahsp_status'] ?? '') === 'unmapped'): ?>
                           <span class="badge-unmapped" title="<?= esc('Pekerjaan belum dipetakan ke standar AHSP') ?>">!</span>
                         <?php endif; ?>
                       </div>
@@ -1050,69 +1070,79 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
 
 <!-- Modal: Konfirmasi Lanjut ke RAB (Warning jika ada unmapped items) -->
 <div class="modal fade" id="proceedRabModal" tabindex="-1" aria-labelledby="proceedRabModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered" style="max-width: 520px;">
-    <div class="modal-content border-0 shadow-2xl" style="border-radius: 16px; overflow: hidden;">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
       
       <!-- KASUS 1: Masih ada item yang belum dipetakan (UNMAPPED) -->
       <div id="proceedUnmappedContent">
-        <!-- Header Warning Amber/Orange -->
-        <div class="px-4 py-3.5 d-flex align-items-center justify-content-between" style="background-color: #ea580c; color: #ffffff;">
+        <!-- Header Warning Amber -->
+        <div class="d-flex align-items-center justify-content-between" style="background-color: #d97706; color: #ffffff; padding: 14px 20px;">
           <div class="d-flex align-items-center gap-2">
-            <i class="bi bi-exclamation-triangle-fill" style="font-size: 16px; color: #ffedd5;"></i>
-            <h6 class="mb-0 fw-bold text-uppercase" style="font-size: 13.5px; letter-spacing: 0.04em;">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 20px; height: 20px; color: #fef3c7;">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+            <h3 class="mb-0 fw-bold text-uppercase" style="font-size: 13.5px; letter-spacing: 0.04em; color: #ffffff;">
               PERHATIAN: ITEM BELUM TERPETAKAN
-            </h6>
+            </h3>
           </div>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" style="opacity: 0.9;"></button>
+          <button type="button" class="rounded-circle border-0 d-flex align-items-center justify-content-center text-white" data-bs-dismiss="modal" aria-label="Close" style="background: transparent; width: 28px; height: 28px; cursor: pointer; transition: background 0.15s;" onmouseover="this.style.background='rgba(0,0,0,0.15)'" onmouseout="this.style.background='transparent'">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" style="width: 16px; height: 16px;">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
-        <div class="p-4">
+        <div style="padding: 20px; display: flex; flex-direction: column; gap: 16px;">
           <!-- Alert Banner Box -->
-          <div class="p-3 mb-3 d-flex gap-3 align-items-start" style="background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 12px;">
+          <div style="background-color: #fffbeb; border: 1px solid rgba(253, 230, 138, 0.8); border-radius: 12px; padding: 14px 16px; display: flex; gap: 12px;">
             <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 fw-bold" 
                  style="width: 28px; height: 28px; background-color: #fef3c7; color: #b45309; font-size: 14px;">
               !
             </div>
-            <div>
-              <p class="fw-bold mb-1" style="color: #451a03; font-size: 12.5px;">
+            <div style="font-size: 12.5px; line-height: 1.5;">
+              <p class="fw-bold mb-0.5" style="color: #451a03; font-size: 12.5px;">
                 Ada <span id="proceedWarningCount">0</span> pekerjaan yang belum dipetakan ke AHSP
               </p>
-              <p class="mb-0" style="color: #92400e; font-size: 11.5px; line-height: 1.5;">
+              <p class="mb-0" style="color: #92400e; font-size: 12px; margin-top: 2px;">
                 Item yang belum dipetakan tidak memiliki kode dan acuan harga satuan standar. Disarankan untuk memetakan seluruh pekerjaan terlebih dahulu.
               </p>
             </div>
           </div>
 
           <!-- Section Heading -->
-          <div class="d-flex align-items-center justify-content-between mb-2">
-            <span class="fw-bold text-uppercase" style="font-size: 11.5px; color: #475569; letter-spacing: 0.04em;">
-              DAFTAR PEKERJAAN BELUM DIPETAKAN (<span id="proceedListCount">0</span>):
-            </span>
-            <span style="font-size: 11px; color: #94a3b8;">
-              Klik tombol untuk memetakan
-            </span>
-          </div>
+          <div>
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <span class="fw-bold text-uppercase" style="font-size: 11.5px; color: #475569; letter-spacing: 0.05em;">
+                DAFTAR PEKERJAAN BELUM DIPETAKAN (<span id="proceedListCount">0</span>):
+              </span>
+              <span style="font-size: 11px; color: #94a3b8;">
+                Klik tombol untuk memetakan
+              </span>
+            </div>
 
-          <!-- Scrollable Unmapped Items List -->
-          <div class="rounded-3 border overflow-auto" style="max-height: 210px; background-color: #ffffff; border-color: #e2e8f0 !important;" id="unmappedItemsList">
-            <!-- Populated by JS -->
+            <!-- Scrollable Unmapped Items List -->
+            <div class="rounded-3 border overflow-auto" style="max-height: 208px; background-color: rgba(248, 250, 252, 0.6); border-color: #e2e8f0 !important;" id="unmappedItemsList">
+              <!-- Populated by JS -->
+            </div>
           </div>
 
           <!-- Confirmation Prompt Box -->
-          <div class="p-2.5 mt-3 text-center rounded-3 border" style="background-color: #f8fafc; border-color: #e2e8f0 !important;">
+          <div class="text-center rounded-3 border" style="background-color: #f8fafc; border-color: rgba(226, 232, 240, 0.7) !important; padding: 12px;">
             <p class="mb-0 fw-semibold" style="font-size: 12.5px; color: #334155;">
               Apakah Anda yakin ingin tetap melanjutkan ke halaman RAB?
             </p>
           </div>
 
           <!-- Action Buttons -->
-          <div class="pt-3 mt-3 border-top d-flex align-items-center justify-content-end gap-2" style="border-color: #f1f5f9 !important;">
-            <button type="button" class="btn btn-outline-secondary btn-sm px-3.5 py-2 fw-semibold" data-bs-dismiss="modal" style="font-size: 12px; border-radius: 8px; border-color: #cbd5e1; color: #334155;">
+          <div class="pt-2 d-flex align-items-center justify-content-end gap-2" style="border-top: 1px solid #f1f5f9;">
+            <button type="button" class="btn btn-sm fw-semibold" data-bs-dismiss="modal" style="font-size: 12px; border: 1px solid #e2e8f0; border-radius: 8px; color: #334155; background-color: #ffffff; padding: 8px 16px; cursor: pointer;">
               Periksa & Petakan Dulu
             </button>
-            <button type="button" class="btn btn-sm px-3.5 py-2 fw-bold text-white d-inline-flex align-items-center gap-1.5" onclick="confirmProceedToRab()" style="background-color: #ea580c; border: none; border-radius: 8px; font-size: 12px; box-shadow: 0 2px 6px rgba(234, 88, 12, 0.25);">
+            <button type="button" class="btn btn-sm fw-bold text-white d-inline-flex align-items-center gap-1.5" onclick="confirmProceedToRab()" style="background-color: #d97706; border: none; border-radius: 8px; font-size: 12px; padding: 8px 18px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer;" onmouseover="this.style.backgroundColor='#b45309'" onmouseout="this.style.backgroundColor='#d97706'">
               <span>Tetap Lanjut ke RAB</span>
-              <i class="bi bi-chevron-right" style="font-size: 11px;"></i>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="width: 14px; height: 14px;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              </svg>
             </button>
           </div>
         </div>
@@ -1120,45 +1150,55 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
 
       <!-- KASUS 2: Semua Item Terpetakan (SIAP) -->
       <div id="proceedReadyContent" class="d-none">
-        <div class="px-4 py-3.5 d-flex align-items-center justify-content-between" style="background-color: #00802b; color: #ffffff;">
+        <!-- Header Green -->
+        <div class="d-flex align-items-center justify-content-between" style="background-color: #00802b; color: #ffffff; padding: 14px 20px;">
           <div class="d-flex align-items-center gap-2">
-            <i class="bi bi-check-circle-fill text-white fs-5"></i>
-            <h6 class="mb-0 fw-bold text-uppercase" style="font-size: 13.5px; letter-spacing: 0.04em;">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 20px; height: 20px; color: #a7f3d0;">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h3 class="mb-0 fw-bold text-uppercase" style="font-size: 13.5px; letter-spacing: 0.04em; color: #ffffff;">
               SIAP LANJUT KE RAB
-            </h6>
+            </h3>
           </div>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          <button type="button" class="rounded-circle border-0 d-flex align-items-center justify-content-center text-white" data-bs-dismiss="modal" aria-label="Close" style="background: transparent; width: 28px; height: 28px; cursor: pointer; transition: background 0.15s;" onmouseover="this.style.background='rgba(0,0,0,0.15)'" onmouseout="this.style.background='transparent'">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" style="width: 16px; height: 16px;">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
-        <div class="p-4">
-          <div class="p-3 mb-3 d-flex gap-3 align-items-start" style="background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px;">
+        <div style="padding: 20px; display: flex; flex-direction: column; gap: 16px;">
+          <!-- Success Banner Box -->
+          <div style="background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 16px; display: flex; gap: 14px;">
             <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 fw-bold" 
-                 style="width: 28px; height: 28px; background-color: #d1fae5; color: #047857; font-size: 14px;">
+                 style="width: 32px; height: 32px; background-color: #d1fae5; color: #047857; font-size: 16px;">
               ✓
             </div>
-            <div>
-              <p class="fw-bold mb-1" style="color: #064e3b; font-size: 12.5px;">
-                Semua pekerjaan telah terpetakan ke AHSP
+            <div style="font-size: 12.5px; line-height: 1.5;">
+              <p class="fw-bold mb-0.5" style="color: #064e3b; font-size: 12.5px;">
+                Seluruh Pekerjaan Telah Terpetakan (<span id="proceedReadyItemCount">0</span> item)
               </p>
-              <p class="mb-0" style="color: #065f46; font-size: 11.5px; line-height: 1.5;">
-                Data pekerjaan sudah siap untuk dihitung rincian anggaran biayanya (RAB).
+              <p class="mb-0" style="color: #065f46; font-size: 12px; margin-top: 2px;">
+                Semua item pekerjaan telah berhasil dipetakan ke standar AHSP. Data siap disusun menjadi Rencana Anggaran Biaya (RAB).
               </p>
             </div>
           </div>
 
-          <div class="p-2.5 text-center rounded-3 border" style="background-color: #f8fafc; border-color: #e2e8f0 !important;">
-            <p class="mb-0 fw-semibold" style="font-size: 12.5px; color: #334155;">
-              Klik tombol di bawah untuk melanjutkan ke tahap penyusunan Rencana Anggaran Biaya (RAB).
-            </p>
-          </div>
+          <!-- Prompt Text -->
+          <p class="text-center fw-semibold py-1 mb-0" style="font-size: 12.5px; color: #334155;">
+            Lanjutkan ke halaman penyusunan Rencana Anggaran Biaya (RAB)?
+          </p>
 
-          <div class="pt-3 mt-3 border-top d-flex align-items-center justify-content-end gap-2" style="border-color: #f1f5f9 !important;">
-            <button type="button" class="btn btn-outline-secondary btn-sm px-3.5 py-2 fw-semibold" data-bs-dismiss="modal" style="font-size: 12px; border-radius: 8px;">
+          <!-- Action Buttons -->
+          <div class="pt-2 d-flex align-items-center justify-content-end gap-2.5" style="border-top: 1px solid #f1f5f9;">
+            <button type="button" class="btn btn-sm fw-semibold" data-bs-dismiss="modal" style="font-size: 12px; border: 1px solid #e2e8f0; border-radius: 8px; color: #475569; background-color: #ffffff; padding: 8px 16px; cursor: pointer;">
               Batal
             </button>
-            <button type="button" class="btn btn-sm px-4 py-2 fw-bold text-white d-inline-flex align-items-center gap-1.5" onclick="confirmProceedToRab()" style="background-color: #00802b; border: none; border-radius: 8px; font-size: 12px;">
+            <button type="button" class="btn btn-sm fw-bold text-white d-inline-flex align-items-center gap-1.5" onclick="confirmProceedToRab()" style="background-color: #00802b; border: none; border-radius: 8px; font-size: 12.5px; padding: 8px 20px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); cursor: pointer;" onmouseover="this.style.backgroundColor='#047857'" onmouseout="this.style.backgroundColor='#00802b'">
               <span>Lanjut ke RAB</span>
-              <i class="bi bi-arrow-right" style="font-size: 12px;"></i>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="width: 14px; height: 14px;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              </svg>
             </button>
           </div>
         </div>
@@ -1396,18 +1436,29 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
         const formData = new FormData();
         formData.append('name', PROJECT_TITLE);
         formData.append('client', PROJECT_CLIENT);
+        formData.append('ded_file', selectedFile);
         formData.append('file', selectedFile);
 
-        response = await fetch('<?= base_url('api/rab/analyze') ?>', {
+        response = await fetch('<?= base_url('api/rab/analyze-image') ?>', {
           method: 'POST',
           body: formData
         });
       }
 
-      const result = await response.json();
+      let result;
+      try {
+        result = await response.json();
+      } catch (parseErr) {
+        throw new Error('Respons dari server tidak valid (bukan format JSON).');
+      }
+
+      if (!response.ok) {
+        const errMsg = result?.message || result?.detail || result?.error || 'Gagal memproses estimasi AI.';
+        throw new Error(errMsg);
+      }
 
       // If backend analysis returned valid data, save estimation
-      if (response.ok && result) {
+      if (result) {
         try {
           const savePayload = result.data || result;
           const saveRes = await fetch(`<?= base_url('api/projects') ?>/${PROJECT_UUID}/save-estimation`, {
@@ -1417,8 +1468,13 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
           });
           const saveResult = await saveRes.json();
           console.log('Hasil penyimpanan estimasi:', saveResult);
+
+          if (!saveRes.ok) {
+            throw new Error(saveResult?.message || 'Gagal menyimpan hasil estimasi ke database.');
+          }
         } catch (saveErr) {
           console.error('Gagal menyimpan estimasi ke database:', saveErr);
+          throw saveErr;
         }
       }
 
@@ -1431,7 +1487,7 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
       updateStepperStep(100);
 
       setTimeout(() => {
-        showToast('Estimasi Berhasil!', 'Rincian estimasi anggaran proyek telah berhasil dideteksi.', 'success');
+        showToast('Estimasi Berhasil!', 'Rincian estimasi anggaran proyek telah berhasil dideteksi dan disimpan.', 'success');
         // Reload page to reflect actual database runs & sections
         window.location.href = `<?= base_url('anggaran') ?>?id=${encodeURIComponent(PROJECT_UUID)}`;
       }, 750);
@@ -1441,16 +1497,13 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
       clearInterval(timerInterval);
       clearInterval(triviaInterval);
       
-      // Fallback: If AI connection times out, seamlessly activate sample detected structure
-      updateProgressRing(100);
-      updateStepperStep(100);
+      console.error('Detection error:', err);
+      showToast('Deteksi Gagal', err.message || 'Terjadi kesalahan saat memproses estimasi.', 'error');
 
-      setTimeout(() => {
-        showToast('Estimasi Selesai', 'Rincian pekerjaan proyek berhasil disusun dan dimuat ke dalam tabel.', 'success');
-        document.getElementById('detectionSelectionCard').classList.add('d-none');
-        document.getElementById('wbsTableContainerSection').classList.remove('d-none');
-        window.scrollTo({ top: 120, behavior: 'smooth' });
-      }, 600);
+      // Kembalikan tampilan ke form awal agar user bisa memperbaiki prompt/file dan mencoba lagi
+      document.getElementById('detectionProcessingState').classList.add('d-none');
+      document.getElementById('detectionFormSection').classList.remove('d-none');
+      isProcessing = false;
     }
   }
 
@@ -1639,11 +1692,11 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
   }
 
   function handleLanjutKeRab() {
-    const unmappedRows = Array.from(document.querySelectorAll('.wbs-item-row')).filter(r => {
-      const hasWarning = r.dataset.hasWarning === '1';
+    const allRows = Array.from(document.querySelectorAll('.wbs-item-row'));
+    const unmappedRows = allRows.filter(r => {
       const status = (r.dataset.ahspStatus || '').trim().toLowerCase();
-      const code = (r.dataset.ahspCode || '').trim();
-      return hasWarning || status === 'unmapped' || !code;
+      const hasWarning = r.dataset.hasWarning === '1';
+      return status === 'unmapped' || hasWarning;
     });
 
     const unmappedSection = document.getElementById('proceedUnmappedContent');
@@ -1669,20 +1722,25 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
         const vol = parseFloat(r.dataset.itemVolume) || 0;
 
         const rowDiv = document.createElement('div');
-        rowDiv.className = 'p-2.5 px-3 d-flex align-items-center justify-content-between gap-3 border-bottom';
+        rowDiv.className = 'd-flex align-items-center justify-content-between gap-3 border-bottom';
+        rowDiv.style.padding = '10px 14px';
         rowDiv.style.borderColor = '#f1f5f9';
+        rowDiv.style.transition = 'background-color 0.15s ease';
+        rowDiv.onmouseover = function() { this.style.backgroundColor = '#ffffff'; };
+        rowDiv.onmouseout = function() { this.style.backgroundColor = 'transparent'; };
+
         rowDiv.innerHTML = `
-          <div class="d-flex align-items-start gap-2.5 min-w-0 flex-grow-1" style="min-width: 0;">
+          <div class="d-flex align-items-start gap-2.5 flex-grow-1" style="min-width: 0;">
             <span class="rounded-circle fw-bold d-flex align-items-center justify-content-center flex-shrink-0"
-                  style="width: 20px; height: 20px; background-color: #fee2e2; color: #b91c1c; font-size: 11px; margin-top: 2px;">
+                  style="width: 20px; height: 20px; background-color: #fee2e2; color: #b91c1c; font-size: 10.5px; margin-top: 1px;">
               !
             </span>
-            <div class="min-w-0 flex-grow-1" style="min-width: 0;">
-              <p class="mb-0 fw-semibold text-dark text-truncate" style="font-size: 12px;" title="${escapeHtml(name)}">
+            <div class="flex-grow-1" style="min-width: 0;">
+              <p class="mb-0 fw-semibold text-truncate" style="font-size: 12px; color: #1e293b;" title="${escapeHtml(name)}">
                 ${escapeHtml(name)}
               </p>
-              <div class="d-flex align-items-center gap-1.5 mt-0.5" style="font-size: 11px; color: #64748b;">
-                <span class="badge bg-light text-secondary border fw-medium" style="font-size: 10px; padding: 2px 6px;">
+              <div class="d-flex align-items-center gap-2 mt-0.5" style="font-size: 11px; color: #64748b;">
+                <span style="background-color: rgba(226, 232, 240, 0.8); padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 500; color: #334155;">
                   Kategori ${escapeHtml(secCode)}
                 </span>
                 <span>•</span>
@@ -1692,9 +1750,14 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
           </div>
 
           <a href="<?= base_url('pemetaan-ahsp') ?>?id=${encodeURIComponent(PROJECT_UUID)}&item=${encodeURIComponent(itemId)}"
-             class="btn-petakan-modal flex-shrink-0"
-             title="Petakan pekerjaan ini">
-            <i class="bi bi-book"></i>
+             class="flex-shrink-0 d-inline-flex align-items-center gap-1 text-decoration-none"
+             style="font-size: 11px; font-weight: 700; color: #047857; background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 4px 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); transition: background-color 0.15s ease;"
+             onmouseover="this.style.backgroundColor='#d1fae5'"
+             onmouseout="this.style.backgroundColor='#ecfdf5'"
+             title="Petakan pekerjaan ini sekarang">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 12px; height: 12px;">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+            </svg>
             <span>Petakan</span>
           </a>
         `;
@@ -1705,6 +1768,8 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
     } else {
       if (unmappedSection) unmappedSection.classList.add('d-none');
       if (readySection) readySection.classList.remove('d-none');
+      const readyItemCountEl = document.getElementById('proceedReadyItemCount');
+      if (readyItemCountEl) readyItemCountEl.textContent = allRows.length;
       proceedModalInstance.show();
     }
   }
