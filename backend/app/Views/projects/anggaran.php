@@ -13,7 +13,7 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
     background-color: #79bf39;
     background: linear-gradient(135deg, #74b836 0%, #88c946 50%, #68a82d 100%);
     position: relative;
-    padding: 38px 20px 75px 20px;
+    padding: 32px 20px 32px 20px;
     text-align: center;
     overflow: hidden;
     box-shadow: inset 0 -2px 6px rgba(0, 0, 0, 0.04);
@@ -46,7 +46,7 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
     border-radius: 16px;
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
     padding: 28px 32px;
-    margin: 45px auto 50px auto;
+    margin: 0px auto 50px auto;
     position: relative;
     z-index: 5;
   }
