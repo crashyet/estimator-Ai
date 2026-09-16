@@ -12,6 +12,8 @@ $routes->get('proyek/(:segment)/anggaran', 'ProjectWebController::anggaran/$1');
 $routes->get('proyek/(:segment)/deteksi', 'ProjectWebController::anggaran/$1');
 $routes->get('pemetaan-ahsp', 'ProjectWebController::pemetaanAhsp');
 $routes->get('proyek/(:segment)/pemetaan-ahsp', 'ProjectWebController::pemetaanAhsp/$1');
+$routes->get('rab', 'ProjectWebController::rab');
+$routes->get('proyek/(:segment)/rab', 'ProjectWebController::rab/$1');
 
 // AI Estimator Analysis Proxy Endpoints
 $routes->post('api/rab/analyze', 'RABController::analyze');

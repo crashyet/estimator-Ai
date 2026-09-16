@@ -8,6 +8,11 @@ class RabController extends ResourceController
 {
     public function analyze()
     {
+        // Jika request membawa berkas unggahan, otomatis delegasikan ke analyzeImage
+        if ($this->request->getFile('ded_file') || $this->request->getFile('file')) {
+            return $this->analyzeImage();
+        }
+
         $json = $this->request->getJSON(true);
 
         if (!$json) {
@@ -26,7 +31,8 @@ class RabController extends ResourceController
         try {
             $response = $client->post($pythonUrl, [
                 'json' => $json,
-                'http_errors' => false
+                'http_errors' => false,
+                'timeout'     => 1200
             ]);
 
             return $this->response
@@ -45,13 +51,13 @@ class RabController extends ResourceController
 
     public function analyzeImage()
     {
-        // 1. Ambil file dari request CodeIgniter
-        $file = $this->request->getFile('ded_file');
+        // 1. Ambil file dari request CodeIgniter (bisa ded_file atau file)
+        $file = $this->request->getFile('ded_file') ?? $this->request->getFile('file');
 
         if (!$file) {
             return $this->respond([
                 'success' => false,
-                'message' => 'File tidak ditemukan di request.'
+                'message' => 'File tidak ditemukan di request. Harap sertakan file DED/CAD/BIM/Gambar.'
             ], 400);
         }
 
@@ -170,7 +176,7 @@ class RabController extends ResourceController
                     'Accept'       => 'application/json'
                 ],
                 'http_errors' => false,
-                'timeout'     => 600   
+                'timeout'     => 1200   
             ]);
 
             return $this->response

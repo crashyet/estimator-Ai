@@ -5,11 +5,13 @@
 $request = service('request');
 $requestUri = $_SERVER['REQUEST_URI'] ?? (string) $request->getUri();
 
-$isHasilDeteksiActive = (str_contains($requestUri, 'anggaran') || str_contains($requestUri, 'deteksi') || str_contains($requestUri, 'pemetaan-ahsp'));
-$isProyekActive = !$isHasilDeteksiActive;
+$isRabActive = str_contains($requestUri, 'rab');
+$isHasilDeteksiActive = (str_contains($requestUri, 'anggaran') || str_contains($requestUri, 'deteksi') || str_contains($requestUri, 'pemetaan-ahsp')) && !$isRabActive;
+$isProyekActive = !$isHasilDeteksiActive && !$isRabActive;
 
 $activeProjectId = $request->getGet('id') ?: $request->getGet('uuid') ?: ($project['uuid'] ?? ($project['id'] ?? ''));
 $anggaranUrl = base_url('anggaran' . (!empty($activeProjectId) ? '?id=' . esc($activeProjectId) : ''));
+$rabUrl = base_url('rab' . (!empty($activeProjectId) ? '?id=' . esc($activeProjectId) : ''));
 ?>
 <header class="app-navbar">
   <div class="container-xl h-100 d-flex align-items-center justify-content-between px-3 px-md-4">
@@ -37,6 +39,9 @@ $anggaranUrl = base_url('anggaran' . (!empty($activeProjectId) ? '?id=' . esc($a
       </a>
       <a href="<?= $anggaranUrl ?>" class="nav-link-proyek <?= $isHasilDeteksiActive ? 'active' : '' ?>">
         Hasil Deteksi
+      </a>
+      <a href="<?= $rabUrl ?>" class="nav-link-proyek <?= $isRabActive ? 'active' : '' ?>">
+        RAB
       </a>
       
       <!-- User Avatar Circle -->
