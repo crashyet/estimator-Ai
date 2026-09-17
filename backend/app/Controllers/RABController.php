@@ -55,6 +55,16 @@ class RabController extends ResourceController
         $file = $this->request->getFile('ded_file') ?? $this->request->getFile('file');
 
         if (!$file) {
+            $contentLength = (int)($_SERVER['CONTENT_LENGTH'] ?? 0);
+            $maxPost = ini_get('post_max_size') ?: '64M';
+            if (empty($_FILES) && $contentLength > 0) {
+                $contentLengthMB = round($contentLength / 1048576, 2);
+                return $this->respond([
+                    'success' => false,
+                    'message' => "Ukuran file ({$contentLengthMB} MB) melebihi batas upload web server ($maxPost). Harap gunakan file di bawah $maxPost atau perbesar konfigurasi upload web server."
+                ], 413);
+            }
+
             return $this->respond([
                 'success' => false,
                 'message' => 'File tidak ditemukan di request. Harap sertakan file DED/CAD/BIM/Gambar.'
@@ -103,6 +113,11 @@ class RabController extends ResourceController
         $pythonUrl = $pythonBaseUrl . '/api/rab/analyze-image';
 
         $client = \Config\Services::curlrequest();
+
+        // Release PHP session lock so concurrent requests don't block each other
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
 
         try {
             // Gunakan Client MIME Type atau octet-stream fallback
@@ -162,6 +177,11 @@ class RabController extends ResourceController
         $pythonUrl = $pythonBaseUrl . '/api/rab/analyze-prompt';
 
         $client = \Config\Services::curlrequest();
+
+        // Release PHP session lock so concurrent requests don't block each other
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
 
         try {
             // 3. Kirim request JSON ke Python FastAPI

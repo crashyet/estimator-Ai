@@ -46,5 +46,11 @@ $routes->put('api/estimation-items/(:segment)', 'EstimationController::updateIte
 $routes->patch('api/estimation-items/(:segment)', 'EstimationController::updateItem/$1');
 $routes->delete('api/estimation-items/(:segment)', 'EstimationController::deleteItem/$1');
 
+// Interactive Web API Documentation (Scalar & Swagger UI)
+$routes->match(['get', 'head'], 'docs', 'DocsController::index');
+$routes->match(['get', 'head'], 'api/docs', 'DocsController::index');
+$routes->match(['get', 'head'], 'docs/swagger', 'DocsController::swagger');
+$routes->match(['get', 'head'], 'api/openapi.json', 'DocsController::openapi');
+
 // Preflight CORS Options Handler for API
 $routes->options('api/(:any)', 'Home::index');

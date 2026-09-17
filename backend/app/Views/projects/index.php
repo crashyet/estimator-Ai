@@ -15,6 +15,7 @@
     overflow: hidden;
     box-shadow: inset 0 -2px 6px rgba(0, 0, 0, 0.05);
   }
+
   .hero-banner-bg {
     position: absolute;
     inset: 0;
@@ -24,13 +25,14 @@
     pointer-events: none;
     z-index: 1;
   }
+
   .hero-banner-title {
     color: #ffffff;
     font-weight: 800;
     font-size: 26px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.18);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
     margin: 0;
     z-index: 2;
     position: relative;
@@ -53,6 +55,7 @@
     transition: all 0.2s ease;
     text-decoration: none;
   }
+
   .btn-create-project:hover {
     background-color: var(--brand-red-hover);
     color: #ffffff;
@@ -69,6 +72,7 @@
     margin-bottom: 28px;
     overflow: hidden;
   }
+
   .filter-card-header {
     background-color: var(--brand-green);
     color: #ffffff;
@@ -80,10 +84,12 @@
     gap: 8px;
     user-select: none;
   }
+
   .filter-card-body {
     padding: 18px 20px;
     background-color: #ffffff;
   }
+
   .filter-label {
     font-size: 12px;
     color: #64748b;
@@ -91,6 +97,7 @@
     margin-bottom: 5px;
     display: block;
   }
+
   .filter-control {
     font-size: 12.5px;
     border: 1px solid #cbd5e1;
@@ -99,6 +106,7 @@
     color: #334155;
     transition: border-color 0.15s ease-in-out;
   }
+
   .filter-control:focus {
     border-color: var(--brand-green);
     outline: none;
@@ -117,10 +125,12 @@
     height: 100%;
     overflow: hidden;
   }
+
   .project-card:hover {
     transform: translateY(-3px);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.09);
   }
+
   .project-card-image {
     width: 100%;
     height: 195px;
@@ -135,6 +145,7 @@
     position: relative;
     overflow: hidden;
   }
+
   .project-card-image img {
     width: 100%;
     height: 100%;
@@ -142,9 +153,11 @@
     object-position: center 75%;
     transition: transform 0.3s ease;
   }
+
   .project-card:hover .project-card-image img {
     transform: scale(1.04);
   }
+
   .project-card-title {
     font-size: 15px;
     font-weight: 700;
@@ -159,14 +172,17 @@
     cursor: pointer;
     transition: color 0.15s ease;
   }
+
   .project-card-title:hover {
     color: var(--brand-green-dark);
   }
+
   .project-metadata {
     padding: 0 16px;
     display: flex;
     flex-direction: column;
   }
+
   .metadata-row {
     display: flex;
     align-items: center;
@@ -176,6 +192,7 @@
     font-size: 13px;
     color: #64748b;
   }
+
   .metadata-icon-box {
     width: 26px;
     height: 26px;
@@ -187,6 +204,7 @@
     color: #64748b;
     font-size: 13px;
   }
+
   .metadata-text {
     white-space: nowrap;
     overflow: hidden;
@@ -203,6 +221,7 @@
     gap: 8px;
     margin-top: auto;
   }
+
   .btn-circle-action {
     width: 36px;
     height: 36px;
@@ -218,16 +237,19 @@
     cursor: pointer;
     padding: 0;
   }
+
   .btn-circle-action:hover {
     background-color: var(--brand-green-hover);
     color: #ffffff;
     transform: scale(1.08);
     box-shadow: 0 3px 8px rgba(8, 150, 19, 0.3);
   }
+
   .btn-circle-action.btn-delete:hover {
     background-color: #dc3545;
     box-shadow: 0 3px 8px rgba(220, 53, 69, 0.35);
   }
+
   .btn-circle-action.is-locked {
     background-color: #64748b;
   }
@@ -237,13 +259,14 @@
 <?= $this->section('content') ?>
 <!-- 1. HERO BANNER: DAFTAR PROYEK ANDA -->
 <section class="hero-banner">
-  <img src="<?= base_url('assets/img/proyek-bg13.png') ?>" alt="Daftar Proyek Anda" class="hero-banner-bg" onerror="this.style.display='none'">
+  <img src="<?= base_url('assets/img/proyek-bg13.png') ?>" alt="Daftar Proyek Anda" class="hero-banner-bg"
+    onerror="this.style.display='none'">
   <h1 class="hero-banner-title">DAFTAR PROYEK ANDA</h1>
 </section>
 
 <!-- 2. MAIN CONTENT CONTAINER -->
 <main class="container-xl py-4 px-3 px-md-4 flex-grow-1">
-  
+
   <!-- Red Action Button: + BUAT PROYEK BARU -->
   <div class="mb-4 d-flex align-items-center justify-content-start">
     <a href="<?= base_url('buat_proyek') ?>" class="btn-create-project">
@@ -263,9 +286,10 @@
         <!-- Field 1: Nama Proyek -->
         <div class="col-md-4">
           <label class="filter-label" for="filterName">Nama Proyek</label>
-          <input type="text" id="filterName" class="form-control filter-control" placeholder="Ketik Nama Proyek" autocomplete="off">
+          <input type="text" id="filterName" class="form-control filter-control" placeholder="Ketik Nama Proyek"
+            autocomplete="off">
         </div>
-        
+
         <!-- Field 2: Lokasi Proyek -->
         <div class="col-md-4">
           <label class="filter-label" for="filterLocation">Lokasi Proyek</label>
@@ -280,19 +304,23 @@
         <!-- Field 3: Tahun -->
         <div class="col-md-4">
           <label class="filter-label" for="filterYear">Tahun</label>
-          <input type="text" id="filterYear" class="form-control filter-control" placeholder="Ketik Tahun" autocomplete="off">
+          <input type="text" id="filterYear" class="form-control filter-control" placeholder="Ketik Tahun"
+            autocomplete="off">
         </div>
       </div>
     </div>
   </div>
 
   <!-- Active Filter Counter & Reset Bar (Hidden by default) -->
-  <div id="filterStatusAlert" class="d-none alert alert-light border py-2 px-3 mb-4 d-flex align-items-center justify-content-between rounded-1">
+  <div id="filterStatusAlert"
+    class="d-none alert alert-light border py-2 px-3 mb-4 d-flex align-items-center justify-content-between rounded-1">
     <div class="small text-muted">
       <i class="bi bi-filter me-1 text-success"></i>
-      Menampilkan <strong id="visibleCount" class="text-dark">0</strong> dari total <strong id="totalCount"><?= count($projects) ?></strong> proyek
+      Menampilkan <strong id="visibleCount" class="text-dark">0</strong> dari total <strong
+        id="totalCount"><?= count($projects) ?></strong> proyek
     </div>
-    <button type="button" class="btn btn-sm btn-link text-success text-decoration-none fw-semibold p-0" onclick="resetFilter()">
+    <button type="button" class="btn btn-sm btn-link text-success text-decoration-none fw-semibold p-0"
+      onclick="resetFilter()">
       <i class="bi bi-arrow-counterclockwise me-1"></i>Reset Filter
     </button>
   </div>
@@ -301,21 +329,18 @@
   <div id="projectsGrid" class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4 pb-5">
     <?php if (!empty($projects)): ?>
       <?php foreach ($projects as $p): ?>
-        <div class="col project-col" 
-             data-id="<?= $p['id'] ?>"
-             data-uuid="<?= esc($p['uuid']) ?>"
-             data-title="<?= esc($p['title']) ?>"
-             data-client="<?= esc($p['client']) ?>"
-             data-location="<?= esc($p['location']) ?>"
-             data-year="<?= esc($p['year']) ?>"
-             data-contractor-fee="<?= esc($p['contractor_fee']) ?>"
-             data-ppn="<?= esc($p['ppn']) ?>"
-             data-summary="<?= esc($p['summary']) ?>">
-          
+        <div class="col project-col" data-id="<?= $p['id'] ?>" data-uuid="<?= esc($p['uuid']) ?>"
+          data-title="<?= esc($p['title']) ?>" data-client="<?= esc($p['client']) ?>"
+          data-location="<?= esc($p['location']) ?>" data-year="<?= esc($p['year']) ?>"
+          data-contractor-fee="<?= esc($p['contractor_fee']) ?>" data-ppn="<?= esc($p['ppn']) ?>"
+          data-summary="<?= esc($p['summary']) ?>">
+
           <div class="project-card">
             <!-- Card Image Header -->
-            <div class="project-card-image" title="Klik untuk melihat estimasi" onclick="viewProjectDetail(<?= $p['id'] ?>)">
-              <img src="<?= esc($p['image']) ?>" alt="<?= esc($p['title']) ?>" onerror="this.src='<?= base_url('assets/foto/proyek/no-foto.jpg') ?>'">
+            <div class="project-card-image" title="Klik untuk melihat estimasi"
+              onclick="viewProjectDetail(<?= $p['id'] ?>)">
+              <img src="<?= esc($p['image']) ?>" alt="<?= esc($p['title']) ?>"
+                onerror="this.src='<?= base_url('assets/foto/proyek/no-foto.jpg') ?>'">
             </div>
 
             <!-- Project Title -->
@@ -358,22 +383,26 @@
               </button>
 
               <!-- 2. Team / Info (Users) -->
-              <button type="button" class="btn-circle-action" title="Tim Proyek & Detail" onclick="openTeamModal(<?= $p['id'] ?>)">
+              <button type="button" class="btn-circle-action" title="Tim Proyek & Detail"
+                onclick="openTeamModal(<?= $p['id'] ?>)">
                 <i class="bi bi-people-fill" style="font-size: 14px;"></i>
               </button>
 
               <!-- 3. Duplicate (Copy) -->
-              <button type="button" class="btn-circle-action" title="Duplikat Proyek" onclick="duplicateProject(<?= $p['id'] ?>)">
+              <button type="button" class="btn-circle-action" title="Duplikat Proyek"
+                onclick="duplicateProject(<?= $p['id'] ?>)">
                 <i class="bi bi-copy" style="font-size: 13px;"></i>
               </button>
 
               <!-- 4. Delete (Trash) -->
-              <button type="button" class="btn-circle-action btn-delete" title="Hapus Proyek" onclick="confirmDeleteProject(<?= $p['id'] ?>)">
+              <button type="button" class="btn-circle-action btn-delete" title="Hapus Proyek"
+                onclick="confirmDeleteProject(<?= $p['id'] ?>)">
                 <i class="bi bi-trash3-fill" style="font-size: 13px;"></i>
               </button>
 
               <!-- 5. Lock / Unlock -->
-              <button type="button" class="btn-circle-action btn-lock" title="Kunci / Buka Akses Proyek" onclick="toggleLockProject(this, <?= $p['id'] ?>)">
+              <button type="button" class="btn-circle-action btn-lock" title="Kunci / Buka Akses Proyek"
+                onclick="toggleLockProject(this, <?= $p['id'] ?>)">
                 <i class="bi bi-unlock-fill" style="font-size: 13px;"></i>
               </button>
             </div>
@@ -385,7 +414,8 @@
 
   <!-- Empty State / No Match Alert -->
   <div id="noResultsState" class="d-none text-center py-5">
-    <div class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center p-3 text-secondary mb-3">
+    <div
+      class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center p-3 text-secondary mb-3">
       <i class="bi bi-search fs-3"></i>
     </div>
     <h5 class="fw-bold text-secondary">Tidak ada proyek yang sesuai dengan filter</h5>
@@ -413,7 +443,8 @@
         <input type="hidden" id="editProjectId">
         <div class="modal-body p-4">
           <div class="mb-3">
-            <label class="form-label small fw-semibold text-secondary">Nama Proyek <span class="text-danger">*</span></label>
+            <label class="form-label small fw-semibold text-secondary">Nama Proyek <span
+                class="text-danger">*</span></label>
             <input type="text" id="editTitle" class="form-control" required autocomplete="off">
           </div>
 
@@ -445,7 +476,8 @@
         </div>
         <div class="modal-footer bg-light py-2 border-top">
           <button type="button" class="btn btn-sm btn-light border px-3" data-bs-dismiss="modal">Batal</button>
-          <button type="submit" id="btnSubmitEdit" class="btn btn-sm btn-success px-4 fw-semibold" style="background-color: var(--brand-green); border-color: var(--brand-green);">
+          <button type="submit" id="btnSubmitEdit" class="btn btn-sm btn-success px-4 fw-semibold"
+            style="background-color: var(--brand-green); border-color: var(--brand-green);">
             <i class="bi bi-save me-1"></i> Perbarui
           </button>
         </div>
@@ -459,11 +491,13 @@
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content border-0 shadow-lg text-center p-3">
       <div class="modal-body">
-        <div class="rounded-circle bg-danger bg-opacity-10 text-danger d-inline-flex align-items-center justify-content-center p-3 mb-3">
+        <div
+          class="rounded-circle bg-danger bg-opacity-10 text-danger d-inline-flex align-items-center justify-content-center p-3 mb-3">
           <i class="bi bi-exclamation-triangle fs-2"></i>
         </div>
         <h6 class="fw-bold text-dark mb-1">Hapus Proyek?</h6>
-        <p class="small text-muted mb-3" id="deleteProjectTitle">Apakah Anda yakin ingin menghapus proyek ini beserta seluruh riwayat estimasinya?</p>
+        <p class="small text-muted mb-3" id="deleteProjectTitle">Apakah Anda yakin ingin menghapus proyek ini beserta
+          seluruh riwayat estimasinya?</p>
         <div class="d-flex gap-2 justify-content-center">
           <button type="button" class="btn btn-sm btn-light border px-3" data-bs-dismiss="modal">Batal</button>
           <button type="button" id="btnConfirmDelete" class="btn btn-sm btn-danger px-3 fw-semibold">
@@ -492,14 +526,16 @@
         <div class="p-3 bg-light rounded-2 border mb-3">
           <div class="small fw-bold text-dark mb-2">Anggota Tim Estimator:</div>
           <div class="d-flex align-items-center gap-2 mb-2">
-            <div class="rounded-circle bg-success text-white small d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">AD</div>
+            <div class="rounded-circle bg-success text-white small d-flex align-items-center justify-content-center"
+              style="width: 28px; height: 28px;">AD</div>
             <div>
               <div class="small fw-semibold text-dark">Adhitya (Lead QS / Estimator)</div>
               <div class="text-muted" style="font-size: 11px;">Estimator Utama &bull; PIC</div>
             </div>
           </div>
           <div class="d-flex align-items-center gap-2">
-            <div class="rounded-circle bg-secondary text-white small d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">AI</div>
+            <div class="rounded-circle bg-secondary text-white small d-flex align-items-center justify-content-center"
+              style="width: 28px; height: 28px;">AI</div>
             <div>
               <div class="small fw-semibold text-dark">Gemini 2.5 Pro Estimator Bot</div>
               <div class="text-muted" style="font-size: 11px;">Automated WBS & AHSP Mapping AI</div>
@@ -508,7 +544,8 @@
         </div>
 
         <div class="small text-muted">
-          <i class="bi bi-shield-check text-success me-1"></i> Semua data estimasi, WBS, dan AHSP tersinkronisasi otomatis dengan server backend.
+          <i class="bi bi-shield-check text-success me-1"></i> Semua data estimasi, WBS, dan AHSP tersinkronisasi
+          otomatis dengan server backend.
         </div>
       </div>
       <div class="modal-footer bg-light py-2 border-top">
@@ -590,7 +627,7 @@
     const uuid = card ? card.dataset.uuid : id;
     showToast('Membuka Proyek', `Mengakses data estimasi proyek "${title}"...`, 'info');
     setTimeout(() => {
-      window.location.href = '<?= base_url('anggaran') ?>?id=' + encodeURIComponent(uuid || id);
+      window.location.href = '/anggaran?id=' + encodeURIComponent(uuid || id);
     }, 450);
   }
 
@@ -635,7 +672,7 @@
     };
 
     try {
-      const response = await fetch('<?= base_url('api/projects') ?>/' + id, {
+      const response = await fetch('/api/projects/' + id, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -695,11 +732,11 @@
       ppn: parseFloat(card.dataset.ppn) || 11,
       summary: `Salinan dari ${title}`,
       status: 'Tahap Estimasi',
-      image: '<?= base_url('assets/foto/proyek/no-foto.jpg') ?>'
+      image: '/assets/foto/proyek/no-foto.jpg'
     };
 
     try {
-      const response = await fetch('<?= base_url('api/projects') ?>', {
+      const response = await fetch('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dupPayload)
@@ -727,14 +764,14 @@
     deleteModal.show();
   }
 
-  document.getElementById('btnConfirmDelete').addEventListener('click', async function() {
+  document.getElementById('btnConfirmDelete').addEventListener('click', async function () {
     if (!deletingProjectId) return;
     const btn = this;
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Menghapus...';
 
     try {
-      const response = await fetch('<?= base_url('api/projects') ?>/' + deletingProjectId, {
+      const response = await fetch('/api/projects/' + deletingProjectId, {
         method: 'DELETE'
       });
 

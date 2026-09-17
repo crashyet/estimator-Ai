@@ -8,14 +8,14 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
 <style>
   /* Banner Header */
   .ahsp-banner {
+    background-color: var(--brand-banner-bg);
     position: relative;
-    width: 100%;
-    background-color: #79bf39;
-    background: linear-gradient(135deg, #74b836 0%, #88c946 50%, #68a82d 100%);
-    padding: 32px 20px 32px 20px;
-    text-align: center;
+    height: 112px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     overflow: hidden;
-    box-shadow: inset 0 -2px 6px rgba(0, 0, 0, 0.04);
+    box-shadow: inset 0 -2px 6px rgba(0, 0, 0, 0.05);
   }
   .ahsp-banner-bg {
     position: absolute;
@@ -24,7 +24,7 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
     height: 100%;
     object-position: center right;
     pointer-events: none;
-    opacity: 0.95;
+    z-index: 1;
   }
   .ahsp-banner-title {
     position: relative;

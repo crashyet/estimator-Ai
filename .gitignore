@@ -14,3 +14,9 @@ api_v1/
 .env
 .env.*
 !.env.example
+
+# Python venvs
+.venv/
+python_testing/
+deployment/
+start_services.sh
