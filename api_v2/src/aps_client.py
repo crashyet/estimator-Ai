@@ -161,8 +161,17 @@ class APSConverter:
                     dl_req = urllib.request.Request(dl_url, headers=headers, method="GET")
                     with urllib.request.urlopen(dl_req, timeout=600) as dl_resp:
                         with open(output_ifc_path, "wb") as f_out:
-                            f_out.write(dl_resp.read())
-                    if os.path.getsize(output_ifc_path) > 0:
+                            while True:
+                                try:
+                                    chunk = dl_resp.read(1024 * 1024)
+                                    if not chunk:
+                                        break
+                                    f_out.write(chunk)
+                                except Exception as c_err:
+                                    if hasattr(c_err, 'partial') and c_err.partial:
+                                        f_out.write(c_err.partial)
+                                    break
+                    if os.path.exists(output_ifc_path) and os.path.getsize(output_ifc_path) > 1024:
                         logger.info("[APS] Step 7/7: ✅ Successfully converted .rvt → .ifc via Autodesk Cloud!")
                         return True
             except Exception as err:

@@ -569,7 +569,7 @@
     };
 
     try {
-      const response = await fetch('<?= base_url('api/projects') ?>', {
+      const response = await fetch('/api/projects', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -582,7 +582,7 @@
         showToast('Proyek Berhasil Dibuat!', `Proyek "${title}" berhasil disimpan ke sistem. Mengalihkan ke tahap deteksi anggaran...`, 'success');
         const projId = result.data?.uuid || result.data?.id;
         setTimeout(() => {
-          window.location.href = '<?= base_url('anggaran') ?>?id=' + encodeURIComponent(projId);
+          window.location.href = '/anggaran?id=' + encodeURIComponent(projId);
         }, 1000);
       } else {
         showToast('Gagal Menyimpan', result.message || 'Terjadi kesalahan pada server saat membuat proyek.', 'danger');

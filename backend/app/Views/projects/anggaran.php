@@ -10,24 +10,23 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
   /* HERO BANNER (MATCHING FRONTEND & RAB DESIGN)                  */
   /* ------------------------------------------------------------- */
   .anggaran-banner {
+    background-color: var(--brand-banner-bg);
     position: relative;
-    width: 100%;
-    background-color: #84c225;
-    background: linear-gradient(135deg, #74b836 0%, #84c225 50%, #68a82d 100%);
-    padding: 28px 20px;
-    text-align: center;
+    height: 112px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    box-shadow: inset 0 -2px 6px rgba(0, 0, 0, 0.05);
   }
   .anggaran-banner-bg {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover;
-    object-position: center;
+    object-position: center right;
     pointer-events: none;
-    opacity: 0.9;
+    z-index: 1;
   }
   .anggaran-banner-title {
     position: relative;
@@ -1273,6 +1272,42 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
     window.scrollTo({ top: 120, behavior: 'smooth' });
   }
 
+  function setStepperStep(activeStepIndex) {
+    for (let i = 0; i < 4; i++) {
+      const el = document.getElementById(`stepItem${i}`);
+      if (!el) continue;
+      const indicator = el.querySelector('.step-indicator');
+      const label = el.querySelector('.step-label');
+
+      if (i < activeStepIndex) {
+        el.className = 'processing-step-item';
+        if (indicator) indicator.innerHTML = '<i class="bi bi-check-circle-fill text-success fs-6"></i>';
+        if (label) label.className = 'small fw-semibold text-dark step-label';
+      } else if (i === activeStepIndex) {
+        el.className = 'processing-step-item';
+        if (indicator) indicator.innerHTML = '<div class="spinner-border spinner-border-sm text-success" role="status"></div>';
+        if (label) label.className = 'small fw-semibold text-dark step-label';
+      } else {
+        el.className = 'processing-step-item text-muted opacity-50';
+        if (indicator) indicator.innerHTML = '<i class="bi bi-circle"></i>';
+        if (label) label.className = 'small fw-semibold step-label';
+      }
+    }
+  }
+
+  function updateProgressCircle(percent) {
+    const circleBar = document.getElementById('progressCircleBar');
+    const percentText = document.getElementById('progressTextPercent');
+    const clamped = Math.min(100, Math.max(0, percent));
+    if (circleBar) {
+      const offset = 264 - (264 * clamped / 100);
+      circleBar.style.strokeDashoffset = offset;
+    }
+    if (percentText) {
+      percentText.textContent = `${Math.round(clamped)}%`;
+    }
+  }
+
   async function startDetectionProcess() {
     isProcessing = true;
     document.getElementById('detectionFormSection').classList.add('d-none');
@@ -1290,36 +1325,128 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
 
     currentSeconds = 0;
     const timerEl = document.getElementById('elapsedTimerText');
+    if (timerInterval) clearInterval(timerInterval);
     timerInterval = setInterval(() => {
       currentSeconds++;
       const m = Math.floor(currentSeconds / 60).toString().padStart(2, '0');
       const s = (currentSeconds % 60).toString().padStart(2, '0');
-      timerEl.textContent = `${m}:${s}`;
+      if (timerEl) timerEl.textContent = `${m}:${s}`;
     }, 1000);
 
-    let progress = 0;
-    const circleBar = document.getElementById('progressCircleBar');
-    const percentText = document.getElementById('progressTextPercent');
+    // Animasi progress bar dinamis saat menunggu respon AI
+    let currentProgress = 5;
+    updateProgressCircle(currentProgress);
+    setStepperStep(0);
 
-    const interval = setInterval(() => {
-      progress += 5;
-      if (progress > 100) progress = 100;
-
-      const offset = 264 - (264 * progress / 100);
-      circleBar.style.strokeDashoffset = offset;
-      percentText.textContent = `${progress}%`;
-
-      if (progress >= 100) {
-        clearInterval(interval);
-        clearInterval(timerInterval);
-        setTimeout(() => {
-          if (typeof showToast === 'function') {
-            showToast('Deteksi Selesai', 'Data WBS & Pekerjaan berhasil dideteksi AI!', 'success');
-          }
-          window.location.href = '<?= base_url("anggaran?id=") ?>' + encodeURIComponent(PROJECT_UUID || PROJECT_ID);
-        }, 500);
+    const progressInterval = setInterval(() => {
+      if (currentProgress < 25) {
+        currentProgress += 3;
+        setStepperStep(0);
+      } else if (currentProgress < 55) {
+        currentProgress += 1.5;
+        setStepperStep(1);
+      } else if (currentProgress < 80) {
+        currentProgress += 1;
+        setStepperStep(2);
+      } else if (currentProgress < 90) {
+        currentProgress += 0.5;
+        setStepperStep(3);
       }
-    }, 200);
+      updateProgressCircle(currentProgress);
+    }, 400);
+
+    try {
+      let aiResult = null;
+
+      if (currentMethod === 'prompt') {
+        const response = await fetch('/api/rab/analyze-prompt', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            name: "<?= esc($project['title']) ?>",
+            client: "<?= esc($project['client'] ?? 'Client') ?>",
+            prompt: promptText
+          })
+        });
+
+        const resJson = await response.json().catch(() => ({}));
+        if (!response.ok || (resJson && resJson.success === false)) {
+          throw new Error(resJson.message || resJson.detail || resJson.error || `Gagal menganalisis prompt (${response.status})`);
+        }
+        aiResult = resJson;
+      } else {
+        const formData = new FormData();
+        formData.append('ded_file', selectedFile);
+        formData.append('name', "<?= esc($project['title']) ?>");
+        formData.append('client', "<?= esc($project['client'] ?? 'Client') ?>");
+
+        const response = await fetch('/api/rab/analyze-image', {
+          method: 'POST',
+          body: formData
+        });
+
+        const resJson = await response.json().catch(() => ({}));
+        if (!response.ok || (resJson && resJson.success === false)) {
+          throw new Error(resJson.message || resJson.detail || resJson.error || `Gagal menganalisis berkas (${response.status})`);
+        }
+        aiResult = resJson;
+      }
+
+      // Step 4: Simpan hasil AI ke database proyek
+      clearInterval(progressInterval);
+      updateProgressCircle(95);
+      setStepperStep(3);
+      if (subTitleEl) subTitleEl.textContent = 'Menyimpan rincian estimasi WBS ke basis data...';
+
+      const activeProjectIdentifier = PROJECT_UUID || PROJECT_ID;
+      const saveResponse = await fetch('/api/projects/' + encodeURIComponent(activeProjectIdentifier) + '/save-estimation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(aiResult)
+      });
+
+      const saveJson = await saveResponse.json().catch(() => ({}));
+      if (!saveResponse.ok || (saveJson && saveJson.status >= 400)) {
+        throw new Error(saveJson.messages?.error || saveJson.message || 'Gagal menyimpan hasil estimasi ke database.');
+      }
+
+      // 100% selesai
+      updateProgressCircle(100);
+      setStepperStep(4);
+      clearInterval(timerInterval);
+
+      if (typeof showToast === 'function') {
+        showToast('Deteksi Berhasil!', 'Data WBS & Pekerjaan telah berhasil dianalisis dan disimpan.', 'success');
+      }
+
+      setTimeout(() => {
+        window.location.href = '/anggaran?id=' + encodeURIComponent(activeProjectIdentifier);
+      }, 700);
+
+    } catch (err) {
+      clearInterval(progressInterval);
+      clearInterval(timerInterval);
+      isProcessing = false;
+
+      console.error('Error saat deteksi:', err);
+      if (typeof showToast === 'function') {
+        showToast('Gagal Deteksi', err.message || 'Terjadi kesalahan saat memproses estimasi.', 'danger');
+      } else {
+        alert('Gagal Deteksi: ' + (err.message || 'Terjadi kesalahan.'));
+      }
+
+      // Kembalikan form deteksi agar user bisa mencoba kembali
+      document.getElementById('detectionProcessingState').classList.add('d-none');
+      document.getElementById('detectionFormSection').classList.remove('d-none');
+      updateProgressCircle(0);
+      setStepperStep(0);
+    }
   }
 
   // ----------------------------------------------------------------
@@ -1420,7 +1547,7 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
 
   function openAhspModal(itemId) {
     const activeProjectIdentifier = PROJECT_UUID || PROJECT_ID;
-    window.location.href = `<?= base_url('pemetaan-ahsp') ?>?id=${encodeURIComponent(activeProjectIdentifier)}&item=${encodeURIComponent(itemId)}`;
+    window.location.href = `/pemetaan-ahsp?id=${encodeURIComponent(activeProjectIdentifier)}&item=${encodeURIComponent(itemId)}`;
   }
 
   function openEditVolumeModal(itemId) {
@@ -1541,7 +1668,7 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
               </div>
             </div>
 
-            <a href="<?= base_url('pemetaan-ahsp') ?>?id=${encodeURIComponent(PROJECT_UUID || PROJECT_ID)}&item=${encodeURIComponent(itemId)}"
+            <a href="/pemetaan-ahsp?id=${encodeURIComponent(PROJECT_UUID || PROJECT_ID)}&item=${encodeURIComponent(itemId)}"
                class="flex-shrink-0 d-inline-flex align-items-center gap-1 text-decoration-none"
                style="font-size: 11px; font-weight: 700; color: #047857; background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 4px 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); transition: background-color 0.15s ease;"
                onmouseover="this.style.backgroundColor='#d1fae5'"
@@ -1574,7 +1701,7 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
     }
     setTimeout(() => {
       const activeProjectIdentifier = PROJECT_UUID || PROJECT_ID;
-      window.location.href = `<?= base_url('rab') ?>?id=${encodeURIComponent(activeProjectIdentifier)}`;
+      window.location.href = `/rab?id=${encodeURIComponent(activeProjectIdentifier)}`;
     }, 700);
   }
 </script>

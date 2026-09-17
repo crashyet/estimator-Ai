@@ -19,13 +19,13 @@ $shouldShowRab = $isInsideProject && !$isAnggaranPage;
 
 $activeProjectId = $request->getGet('id') ?: $request->getGet('uuid') ?: ($project['uuid'] ?? ($project['id'] ?? ''));
 $queryString = !empty($activeProjectId) ? '?id=' . esc($activeProjectId) : '';
-$anggaranUrl = base_url('anggaran' . $queryString);
-$rabUrl = base_url('rab' . $queryString);
+$anggaranUrl = '/anggaran' . $queryString;
+$rabUrl = '/rab' . $queryString;
 ?>
 <header class="app-navbar">
   <div class="navbar-container">
     <!-- Brand Logo -->
-    <a href="<?= base_url() ?>" class="d-flex align-items-center gap-2 text-decoration-none brand-logo-group">
+    <a href="/proyek" class="d-flex align-items-center gap-2 text-decoration-none brand-logo-group">
       <div class="brand-logo-icon">
         <svg viewBox="0 0 100 100" class="brand-svg">
           <path d="M50 15L15 45h12v40h46V45h12L50 15z" stroke="#059669" stroke-width="7" fill="none" />
@@ -46,7 +46,7 @@ $rabUrl = base_url('rab' . $queryString);
       <nav class="d-flex align-items-center h-100 navbar-nav-links">
         <!-- Menu Proyek: Selalu ada -->
         <div class="nav-item-wrapper h-100 d-flex align-items-center position-relative">
-          <a href="<?= base_url('proyek') ?>" class="nav-link-proyek <?= $isProyekActive ? 'active' : '' ?>">
+          <a href="/proyek" class="nav-link-proyek <?= $isProyekActive ? 'active' : '' ?>">
             Proyek
           </a>
           <?php if ($isProyekActive): ?>
@@ -76,6 +76,14 @@ $rabUrl = base_url('rab' . $queryString);
             </div>
           <?php endif; ?>
         <?php endif; ?>
+
+        <!-- Menu API Docs -->
+        <div class="nav-item-wrapper h-100 d-flex align-items-center position-relative">
+          <a href="/docs" target="_blank" class="nav-link-proyek d-flex align-items-center gap-1" title="Buka Dokumentasi API Interaktif">
+            <i class="bi bi-code-slash text-success"></i>
+            API Docs
+          </a>
+        </div>
       </nav>
 
       <!-- Avatar Button (Green circle with SVG profile icon) -->
