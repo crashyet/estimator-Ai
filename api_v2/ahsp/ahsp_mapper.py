@@ -55,7 +55,7 @@ THRESHOLD_MEDIUM = 0.65
 
 TOP_K_CANDIDATES = 3
 TOP_K_SEARCH_DEFAULT = 5
-TOP_K_VECTOR_RETRIEVAL = int(os.getenv("TOP_K_VECTOR_RETRIEVAL", "15"))  # Optimal candidates for rapid reranking
+TOP_K_VECTOR_RETRIEVAL = int(os.getenv("TOP_K_VECTOR_RETRIEVAL", "5"))  # Fast & accurate candidates for CPU reranking
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -787,12 +787,13 @@ class AHSPMapperEngine:
             return self._rerank_cache[cache_key]
 
         try:
-            pairs = [[cleaned_query, clean_item_name(cand["nama_pekerjaan"])] for cand in raw_candidates]
+            candidates_to_rerank = raw_candidates[:5]
+            pairs = [[cleaned_query, clean_item_name(cand["nama_pekerjaan"])] for cand in candidates_to_rerank]
             raw_scores = reranker.predict(pairs)
 
             reranked = []
             for idx, raw_sc in enumerate(raw_scores):
-                cand = raw_candidates[idx]
+                cand = candidates_to_rerank[idx]
                 cand_unit_norm = normalize_unit(cand.get("satuan", ""))
                 cand_lower = clean_item_name(cand["nama_pekerjaan"]).lower()
                 base_sim = cand.get("base_score", 0.0)
