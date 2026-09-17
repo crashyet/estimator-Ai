@@ -40,52 +40,117 @@
       flex-direction: column;
     }
 
-    /* Top Navbar Styles */
+    /* Top Navbar Styles matching frontend/src/components/Navbar.jsx */
     .app-navbar {
-      background-color: #ffffff;
-      border-bottom: 1px solid #eef2f6;
-      height: 62px;
+      background-color: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid #f1f5f9; /* slate-100 */
+      height: 52px;
       position: sticky;
       top: 0;
       z-index: 1030;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+    }
+    .navbar-container {
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 0 24px;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .brand-logo-group {
+      cursor: pointer;
     }
     .brand-logo-icon {
       width: 32px;
       height: 32px;
       border-radius: 6px;
-      background-color: #ecfdf5;
-      border: 1px solid #a7f3d0;
+      background-color: #ecfdf5; /* emerald-50 */
+      border: 1px solid #d1fae5; /* emerald-100 */
       display: flex;
       align-items: center;
       justify-content: center;
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      transition: background-color 0.15s ease;
+    }
+    .brand-logo-group:hover .brand-logo-icon {
+      background-color: #d1fae5;
+    }
+    .brand-svg {
+      width: 24px;
+      height: 24px;
+    }
+    .brand-logo-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: #1e293b; /* slate-800 */
+      letter-spacing: -0.025em;
+    }
+    .brand-logo-subtitle {
+      font-size: 17px;
+      font-weight: 700;
+      color: #059669; /* emerald-600 */
+    }
+    .navbar-nav-links {
+      gap: 32px;
+    }
+    .nav-item-wrapper {
+      position: relative;
+      height: 100%;
+      display: flex;
+      align-items: center;
     }
     .nav-link-proyek {
-      color: #64748b;
+      color: #475569; /* slate-600 */
       font-weight: 600;
       font-size: 14px;
-      position: relative;
-      padding: 19px 0;
       text-decoration: none;
       transition: color 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      height: 100%;
     }
     .nav-link-proyek:hover {
-      color: #047857;
+      color: #0f172a; /* slate-900 */
     }
     .nav-link-proyek.active {
-      color: #047857;
+      color: #047857; /* emerald-700 */
       font-weight: 700;
     }
-    .nav-link-proyek.active::after {
-      content: '';
+    .nav-active-indicator {
       position: absolute;
       bottom: 0;
       left: 0;
       right: 0;
       height: 3px;
-      background-color: #059669;
-      border-top-left-radius: 3px;
-      border-top-right-radius: 3px;
+      background-color: #059669; /* emerald-600 */
+      border-top-left-radius: 9999px;
+      border-top-right-radius: 9999px;
+    }
+    .avatar-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background-color: #7cb342;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      cursor: pointer;
+      border: none;
+      padding: 0;
+      transition: opacity 0.15s ease;
+    }
+    .avatar-btn:hover {
+      opacity: 0.9;
+    }
+    .avatar-icon {
+      width: 18px;
+      height: 18px;
     }
 
     /* Custom Toast Notification Styling */
