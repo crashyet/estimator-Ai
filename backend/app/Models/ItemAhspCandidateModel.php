@@ -16,7 +16,6 @@ class ItemAhspCandidateModel extends Model
         'id',
         'uuid',
         'item_id',
-        'item_uuid',
         'rank',
         'id_pekerjaan',
         'nama_pekerjaan',

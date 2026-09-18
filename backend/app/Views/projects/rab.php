@@ -458,12 +458,17 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
 
               <!-- Sub-item Rows in this Category -->
               <?php foreach ($sec['items'] as $iIdx => $it): ?>
+                <?php 
+                  $displayAhspCode = (!empty($it['ahsp_code']) && $it['ahsp_code'] !== '-') 
+                      ? $it['ahsp_code'] 
+                      : generate_ahsp_code($it['name'] ?? '', $sec['name'] ?? '', $sec['code'] ?? '', $sIdx, $iIdx, $it['code'] ?? '');
+                ?>
                 <tr 
                   class="rab-row-item sec-items-<?= esc($sec['code']) ?>" 
                   data-sec-code="<?= esc($sec['code']) ?>"
                   data-item-id="<?= esc($it['id']) ?>"
                   data-item-name="<?= esc(strtolower($it['name'])) ?>"
-                  data-ahsp-code="<?= esc(strtolower($it['ahsp_code'] ?? '')) ?>"
+                  data-ahsp-code="<?= esc(strtolower($displayAhspCode)) ?>"
                 >
                   <!-- Col 1: Item No. -->
                   <td class="text-center text-muted fw-semibold tab-num" style="font-size: 11.5px;">
@@ -476,15 +481,12 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
                       <span class="rab-item-name">
                         <?= esc($it['ahsp_name'] ?: $it['name']) ?>
                       </span>
-                      <?php if (($it['ahsp_status'] ?? '') === 'unmapped'): ?>
-                        <span class="badge-unmapped-mini" title="AHSP belum dipetakan">!</span>
-                      <?php endif; ?>
                     </div>
                   </td>
 
                   <!-- Col 3: Kode AHSP -->
                   <td class="text-center text-dark fw-medium tab-num" style="font-size: 12px;">
-                    <?= esc($it['ahsp_code'] ?: '-') ?>
+                    <?= esc($displayAhspCode) ?>
                   </td>
 
                   <!-- Col 4: Volume -->

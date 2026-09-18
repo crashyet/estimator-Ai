@@ -22,7 +22,6 @@ class ProjectWebController extends BaseController
         $dataProjects = array_map(function ($project) use ($db) {
             $latestRun = $db->table('estimation_runs')
                 ->where('project_id', $project['id'])
-                ->orWhere('project_uuid', $project['uuid'])
                 ->orderBy('run_timestamp', 'DESC')
                 ->get()
                 ->getRowArray();
@@ -158,14 +157,20 @@ class ProjectWebController extends BaseController
             return redirect()->to(base_url('buat_proyek'));
         }
 
+        // If project status is already at RAB stage, redirect directly to RAB page UNLESS explicit view parameter is passed (e.g. from navbar link &view=anggaran)
+        $explicitView = $this->request->getGet('view') ?: $this->request->getGet('mode') ?: $this->request->getGet('override') ?: $this->request->getGet('force');
+        if (empty($explicitView)) {
+            $statusLower = strtolower(trim($project['status'] ?? ''));
+            if (in_array($statusLower, ['rab', 'tahap rab', 'penyusunan rab', 'selesai', 'disetujui ke rab', 'disetujui'])) {
+                return redirect()->to(base_url('rab?id=' . urlencode($project['uuid'] ?: $project['id'])));
+            }
+        }
+
         $db = \Config\Database::connect();
 
         // 1. Fetch latest estimation run
         $latestRun = $db->table('estimation_runs')
-            ->groupStart()
             ->where('project_id', $project['id'])
-            ->orWhere('project_uuid', $project['uuid'])
-            ->groupEnd()
             ->orderBy('id', 'DESC')
             ->get()
             ->getRowArray();
@@ -512,14 +517,26 @@ class ProjectWebController extends BaseController
         $totalItems = 0;
         $unmappedItems = [];
 
-        foreach ($sections as $sec) {
-            foreach ($sec['items'] as $it) {
+        foreach ($sections as $sIdx => &$sec) {
+            foreach ($sec['items'] as $iIdx => &$it) {
                 $totalItems++;
+                $rawCode = trim($it['ahsp_code'] ?? '');
+                if (empty($rawCode) || $rawCode === '-' || ($it['ahsp_status'] ?? '') === 'unmapped') {
+                    $it['ahsp_code'] = generate_ahsp_code(
+                        $it['name'] ?? '',
+                        $sec['name'] ?? '',
+                        $sec['code'] ?? '',
+                        $sIdx,
+                        $iIdx,
+                        $it['code'] ?? ''
+                    );
+                }
                 if (($it['ahsp_status'] ?? '') === 'unmapped') {
                     $unmappedItems[] = $it;
                 }
             }
         }
+        unset($sec, $it);
 
         // If the database has an explicit total_items count in latestRun, use it or fallback to counted
         if ($latestRun && !empty($latestRun['total_items'])) {
@@ -529,14 +546,29 @@ class ProjectWebController extends BaseController
         $hasRuns = !empty($latestRun);
         $showDetect = !$hasRuns || ($this->request->getGet('detect') === '1');
 
+        $detectionMethod = $latestRun['detection_method'] ?? 'file';
+        $lastPromptText  = '';
+
+        if ($latestRun) {
+            $promptRow = $db->table('project_prompts')
+                ->where('run_id', $latestRun['id'])
+                ->get()
+                ->getRowArray();
+            if ($promptRow) {
+                $lastPromptText = $promptRow['prompt_text'];
+            }
+        }
+
         return view('projects/anggaran', [
-            'project' => $project,
-            'latestRun' => $latestRun,
-            'hasRuns' => $hasRuns,
-            'showDetect' => $showDetect,
-            'sections' => $sections,
-            'totalItems' => $totalItems,
-            'unmappedItems' => $unmappedItems,
+            'project'         => $project,
+            'latestRun'       => $latestRun,
+            'hasRuns'         => $hasRuns,
+            'showDetect'      => $showDetect,
+            'sections'        => $sections,
+            'totalItems'      => $totalItems,
+            'unmappedItems'   => $unmappedItems,
+            'detectionMethod' => $detectionMethod,
+            'lastPromptText'  => $lastPromptText,
         ]);
     }
 
@@ -565,10 +597,7 @@ class ProjectWebController extends BaseController
 
         // 1. Fetch latest estimation run
         $latestRun = $db->table('estimation_runs')
-            ->groupStart()
             ->where('project_id', $project['id'])
-            ->orWhere('project_uuid', $project['uuid'])
-            ->groupEnd()
             ->orderBy('id', 'DESC')
             ->get()
             ->getRowArray();
@@ -678,14 +707,18 @@ class ProjectWebController extends BaseController
             return redirect()->to(base_url('buat_proyek'));
         }
 
+        // Auto update project status to 'Tahap RAB' if it's not already in RAB stage
+        $statusLower = strtolower(trim($project['status'] ?? ''));
+        if (empty($statusLower) || !in_array($statusLower, ['rab', 'tahap rab', 'penyusunan rab', 'selesai', 'disetujui'])) {
+            $projectModel->update($project['id'], ['status' => 'Tahap RAB']);
+            $project['status'] = 'Tahap RAB';
+        }
+
         $db = \Config\Database::connect();
 
         // 1. Fetch latest estimation run
         $latestRun = $db->table('estimation_runs')
-            ->groupStart()
             ->where('project_id', $project['id'])
-            ->orWhere('project_uuid', $project['uuid'])
-            ->groupEnd()
             ->orderBy('id', 'DESC')
             ->get()
             ->getRowArray();
@@ -928,12 +961,26 @@ class ProjectWebController extends BaseController
             }
         }
 
-        foreach ($sections as &$sec) {
+        foreach ($sections as $sIdx => &$sec) {
             $secSubtotal = 0;
-            foreach ($sec['items'] as &$it) {
+            foreach ($sec['items'] as $iIdx => &$it) {
                 $itSubtotal = (float) ($it['subtotal'] ?? 0);
                 $secSubtotal += $itSubtotal;
                 $it['bobot'] = $grandTotal > 0 ? ($itSubtotal / $grandTotal) * 100 : 0.00;
+
+                // Auto generate AHSP code if item is unmapped or ahsp_code is empty/dash
+                $rawCode = trim($it['ahsp_code'] ?? '');
+                $status  = $it['ahsp_status'] ?? '';
+                if (empty($rawCode) || $rawCode === '-' || $status === 'unmapped') {
+                    $it['ahsp_code'] = generate_ahsp_code(
+                        $it['name'] ?? '',
+                        $sec['name'] ?? '',
+                        $sec['code'] ?? '',
+                        $sIdx,
+                        $iIdx,
+                        $it['code'] ?? ''
+                    );
+                }
             }
             $sec['subtotal'] = $secSubtotal;
             $sec['bobot'] = $grandTotal > 0 ? ($secSubtotal / $grandTotal) * 100 : 0.00;
