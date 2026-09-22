@@ -16,7 +16,6 @@ class WbsSectionModel extends Model
         'id',
         'uuid',
         'run_id',
-        'run_uuid',
         'section_id_code',
         'code',
         'name',

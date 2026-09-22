@@ -333,7 +333,7 @@
           data-title="<?= esc($p['title']) ?>" data-client="<?= esc($p['client']) ?>"
           data-location="<?= esc($p['location']) ?>" data-year="<?= esc($p['year']) ?>"
           data-contractor-fee="<?= esc($p['contractor_fee']) ?>" data-ppn="<?= esc($p['ppn']) ?>"
-          data-summary="<?= esc($p['summary']) ?>">
+          data-summary="<?= esc($p['summary']) ?>" data-status="<?= esc($p['status']) ?>">
 
           <div class="project-card">
             <!-- Card Image Header -->
@@ -625,9 +625,14 @@
     const card = document.querySelector(`.project-col[data-id="${id}"]`);
     const title = card ? card.dataset.title : 'Proyek';
     const uuid = card ? card.dataset.uuid : id;
+    const status = card ? (card.dataset.status || '').toLowerCase().trim() : '';
     showToast('Membuka Proyek', `Mengakses data estimasi proyek "${title}"...`, 'info');
     setTimeout(() => {
-      window.location.href = '/anggaran?id=' + encodeURIComponent(uuid || id);
+      if (['rab', 'tahap rab', 'penyusunan rab', 'selesai', 'disetujui ke rab', 'disetujui'].includes(status)) {
+        window.location.href = '/rab?id=' + encodeURIComponent(uuid || id);
+      } else {
+        window.location.href = '/anggaran?id=' + encodeURIComponent(uuid || id);
+      }
     }, 450);
   }
 
