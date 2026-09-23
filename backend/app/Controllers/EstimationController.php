@@ -318,6 +318,60 @@ class EstimationController extends ResourceController
     }
 
     /**
+     * POST /api/estimation-items
+     * Create a new estimation item in a section
+     */
+    public function createItem()
+    {
+        $json = $this->request->getJSON(true) ?: $this->request->getPost();
+        if (!$json) {
+            return $this->fail('Payload JSON tidak valid.', 400);
+        }
+
+        $itemModel = new EstimationItemModel();
+        $sectionId = $json['section_id'] ?? null;
+
+        if (!$sectionId) {
+            return $this->fail('Parameter section_id diperlukan.', 400);
+        }
+
+        // Get max item_no in this section
+        $db = \Config\Database::connect();
+        $maxNoRow = $db->table('estimation_items')
+            ->where('section_id', $sectionId)
+            ->selectMax('item_no')
+            ->get()
+            ->getRowArray();
+        $nextNo = ((int) ($maxNoRow['item_no'] ?? 0)) + 1;
+
+        $itemData = [
+            'section_id'   => (int) $sectionId,
+            'item_no'      => $nextNo,
+            'item_name'    => $json['item_name'] ?? $json['name'] ?? 'Pekerjaan Baru',
+            'volume'       => (float) ($json['volume'] ?? 1.0),
+            'unit'         => $json['unit'] ?? 'm2',
+            'unit_price'   => (float) ($json['unit_price'] ?? 0),
+            'ahsp_code'    => $json['ahsp_code'] ?? null,
+            'ahsp_name'    => $json['ahsp_name'] ?? ($json['item_name'] ?? null),
+            'ahsp_unit'    => $json['unit'] ?? 'm2',
+            'ahsp_status'  => $json['ahsp_status'] ?? 'unmapped',
+        ];
+
+        $insertId = $itemModel->insert($itemData);
+        if (!$insertId) {
+            return $this->fail('Gagal menambahkan item pekerjaan.', 500);
+        }
+
+        $createdItem = $itemModel->find($insertId);
+        return $this->respondCreated([
+            'status'  => 201,
+            'success' => true,
+            'message' => 'Item estimasi berhasil ditambahkan.',
+            'data'    => $createdItem,
+        ]);
+    }
+
+    /**
      * PUT/PATCH /api/estimation-items/(:segment)
      * Update an individual estimation item (by ID, UUID, or item_uid)
      */
