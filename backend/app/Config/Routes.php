@@ -20,6 +20,10 @@ $routes->post('api/rab/analyze', 'RABController::analyze');
 $routes->post('api/rab/analyze-image', 'RABController::analyzeImage');
 $routes->post('api/rab/analyze-prompt', 'RABController::analyzePrompt');
 
+// AI RAB Auditor & Co-Pilot Agent Proxy Endpoints (v2)
+$routes->post('api/v2/ai/rab-audit', 'RabController::auditAI');
+$routes->post('api/v2/ai/rab-agent', 'RabController::agentAI');
+
 // AHSP Master Data & Mapping Proxy Endpoints
 $routes->get('api/ahsp/list', 'AHSPController::list');
 $routes->get('api/ahsp/search', 'AHSPController::search');
@@ -35,13 +39,21 @@ $routes->group('api/projects', function ($routes) {
     $routes->patch('(:segment)', 'ProjectController::update/$1');
     $routes->delete('(:segment)', 'ProjectController::delete/$1');
 
-    // Project Estimation Endpoints
+    // Project Estimation & AI Assistant Endpoints
     $routes->post('(:segment)/save-estimation', 'EstimationController::saveEstimation/$1');
     $routes->get('(:segment)/latest-estimation', 'EstimationController::getLatestEstimation/$1');
+    $routes->match(['get', 'post'], '(:segment)/audit', 'RabController::auditProject/$1');
+    $routes->post('(:segment)/ai-audit', 'RabController::auditAI/$1');
+    $routes->post('(:segment)/ai-agent', 'RabController::agentAI/$1');
+    $routes->get('(:segment)/chat-history', 'RabController::getChatHistory/$1');
+    $routes->delete('(:segment)/chat-history', 'RabController::clearChatHistory/$1');
+    $routes->patch('(:segment)/chat-history/(:num)/applied', 'RabController::markActionApplied/$1/$2');
+    $routes->post('(:segment)/chat', 'RabController::chatProject/$1');
 });
 
 // Estimation Specific Runs & Items Endpoints
 $routes->get('api/estimation-runs/(:segment)', 'EstimationController::getEstimationRun/$1');
+$routes->post('api/estimation-items', 'EstimationController::createItem');
 $routes->put('api/estimation-items/(:segment)', 'EstimationController::updateItem/$1');
 $routes->patch('api/estimation-items/(:segment)', 'EstimationController::updateItem/$1');
 $routes->delete('api/estimation-items/(:segment)', 'EstimationController::deleteItem/$1');

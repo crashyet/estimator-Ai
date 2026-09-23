@@ -209,6 +209,31 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
     box-shadow: none;
   }
 
+  /* Button Mulai Deteksi */
+  .btn-batal-deteksi {
+    background-color: #fff;
+    color: #8b8b8bff;
+    font-size: 14px;
+    font-weight: 700;
+    border: 1px solid #8b8b8bff;
+    border-radius: 9999px;
+    padding: 10px 28px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-batal-deteksi:hover:not(:disabled) {
+    background-color: #f3f3f3ff;
+  }
+  .btn-batal-deteksi:disabled {
+    background-color: #e2e8f0;
+    color: #94a3b8;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
   /* Stepper */
   .processing-step-item {
     display: flex;
@@ -647,7 +672,7 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
                   <path d="M86 20L87.5 14L93.5 12.5L87.5 11L86 5L84.5 11L78.5 12.5L84.5 14Z" fill="#089613" />
                 </svg>
               </div>
-              <div class="detect-method-title">Prompt AI</div>
+              <div class="detect-method-title">Deskripsi Teks</div>
               <div class="detect-method-desc">Deskripsi & Spesifikasi Bangunan</div>
             </div>
           </div>
@@ -745,7 +770,7 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
         <!-- Footer Action Buttons -->
         <div class="d-flex align-items-center justify-content-end gap-3 pt-3 border-top border-light-subtle">
           <?php if ($hasRuns): ?>
-            <button type="button" class="btn btn-outline-secondary btn-sm px-4 rounded-pill" onclick="cancelDetectMode()">
+            <button type="button" class="btn-batal-deteksi" onclick="cancelDetectMode()">
               Batal
             </button>
           <?php endif; ?>
@@ -756,7 +781,7 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
             disabled 
             onclick="startDetectionProcess()"
           >
-            <i class="bi bi-play-fill fs-5"></i>
+            <i class="bi bi-play-fill fs-6"></i>
             <span id="btnMulaiDeteksiText"><?= $hasRuns ? 'Deteksi Ulang' : 'Mulai Deteksi' ?></span>
           </button>
         </div>
@@ -1190,7 +1215,7 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
 
     if (isFocusedMode) {
       if (method === 'prompt') {
-        titleEl.textContent = 'Deteksi Ulang melalui Prompt AI';
+        titleEl.textContent = 'Deteksi Ulang melalui Deskripsi Teks';
         subtitleEl.textContent = 'Perbarui deskripsi konsep atau spesifikasi teknis bangunan untuk menghitung ulang estimasi WBS';
       } else {
         titleEl.textContent = 'Deteksi Ulang melalui Upload Berkas DED';
