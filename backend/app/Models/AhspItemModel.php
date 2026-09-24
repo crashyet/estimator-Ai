@@ -15,7 +15,6 @@ class AhspItemModel extends Model
     protected $allowedFields    = [
         'id',
         'id_pekerjaan',
-        'kode_ahsp',
         'nama_pekerjaan',
         'satuan',
         'harga_satuan',
@@ -25,4 +24,31 @@ class AhspItemModel extends Model
     protected $useTimestamps = true;
     protected $createdField  = 'created_at';
     protected $updatedField  = 'updated_at';
-}
+
+    /**
+     * Find harga_satuan by id_pekerjaan (ahsp_code) or nama_pekerjaan
+     */
+    public function getHargaSatuanByCodeOrName(?string $code, ?string $name = null): float
+    {
+        $code = trim($code ?? '');
+        if (!empty($code) && $code !== '-') {
+            $row = $this->where('id_pekerjaan', $code)->first();
+            if ($row && isset($row['harga_satuan'])) {
+                return (float) $row['harga_satuan'];
+            }
+        }
+
+        $name = trim($name ?? '');
+        if (!empty($name)) {
+            $row = $this->where('nama_pekerjaan', $name)->first();
+            if (!$row) {
+                $row = $this->like('nama_pekerjaan', $name)->first();
+            }
+            if ($row && isset($row['harga_satuan'])) {
+                return (float) $row['harga_satuan'];
+            }
+        }
+
+        return 0.0;
+    }
+}

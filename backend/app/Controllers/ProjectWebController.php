@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\ProjectModel;
+use App\Models\AhspItemModel;
 
 class ProjectWebController extends BaseController
 {
@@ -733,9 +734,11 @@ class ProjectWebController extends BaseController
                 ->getResultArray();
 
             foreach ($dbSections as $sIdx => $sec) {
-                $dbItems = $db->table('estimation_items')
-                    ->where('section_id', $sec['id'])
-                    ->orderBy('item_no', 'ASC')
+                $dbItems = $db->table('estimation_items as ei')
+                    ->select('ei.*, ai.harga_satuan as ahsp_price')
+                    ->join('ahsp_items as ai', 'ai.id_pekerjaan = ei.ahsp_code', 'left')
+                    ->where('ei.section_id', $sec['id'])
+                    ->orderBy('ei.item_no', 'ASC')
                     ->get()
                     ->getResultArray();
 
@@ -743,7 +746,39 @@ class ProjectWebController extends BaseController
                 $secSubtotal = 0;
                 foreach ($dbItems as $iIdx => $item) {
                     $vol = (float) $item['volume'];
-                    $price = (float) $item['unit_price'];
+
+                    // Prioritaskan harga_satuan dari tabel master ahsp_items
+                    $price = 0.0;
+                    if (!empty($item['ahsp_price']) && (float) $item['ahsp_price'] > 0) {
+                        $price = (float) $item['ahsp_price'];
+                    } elseif (!empty($item['unit_price']) && (float) $item['unit_price'] > 0) {
+                        $price = (float) $item['unit_price'];
+                    } else {
+                        // Fallback: cari ke ahsp_items berdasarkan nama pekerjaan
+                        $searchName = !empty($item['ahsp_name']) ? $item['ahsp_name'] : ($item['item_name'] ?? '');
+                        if (!empty($searchName)) {
+                            $ahspRow = $db->table('ahsp_items')
+                                ->where('nama_pekerjaan', $searchName)
+                                ->get()
+                                ->getRowArray();
+                            if (!$ahspRow) {
+                                $ahspRow = $db->table('ahsp_items')
+                                    ->like('nama_pekerjaan', $searchName)
+                                    ->get()
+                                    ->getRowArray();
+                            }
+                            if ($ahspRow && !empty($ahspRow['harga_satuan'])) {
+                                $price = (float) $ahspRow['harga_satuan'];
+                            }
+                        }
+                    }
+
+                    // Sinkronkan unit_price di database estimation_items jika berbeda dan price > 0
+                    if ($price > 0 && abs((float) $item['unit_price'] - $price) > 0.001 && !empty($item['id'])) {
+                        $db->table('estimation_items')->where('id', $item['id'])->update(['unit_price' => $price]);
+                    }
+
+                    // Hitung total harga (harga satuan dikalikan volume)
                     $subtotal = $vol * $price;
                     $secSubtotal += $subtotal;
 
@@ -949,6 +984,28 @@ class ProjectWebController extends BaseController
                     ]
                 ],
             ];
+
+            // Resolve harga_satuan dari master ahsp_items dan hitung subtotal (harga satuan * volume)
+            foreach ($sections as &$sec) {
+                $secSubtotal = 0;
+                foreach ($sec['items'] as &$it) {
+                    $code = trim($it['ahsp_code'] ?? '');
+                    $ahspRow = null;
+                    if (!empty($code) && $code !== '-') {
+                        $ahspRow = $db->table('ahsp_items')->where('id_pekerjaan', $code)->get()->getRowArray();
+                    }
+                    if (!$ahspRow && !empty($it['name'])) {
+                        $ahspRow = $db->table('ahsp_items')->where('nama_pekerjaan', $it['name'])->get()->getRowArray();
+                    }
+                    if ($ahspRow && !empty($ahspRow['harga_satuan'])) {
+                        $it['unit_price'] = (float) $ahspRow['harga_satuan'];
+                    }
+                    $it['subtotal'] = (float) $it['volume'] * (float) $it['unit_price'];
+                    $secSubtotal += $it['subtotal'];
+                }
+                $sec['subtotal'] = $secSubtotal;
+            }
+            unset($sec, $it);
         }
 
         // Calculate Grand Total and Weights
@@ -987,7 +1044,15 @@ class ProjectWebController extends BaseController
         }
         unset($sec, $it);
 
-        $ppnRate = 0.00; // Reference screenshot specifies PPN 0.00 %
+        // Prioritaskan PPN dari data project, default pembuatan project awal adalah 11%
+        $ppnRate = (!empty($project['ppn']) && (float)$project['ppn'] > 0) 
+            ? (float) $project['ppn'] 
+            : 11.00;
+
+        if (empty($project['ppn']) || (float)$project['ppn'] <= 0) {
+            $projectModel->update($project['id'], ['ppn' => 11.00]);
+            $project['ppn'] = 11.00;
+        }
 
         return view('projects/rab', [
             'project' => $project,

@@ -1085,7 +1085,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
                   </td>
 
                   <!-- Col 3: Volume -->
-                  <td class="text-center text-dark fw-medium tab-num" style="font-size: 12px;">
+                  <td class="text-center text-dark fw-medium tab-num" style="font-size: 12px; cursor: pointer;" title="Klik untuk mengubah volume & harga" onclick="openEditItemModal('<?= esc($it['id']) ?>', '<?= esc(addslashes($it['ahsp_name'] ?: $it['name'])) ?>', <?= (float)$it['volume'] ?>, '<?= esc(addslashes($it['unit'])) ?>', <?= (float)$it['unit_price'] ?>)">
                     <?= number_format($it['volume'], 2, ',', '.') ?>
                   </td>
 
@@ -1112,14 +1112,15 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
                   <!-- Col 8: Aksi (Edit, Book/AHSP, Trash) -->
                   <td class="text-center">
                     <div class="d-inline-flex align-items-center justify-content-center gap-1">
-                      <!-- Pemetaan AHSP -->
-                      <a 
-                        href="<?= base_url('pemetaan-ahsp') ?>?id=<?= urlencode($project['uuid'] ?: $project['id']) ?>&item=<?= urlencode($it['id']) ?>" 
-                        class="btn-item-icon book-icon" 
-                        title="Pemetaan AHSP"
+                      <!-- Ubah Item (Volume & Harga Satuan) -->
+                      <button 
+                        type="button" 
+                        class="btn-item-icon edit-icon" 
+                        onclick="openEditItemModal('<?= esc($it['id']) ?>', '<?= esc(addslashes($it['ahsp_name'] ?: $it['name'])) ?>', <?= (float)$it['volume'] ?>, '<?= esc(addslashes($it['unit'])) ?>', <?= (float)$it['unit_price'] ?>)" 
+                        title="Ubah Item"
                       >
-                        <i class="bi bi-book" style="font-size: 13.5px;"></i>
-                      </a>
+                        <i class="bi bi-pencil-square" style="font-size: 13.5px;"></i>
+                      </button>
 
                       <!-- Hapus Item -->
                       <button 
@@ -2373,6 +2374,60 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
       }
       return true;
     }
+  }
+
+  function recalculateRabTotals() {
+    let grandTotal = 0;
+    const secTotals = {};
+
+    // Calculate item totals and group by section
+    document.querySelectorAll('#rabTableBody tr.rab-row-item').forEach(r => {
+      const cells = r.querySelectorAll('td');
+      if (cells.length < 7) return;
+      const vol = parseFloat((cells[2]?.textContent || '0').replace(/\./g, '').replace(',', '.')) || 0;
+      const price = parseFloat((cells[4]?.textContent || '0').replace(/Rp|\s|\./g, '').replace(',', '.')) || 0;
+      const subtotal = vol * price;
+      cells[5].textContent = 'Rp ' + subtotal.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+      const secCode = r.dataset.secCode;
+      if (secCode) {
+        secTotals[secCode] = (secTotals[secCode] || 0) + subtotal;
+      }
+      grandTotal += subtotal;
+    });
+
+    // Update section subtotals and bobot
+    for (const [secCode, secTotal] of Object.entries(secTotals)) {
+      const subEl = document.getElementById('sec-subtotal-' + secCode);
+      if (subEl) subEl.textContent = 'Rp ' + secTotal.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const bobotEl = document.getElementById('sec-bobot-' + secCode);
+      if (bobotEl) {
+        const bVal = grandTotal > 0 ? (secTotal / grandTotal) * 100 : 0;
+        bobotEl.textContent = bVal.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' %';
+      }
+    }
+
+    // Update individual item bobot percentages
+    document.querySelectorAll('#rabTableBody tr.rab-row-item').forEach(r => {
+      const cells = r.querySelectorAll('td');
+      if (cells.length >= 7) {
+        const subtotal = parseFloat((cells[5]?.textContent || '0').replace(/Rp|\s|\./g, '').replace(',', '.')) || 0;
+        const bVal = grandTotal > 0 ? (subtotal / grandTotal) * 100 : 0;
+        cells[6].textContent = bVal.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' %';
+      }
+    });
+
+    // Update tfoot totals
+    const ppnRate = <?= (float)($ppnRate ?? 0) ?>;
+    const ppnAmount = grandTotal * (ppnRate / 100);
+    const totalHarga = grandTotal + ppnAmount;
+
+    const jumlahEl = document.getElementById('tfootJumlahHarga');
+    if (jumlahEl) jumlahEl.textContent = 'Rp ' + grandTotal.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const ppnEl = document.getElementById('tfootPpnAmount');
+    if (ppnEl) ppnEl.textContent = 'Rp ' + ppnAmount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const totalEl = document.getElementById('tfootTotalHarga');
+    if (totalEl) totalEl.textContent = 'Rp ' + totalHarga.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
   async function persistProposalActionsState(historyId, actions) {

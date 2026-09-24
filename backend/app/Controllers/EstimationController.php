@@ -344,13 +344,22 @@ class EstimationController extends ResourceController
             ->getRowArray();
         $nextNo = ((int) ($maxNoRow['item_no'] ?? 0)) + 1;
 
+        $unitPrice = (float) ($json['unit_price'] ?? 0);
+        if ($unitPrice <= 0 && !empty($json['ahsp_code'])) {
+            $db = \Config\Database::connect();
+            $ahspRow = $db->table('ahsp_items')->where('id_pekerjaan', $json['ahsp_code'])->get()->getRowArray();
+            if ($ahspRow && !empty($ahspRow['harga_satuan'])) {
+                $unitPrice = (float) $ahspRow['harga_satuan'];
+            }
+        }
+
         $itemData = [
             'section_id'   => (int) $sectionId,
             'item_no'      => $nextNo,
             'item_name'    => $json['item_name'] ?? $json['name'] ?? 'Pekerjaan Baru',
             'volume'       => (float) ($json['volume'] ?? 1.0),
             'unit'         => $json['unit'] ?? 'm2',
-            'unit_price'   => (float) ($json['unit_price'] ?? 0),
+            'unit_price'   => $unitPrice,
             'ahsp_code'    => $json['ahsp_code'] ?? null,
             'ahsp_name'    => $json['ahsp_name'] ?? ($json['item_name'] ?? null),
             'ahsp_unit'    => $json['unit'] ?? 'm2',
@@ -405,6 +414,15 @@ class EstimationController extends ResourceController
         }
 
         if (!empty($updateData)) {
+            // Auto fetch harga_satuan dari ahsp_items jika ahsp_code diupdate dan unit_price belum diisi / 0
+            if (isset($updateData['ahsp_code']) && (!isset($updateData['unit_price']) || (float)$updateData['unit_price'] <= 0)) {
+                $db = \Config\Database::connect();
+                $ahspRow = $db->table('ahsp_items')->where('id_pekerjaan', $updateData['ahsp_code'])->get()->getRowArray();
+                if ($ahspRow && !empty($ahspRow['harga_satuan'])) {
+                    $updateData['unit_price'] = (float) $ahspRow['harga_satuan'];
+                }
+            }
+
             $itemModel->update($item['id'], $updateData);
         }
 
