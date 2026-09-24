@@ -427,6 +427,53 @@ def load_ahsp_from_excel(excel_path: Optional[Path] = None) -> List[AHSPItem]:
         return []
 
 
+def load_ahsp_data(excel_path: Optional[Path] = None) -> Tuple[List[AHSPItem], str]:
+    """
+    Load master AHSP data.
+    Priority 1: Direct from MySQL database (`ahsp_items` table).
+    Priority 2: Fallback to Excel file if database is unreachable.
+    Returns: (list_of_items, source_description)
+    """
+    try:
+        from ahsp.db_loader import load_ahsp_from_db
+        db_items = load_ahsp_from_db(AHSPItem)
+        if db_items:
+            return db_items, "database (MySQL: ahsp_items)"
+    except Exception as e:
+        logger.warning(f"Could not load AHSP from database, falling back to Excel: {e}")
+
+    path = excel_path or AHSP_EXCEL_PATH
+    excel_items = load_ahsp_from_excel(path)
+    return excel_items, f"excel ({path.name if hasattr(path, 'name') else path})"
+
+
+def compute_ahsp_data_hash(source_type: str = "database", excel_path: Optional[Path] = None) -> str:
+    """
+    Compute data hash for change detection & ChromaDB re-indexing.
+    Priority 1: Hash from database (COUNT + MAX(updated_at)) if source is DB.
+    Priority 2: Hash of Excel file.
+    """
+    if "database" in source_type:
+        try:
+            from ahsp.db_loader import get_db_ahsp_hash
+            db_hash = get_db_ahsp_hash()
+            if db_hash:
+                return f"{db_hash}_v9_db"
+        except Exception as e:
+            logger.warning(f"Could not compute DB hash: {e}")
+
+    try:
+        target_path = excel_path or AHSP_EXCEL_PATH
+        h = hashlib.md5()
+        with open(target_path, "rb") as f:
+            for chunk in iter(lambda: f.read(8192), b""):
+                h.update(chunk)
+        h.update(b"_v9_unbracketed_codes_risha_penalty_depth50")
+        return h.hexdigest()
+    except Exception:
+        return ""
+
+
 # ─────────────────────────────────────────────────────────────────────
 # AHSP Mapping Engine Core Class
 # ─────────────────────────────────────────────────────────────────────
@@ -438,6 +485,7 @@ class AHSPMapperEngine:
 
     def __init__(self):
         self._ahsp_items: List[AHSPItem] = []
+        self._data_source: str = "uninitialized"
         self._chroma_client = None
         self._collection = None
         self._embedding_fn = None
@@ -482,27 +530,28 @@ class AHSPMapperEngine:
                 "high": THRESHOLD_HIGH,
                 "medium": THRESHOLD_MEDIUM,
             },
+            "data_source": self._data_source,
             "excel_path": str(AHSP_EXCEL_PATH),
         }
 
     def initialize(self):
         """
         Initialize the AHSP mapping engine:
-        1. Load AHSP items from Excel
-        2. Check if ChromaDB index is fresh (via file hash)
+        1. Load AHSP items from Database (fallback to Excel)
+        2. Check if ChromaDB index is fresh (via data hash)
         3. Build/rebuild index if needed
         """
         try:
             start_time = time.time()
             logger.info("Initializing AHSP Mapping Engine...")
 
-            # Step 1: Load Excel
-            self._ahsp_items = self._load_ahsp_from_excel()
+            # Step 1: Load Data (DB priority, Excel fallback)
+            self._ahsp_items, self._data_source = load_ahsp_data()
             self._total_items = len(self._ahsp_items)
-            logger.info(f"Loaded {self._total_items} AHSP items from Excel.")
+            logger.info(f"Loaded {self._total_items} AHSP items from {self._data_source}.")
 
             if self._total_items == 0:
-                logger.warning("No AHSP items loaded from Excel. Engine will not be ready.")
+                logger.warning("No AHSP items loaded. Engine will not be ready.")
                 return
 
             # Step 2: Initialize ChromaDB client
@@ -526,7 +575,7 @@ class AHSPMapperEngine:
             )
 
             # Step 4: Check if index needs rebuild
-            current_hash = self._compute_excel_hash()
+            current_hash = self._compute_data_hash()
             stored_hash = self._read_stored_hash()
 
             if current_hash == stored_hash:
@@ -551,21 +600,15 @@ class AHSPMapperEngine:
             logger.error(f"Failed to initialize AHSP Mapping Engine: {e}", exc_info=True)
             self._ready = False
 
-    def _load_ahsp_from_excel(self) -> List[AHSPItem]:
-        """Parse the AHSP Excel file and return list of AHSPItem."""
-        return load_ahsp_from_excel(AHSP_EXCEL_PATH)
+    def _load_ahsp_items(self) -> List[AHSPItem]:
+        """Load AHSP items with DB priority and Excel fallback."""
+        items, source = load_ahsp_data()
+        self._data_source = source
+        return items
 
-    def _compute_excel_hash(self) -> str:
-        """Compute MD5 hash of the Excel file + cleaner code version for change detection."""
-        try:
-            h = hashlib.md5()
-            with open(AHSP_EXCEL_PATH, "rb") as f:
-                for chunk in iter(lambda: f.read(8192), b""):
-                    h.update(chunk)
-            h.update(b"_v9_unbracketed_codes_risha_penalty_depth50")
-            return h.hexdigest()
-        except Exception:
-            return ""
+    def _compute_data_hash(self) -> str:
+        """Compute data hash for change detection."""
+        return compute_ahsp_data_hash(self._data_source)
 
     def _read_stored_hash(self) -> str:
         """Read the stored hash of the last indexed Excel file."""
@@ -1480,26 +1523,27 @@ class AHSPMapperEngine:
 
     def reindex(self) -> Dict[str, Any]:
         """
-        Force re-index the vector database from the Excel file.
+        Force re-index the vector database from the database (or fallback Excel).
         """
         try:
             start_time = time.time()
             logger.info("Force re-indexing AHSP Vector DB...")
 
-            self._ahsp_items = self._load_ahsp_from_excel()
+            self._ahsp_items, self._data_source = load_ahsp_data()
             self._total_items = len(self._ahsp_items)
 
             if self._total_items == 0:
-                return {"success": False, "error": "No items loaded from Excel."}
+                return {"success": False, "error": "No items loaded."}
 
             self._build_vector_index()
 
-            current_hash = self._compute_excel_hash()
+            current_hash = self._compute_data_hash()
             self._write_stored_hash(current_hash)
 
             elapsed = time.time() - start_time
             return {
                 "success": True,
+                "data_source": self._data_source,
                 "total_indexed": self._total_items,
                 "elapsed_seconds": round(elapsed, 2),
             }
@@ -1524,6 +1568,7 @@ class AHSPRemoteClient:
     def __init__(self, service_url: str = "http://127.0.0.1:8100"):
         self.service_url = service_url.rstrip("/")
         self._ahsp_items: List[AHSPItem] = []
+        self._data_source: str = "uninitialized"
         self._total_items: int = 0
         self._ready: bool = False
         self._last_health_check: float = 0.0
@@ -1550,15 +1595,15 @@ class AHSPRemoteClient:
     def initialize(self):
         """
         Initialize the remote client:
-        1. Loads AHSP item list from Excel (fast, ~15MB memory) for instant in-memory keyword searches.
+        1. Loads AHSP item list from Database (or Excel fallback) for instant in-memory keyword searches.
         2. Verifies connectivity to the AHSP microservice at self.service_url.
         """
         try:
-            self._ahsp_items = load_ahsp_from_excel(AHSP_EXCEL_PATH)
+            self._ahsp_items, self._data_source = load_ahsp_data()
             self._total_items = len(self._ahsp_items)
-            logger.info(f"[AHSPRemoteClient] Loaded {self._total_items} items from Excel for instant keyword search.")
+            logger.info(f"[AHSPRemoteClient] Loaded {self._total_items} items from {self._data_source} for instant keyword search.")
         except Exception as e:
-            logger.warning(f"[AHSPRemoteClient] Could not load local Excel: {e}")
+            logger.warning(f"[AHSPRemoteClient] Could not load AHSP items: {e}")
             self._ahsp_items = []
             self._total_items = 0
 
@@ -1765,10 +1810,10 @@ class AHSPRemoteClient:
         # Ensure local cache is loaded if possible
         if not self._ahsp_items:
             try:
-                self._ahsp_items = load_ahsp_from_excel(AHSP_EXCEL_PATH)
+                self._ahsp_items, self._data_source = load_ahsp_data()
                 self._total_items = len(self._ahsp_items)
             except Exception as e:
-                logger.warning(f"[AHSPRemoteClient] Fallback Excel load error: {e}")
+                logger.warning(f"[AHSPRemoteClient] Fallback load error: {e}")
 
         if self._ahsp_items:
             if search_query and search_query.strip():

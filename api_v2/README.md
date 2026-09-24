@@ -37,6 +37,14 @@ Seluruh logika bisnis inti diorganisir ke modul-modul kecil dengan satu tanggung
 | GET | `/api/v2/ahsp/search?q=plesteran` | Cari item AHSP berdasarkan kata kunci |
 | POST | `/api/v2/ahsp/map-item` | Peta satu item custom ke AHSP vector DB |
 
+### AI RAB Auditor & Co-Pilot Agent (Baru)
+| Method | Endpoint | Input | Keterangan |
+|---|---|---|---|
+| POST | `/api/v2/ai/rab-audit` | JSON (`RABAuditRequest`) | Audit kelayakan RAB dual-layer (Deterministic + Gemini LLM) & Health Score |
+| POST | `/api/v2/ai/rab-agent` | JSON (`RABAgentRequest`) | Co-pilot interaktif modifikasi RAB (Update, Add, Delete) dengan matematika deterministik |
+
+> 📖 **Dokumentasi Lengkap**: Baca panduan teknis mendalam dan skema payload di **[docs/API_AI_AUDITOR_AND_AGENT.md](../docs/API_AI_AUDITOR_AND_AGENT.md)**.
+
 Semua endpoint takeoff mengembalikan **`DynamicTakeoffResponse`** (JSON).
 
 ---
@@ -145,8 +153,7 @@ Cukup edit konstanta yang relevan — tidak perlu menyentuh kode logika eksekusi
 
 ---
 
-## 📚 Dokumentasi Lanjutan
-
+- **[../docs/API_AI_AUDITOR_AND_AGENT.md](../docs/API_AI_AUDITOR_AND_AGENT.md)** — Dokumentasi lengkap AI RAB Auditor & Co-Pilot Agent
+- **[../docs/REFERENCE_API_V2.md](../docs/REFERENCE_API_V2.md)** — Referensi endpoint & skema JSON lengkap API V2
 - **[../docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md)** — Diagram arsitektur & sequence diagram pipeline
-- **[../docs/API_V2_REFERENCE.md](../docs/API_V2_REFERENCE.md)** — Referensi endpoint & skema JSON lengkap
 - **[../docs/DEVELOPMENT_GUIDE.md](../docs/DEVELOPMENT_GUIDE.md)** — Panduan setup & kontribusi
