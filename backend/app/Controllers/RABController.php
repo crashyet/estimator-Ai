@@ -358,17 +358,34 @@ class RabController extends ResourceController
 
     /**
      * PATCH /api/projects/(:segment)/chat-history/(:num)/applied
-     * Mark an action proposal in chat history as applied
+     * Mark an action proposal in chat history as applied or update item-level applied status
      */
     public function markActionApplied($projectUuidOrId = null, $historyId = null)
     {
         $db = \Config\Database::connect();
+        $json = $this->request->getJSON(true) ?: [];
+
+        $updateData = [
+            'updated_at' => date('Y-m-d H:i:s')
+        ];
+
+        if (!empty($json['actions']) && is_array($json['actions'])) {
+            $updateData['actions_data'] = json_encode($json['actions']);
+            $allApplied = true;
+            foreach ($json['actions'] as $act) {
+                if (empty($act['is_applied'])) {
+                    $allApplied = false;
+                    break;
+                }
+            }
+            $updateData['is_applied'] = isset($json['is_applied']) ? (int) $json['is_applied'] : ($allApplied ? 1 : 0);
+        } else {
+            $updateData['is_applied'] = isset($json['is_applied']) ? (int) $json['is_applied'] : 1;
+        }
+
         $db->table('ai_chat_histories')
             ->where('id', (int) $historyId)
-            ->update([
-                'is_applied' => 1,
-                'updated_at' => date('Y-m-d H:i:s')
-            ]);
+            ->update($updateData);
 
         return $this->respond([
             'success' => true,

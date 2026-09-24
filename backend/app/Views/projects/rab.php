@@ -225,29 +225,75 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
   }
   /* Anomaly Highlighted Rows on Main RAB Table */
   .rab-row-item > td {
-    transition: background-color 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transition: background-color 0.25s ease, box-shadow 0.25s ease !important;
   }
-  .rab-row-anomaly-critical,
   .rab-row-anomaly-critical > td {
     background-color: #fee2e2 !important;
   }
-  .rab-row-anomaly-warning,
   .rab-row-anomaly-warning > td {
     background-color: #fef3c7 !important;
   }
-  
-  /* Active Flash Highlight Rows */
-  .rab-row-flash-red,
-  .rab-row-flash-red > tr {
-    border: 2px solid #520404bd !important;
+
+  /* Active Hover & Highlight State Matching Static Status Colors (Like Gambar Kedua) */
+  .rab-row-item.rab-row-hover-active > td {
+    transition: background-color 0.25s ease, box-shadow 0.25s ease !important;
   }
-  .rab-row-flash-amber,
-  .rab-row-flash-amber > tr {
-    border: 2px solid #c79f06 !important;
+  .rab-row-item.rab-row-hover-active.rab-row-anomaly-critical > td,
+  .rab-row-flash-red > td {
+    background-color: #fecaca !important;
+    box-shadow: inset 0 2px 0 #dc2626, inset 0 -2px 0 #dc2626 !important;
+    animation: pulseRowRed 1.8s ease-in-out infinite;
   }
-  .rab-row-flash-green,
-  .rab-row-flash-green > tr {
-    border: 2px solid #197835 !important;
+  .rab-row-item.rab-row-hover-active.rab-row-anomaly-critical > td:first-child,
+  .rab-row-flash-red > td:first-child {
+    box-shadow: inset 2px 0 0 #dc2626, inset 0 2px 0 #dc2626, inset 0 -2px 0 #dc2626 !important;
+  }
+  .rab-row-item.rab-row-hover-active.rab-row-anomaly-critical > td:last-child,
+  .rab-row-flash-red > td:last-child {
+    box-shadow: inset -2px 0 0 #dc2626, inset 0 2px 0 #dc2626, inset 0 -2px 0 #dc2626 !important;
+  }
+
+  .rab-row-item.rab-row-hover-active.rab-row-anomaly-warning > td,
+  .rab-row-flash-amber > td {
+    background-color: #fef08a !important;
+    box-shadow: inset 0 2px 0 #d97706, inset 0 -2px 0 #d97706 !important;
+    animation: pulseRowAmber 1.8s ease-in-out infinite;
+  }
+  .rab-row-item.rab-row-hover-active.rab-row-anomaly-warning > td:first-child,
+  .rab-row-flash-amber > td:first-child {
+    box-shadow: inset 2px 0 0 #d97706, inset 0 2px 0 #d97706, inset 0 -2px 0 #d97706 !important;
+  }
+  .rab-row-item.rab-row-hover-active.rab-row-anomaly-warning > td:last-child,
+  .rab-row-flash-amber > td:last-child {
+    box-shadow: inset -2px 0 0 #d97706, inset 0 2px 0 #d97706, inset 0 -2px 0 #d97706 !important;
+  }
+
+  .rab-row-item.rab-row-hover-active.rab-row-flash-green > td,
+  .rab-row-flash-green > td {
+    background-color: #bbf7d0 !important;
+    box-shadow: inset 0 2px 0 #16a34a, inset 0 -2px 0 #16a34a !important;
+    animation: pulseRowGreen 1.8s ease-in-out infinite;
+  }
+  .rab-row-item.rab-row-hover-active.rab-row-flash-green > td:first-child,
+  .rab-row-flash-green > td:first-child {
+    box-shadow: inset 2px 0 0 #16a34a, inset 0 2px 0 #16a34a, inset 0 -2px 0 #16a34a !important;
+  }
+  .rab-row-item.rab-row-hover-active.rab-row-flash-green > td:last-child,
+  .rab-row-flash-green > td:last-child {
+    box-shadow: inset -2px 0 0 #16a34a, inset 0 2px 0 #16a34a, inset 0 -2px 0 #16a34a !important;
+  }
+
+  @keyframes pulseRowRed {
+    0%, 100% { background-color: #fecaca; }
+    50% { background-color: #fee2e2; }
+  }
+  @keyframes pulseRowAmber {
+    0%, 100% { background-color: #fef08a; }
+    50% { background-color: #fef9c3; }
+  }
+  @keyframes pulseRowGreen {
+    0%, 100% { background-color: #bbf7d0; }
+    50% { background-color: #dcfce7; }
   }
 
   /* Radar Pulse Loader Animation */
@@ -280,11 +326,33 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     transition: all 0.2s ease;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
     cursor: pointer;
+    user-select: none;
   }
   .audit-ribbon-card:hover {
     border-color: #087f23;
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(8, 127, 35, 0.12);
+  }
+  .audit-ribbon-card[data-category="critical"]:hover {
+    border-color: #dc2626 !important;
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15) !important;
+  }
+  .audit-ribbon-card[data-category="warning"]:hover {
+    border-color: #d97706 !important;
+    box-shadow: 0 4px 12px rgba(217, 119, 6, 0.15) !important;
+  }
+  .audit-ribbon-card.audit-card-selected {
+    border-width: 2px !important;
+  }
+  .audit-ribbon-card[data-category="critical"].audit-card-selected {
+    border-color: #dc2626 !important;
+    background-color: #fffaf0 !important;
+    box-shadow: 0 4px 14px rgba(220, 38, 38, 0.18) !important;
+  }
+  .audit-ribbon-card[data-category="warning"].audit-card-selected {
+    border-color: #d97706 !important;
+    background-color: #fffdf5 !important;
+    box-shadow: 0 4px 14px rgba(217, 119, 6, 0.18) !important;
   }
   .audit-card-header {
     padding: 10px 12px;
@@ -480,6 +548,27 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     border-radius: 10px;
     padding: 10px 12px;
     margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    user-select: none;
+  }
+  .ai-proposal-item:hover {
+    background-color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  }
+  .ai-proposal-item.item-ubah:hover {
+    border-color: #f59e0b;
+    box-shadow: 0 4px 12px rgba(217, 119, 6, 0.12);
+  }
+  .ai-proposal-item.item-tambah:hover {
+    border-color: #10b981;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.12);
+  }
+  .ai-proposal-item.item-hapus:hover {
+    border-color: #ef4444;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.12);
   }
   .ai-proposal-item-badge {
     font-size: 10px;
@@ -488,6 +577,8 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     border-radius: 4px;
     text-transform: uppercase;
     display: inline-block;
+    cursor: pointer;
+    transition: all 0.15s ease;
   }
   .ai-badge-ubah {
     background-color: #fef3c7;
@@ -500,6 +591,51 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
   .ai-badge-hapus {
     background-color: #fee2e2;
     color: #b91c1c;
+  }
+  .ai-proposal-item:hover .ai-badge-ubah {
+    background-color: #fde68a;
+  }
+  .ai-proposal-item:hover .ai-badge-tambah {
+    background-color: #bbf7d0;
+  }
+  .ai-proposal-item:hover .ai-badge-hapus {
+    background-color: #fecaca;
+  }
+  /* Individual Acc button & proposal item checkbox */
+  .ai-btn-acc-single {
+    background-color: #087f23;
+    border: 1px solid #087f23;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    transition: all 0.15s ease;
+    cursor: pointer;
+  }
+  .ai-btn-acc-single:hover {
+    background-color: #06691c;
+    border-color: #06691c;
+    transform: scale(1.04);
+  }
+  .ai-item-checkbox {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    border-color: #94a3b8;
+    flex-shrink: 0;
+  }
+  .ai-item-checkbox:checked {
+    background-color: #087f23;
+    border-color: #087f23;
+  }
+  .ai-proposal-item.applied {
+    background-color: #f8fafc;
+    border-color: #cbd5e1;
+    opacity: 0.82;
   }
   .ai-proposal-actions-row {
     display: flex;
@@ -1557,8 +1693,9 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     const itemRows = document.querySelectorAll('#rabTableBody tr.rab-row-item');
     itemRows.forEach(row => {
       if (row._highlightTimer) clearTimeout(row._highlightTimer);
-      row.classList.remove('rab-row-anomaly-critical', 'rab-row-anomaly-warning', 'rab-row-flash-red', 'rab-row-flash-amber', 'rab-row-flash-green');
+      row.classList.remove('rab-row-anomaly-critical', 'rab-row-anomaly-warning', 'rab-row-flash-red', 'rab-row-flash-amber', 'rab-row-flash-green', 'rab-row-hover-active');
     });
+    document.querySelectorAll('.audit-ribbon-card').forEach(c => c.classList.remove('audit-card-selected'));
   }
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -1702,7 +1839,12 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
   }
 
   function escapeJsString(str) {
-    return (str || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    return (str || '')
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, "\\'")
+      .replace(/"/g, '&quot;')
+      .replace(/[\r\n\t]+/g, ' ')
+      .trim();
   }
 
   async function renderAuditResults() {
@@ -1784,10 +1926,15 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
           targetRow.classList.add(isCrit ? 'rab-row-anomaly-critical' : 'rab-row-anomaly-warning');
         }
 
-        const itemName = targetRow ? (targetRow.querySelector('.rab-item-name')?.textContent || `Item #${an.item_id}`) : `Item #${an.item_id}`;
+        const rawName = targetRow ? (targetRow.querySelector('.rab-item-name')?.textContent || '') : '';
+        const cleanItemName = rawName.replace(/[\r\n\t]+/g, ' ').trim() || `Item #${an.item_id}`;
 
         warningCardsHTML += `
-          <div class="audit-ribbon-card mb-3" onclick="scrollToRabItemByText('${escapeJsString(itemName)}', '${isCrit ? 'critical' : 'warning'}')">
+          <div class="audit-ribbon-card mb-3" 
+               data-item-id="${an.item_id}" 
+               data-category="${isCrit ? 'critical' : 'warning'}"
+               data-item-name="${escapeHtml(cleanItemName)}"
+               onclick="handleAnomalyCardClick(this)">
             <div class="d-flex align-items-center gap-1.5 mb-1.5">
               <span style="font-size: 11px;">${isCrit ? '🔴' : '🟡'}</span>
               <span class="fw-bold" style="color: ${isCrit ? '#dc2626' : '#d97706'}; font-size: 11.5px; letter-spacing: 0.03em; text-transform: uppercase;">
@@ -1809,8 +1956,12 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     if (auditData.missing_scopes && auditData.missing_scopes.length > 0) {
       auditData.missing_scopes.forEach(ms => {
         warningCount++;
+        const catName = (ms.category || 'Pekerjaan').replace(/[\r\n\t]+/g, ' ').trim();
         warningCardsHTML += `
-          <div class="audit-ribbon-card mb-3" style="border-left-color: #f59e0b;">
+          <div class="audit-ribbon-card mb-3" style="border-left-color: #f59e0b;"
+               data-category="warning"
+               data-category-name="${escapeHtml(catName)}"
+               onclick="handleMissingScopeCardClick(this)">
             <div class="d-flex align-items-center gap-1.5 mb-1.5">
               <span style="font-size: 11px;">⚠️</span>
               <span class="fw-bold" style="color: #d97706; font-size: 11.5px; letter-spacing: 0.03em; text-transform: uppercase;">
@@ -1895,16 +2046,66 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     [sliceRed, sliceYellow, sliceGreen].forEach(bindDynamicTooltip);
   }
 
-  function scrollToRabItemByText(queryText, category) {
+  function handleAnomalyCardClick(el) {
+    if (!el) return;
+    const itemId = parseInt(el.getAttribute('data-item-id')) || null;
+    const category = el.getAttribute('data-category') || 'warning';
+    const itemName = el.getAttribute('data-item-name') || '';
+
+    document.querySelectorAll('.audit-ribbon-card').forEach(c => c.classList.remove('audit-card-selected'));
+    el.classList.add('audit-card-selected');
+
+    scrollToRabItemByText(itemName, category, itemId);
+  }
+
+  function handleMissingScopeCardClick(el) {
+    if (!el) return;
+    const catName = (el.getAttribute('data-category-name') || '').toLowerCase().trim();
+
+    document.querySelectorAll('.audit-ribbon-card').forEach(c => c.classList.remove('audit-card-selected'));
+    el.classList.add('audit-card-selected');
+
+    if (!catName) return;
+
+    const secRows = document.querySelectorAll('#rabTableBody tr.rab-sec-row');
+    let targetSecRow = null;
+    secRows.forEach(sr => {
+      const name = (sr.getAttribute('data-sec-name') || sr.querySelector('.rab-sec-title')?.textContent || '').toLowerCase().trim();
+      if (name.includes(catName) || catName.includes(name)) {
+        targetSecRow = sr;
+      }
+    });
+
+    if (targetSecRow) {
+      const secCode = targetSecRow.getAttribute('data-sec-code');
+      if (secCode) {
+        const minusLine = document.getElementById('minus-line-' + secCode);
+        const plusIcon = document.getElementById('plus-icon-' + secCode);
+        const hiddenItems = document.querySelectorAll('.sec-items-' + secCode + '.d-none');
+        if (hiddenItems.length > 0) {
+          hiddenItems.forEach(item => item.classList.remove('d-none'));
+          if (minusLine) minusLine.classList.remove('d-none');
+          if (plusIcon) plusIcon.classList.add('d-none');
+        }
+      }
+      targetSecRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      targetSecRow.classList.remove('rab-row-flash-amber');
+      void targetSecRow.offsetWidth;
+      targetSecRow.classList.add('rab-row-flash-amber');
+      setTimeout(() => targetSecRow.classList.remove('rab-row-flash-amber'), 2500);
+    }
+  }
+
+  function scrollToRabItemByText(queryText, category, itemId = null) {
     const q = (queryText || '').toLowerCase().trim();
     const rows = document.querySelectorAll('#rabTableBody tr.rab-row-item');
 
     rows.forEach(r => {
       if (r._highlightTimer) clearTimeout(r._highlightTimer);
-      r.classList.remove('rab-row-flash-red', 'rab-row-flash-amber', 'rab-row-flash-green');
+      r.classList.remove('rab-row-flash-red', 'rab-row-flash-amber', 'rab-row-flash-green', 'rab-row-hover-active');
     });
 
-    if (category === 'normal' && !q) {
+    if (category === 'normal' && !q && !itemId) {
       const normalRows = [];
       rows.forEach(r => {
         if (!r.classList.contains('rab-row-anomaly-critical') && !r.classList.contains('rab-row-anomaly-warning')) {
@@ -1933,7 +2134,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
           r.classList.add('rab-row-flash-green');
           r._highlightTimer = setTimeout(() => {
             r.classList.remove('rab-row-flash-green');
-          }, 1200);
+          }, 2500);
         });
       }
       return;
@@ -1941,7 +2142,11 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
 
     let targetRow = null;
 
-    if (q) {
+    if (itemId) {
+      targetRow = document.querySelector(`#rabTableBody tr.rab-row-item[data-item-id="${itemId}"]`);
+    }
+
+    if (!targetRow && q) {
       rows.forEach(r => {
         const nameSpan = r.querySelector('.rab-item-name');
         const rowName = (nameSpan ? nameSpan.textContent : (r.getAttribute('data-item-name') || '')).toLowerCase().trim();
@@ -1979,11 +2184,392 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
       const isWarn = category === 'warning' || targetRow.classList.contains('rab-row-anomaly-warning');
 
       const flashClass = isCrit ? 'rab-row-flash-red' : (isWarn ? 'rab-row-flash-amber' : 'rab-row-flash-green');
+      
+      targetRow.classList.remove('rab-row-flash-red', 'rab-row-flash-amber', 'rab-row-flash-green', 'rab-row-hover-active');
+      void targetRow.offsetWidth;
       targetRow.classList.add(flashClass);
 
       targetRow._highlightTimer = setTimeout(() => {
         targetRow.classList.remove(flashClass);
-      }, 1200);
+      }, 2500);
+
+      // Synchronize active card selection in Detail Anomali list
+      const targetItemId = targetRow.getAttribute('data-item-id');
+      if (targetItemId) {
+        const matchedCard = document.querySelector(`.audit-ribbon-card[data-item-id="${targetItemId}"]`);
+        if (matchedCard && !matchedCard.classList.contains('audit-card-selected')) {
+          document.querySelectorAll('.audit-ribbon-card').forEach(c => c.classList.remove('audit-card-selected'));
+          matchedCard.classList.add('audit-card-selected');
+          matchedCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }
+    }
+  }
+
+  function findRowForAction(act, rows) {
+    if (!rows) rows = document.querySelectorAll('#rabTableBody tr.rab-row-item');
+    let targetRow = null;
+    const targetItemId = act.target_item_id || act.item_id || (act.changes && act.changes.item_id);
+
+    // 1. Direct match by item ID (most accurate)
+    if (targetItemId) {
+      targetRow = document.querySelector(`#rabTableBody tr.rab-row-item[data-item-id="${targetItemId}"]`);
+    }
+
+    // 2. Direct match by item name
+    const nameCandidates = [
+      act.old_values?.item_name,
+      act.changes?.item_name,
+      act.item_name,
+      act.target_item_name
+    ].filter(Boolean);
+
+    if (!targetRow && nameCandidates.length > 0) {
+      for (const cand of nameCandidates) {
+        const cLower = String(cand).toLowerCase().trim();
+        for (const r of rows) {
+          const nameSpan = r.querySelector('.rab-item-name');
+          const rowName = (nameSpan ? nameSpan.textContent : (r.getAttribute('data-item-name') || '')).toLowerCase().trim();
+          const rawName = (r.getAttribute('data-raw-name') || '').toLowerCase().trim();
+          const ahspName = (r.getAttribute('data-ahsp-name') || '').toLowerCase().trim();
+          if (rowName.includes(cLower) || cLower.includes(rowName) ||
+              (rawName && (rawName.includes(cLower) || cLower.includes(rawName))) ||
+              (ahspName && (ahspName.includes(cLower) || cLower.includes(ahspName)))) {
+            targetRow = r;
+            break;
+          }
+        }
+        if (targetRow) break;
+      }
+    }
+
+    // 3. Match from description text
+    if (!targetRow && act.description) {
+      const descLower = String(act.description).toLowerCase();
+      for (const r of rows) {
+        const nameSpan = r.querySelector('.rab-item-name');
+        const rowName = (nameSpan ? nameSpan.textContent : (r.getAttribute('data-item-name') || '')).toLowerCase().trim();
+        const rawName = (r.getAttribute('data-raw-name') || '').toLowerCase().trim();
+        if ((rowName && rowName.length >= 4 && descLower.includes(rowName)) ||
+            (rawName && rawName.length >= 4 && descLower.includes(rawName))) {
+          targetRow = r;
+          break;
+        }
+      }
+
+      if (!targetRow) {
+        const stopWords = ['mengubah', 'menjadi', 'untuk', 'dengan', 'harga', 'biaya', 'volume', 'satuan', 'pekerjaan', 'dari', 'pada', 'yang', 'dan', 'atau', 'tebal'];
+        const words = descLower.replace(/[^\w\s]/g, ' ').split(/\s+/).filter(w => w.length >= 4 && !stopWords.includes(w));
+        let bestScore = 0;
+        for (const r of rows) {
+          const nameSpan = r.querySelector('.rab-item-name');
+          const rowName = (nameSpan ? nameSpan.textContent : (r.getAttribute('data-item-name') || '')).toLowerCase();
+          const rawName = (r.getAttribute('data-raw-name') || '').toLowerCase();
+          let score = 0;
+          words.forEach(w => {
+            if (rowName.includes(w)) score += 2;
+            if (rawName.includes(w)) score += 2;
+          });
+          if (score > bestScore && score >= 2) {
+            bestScore = score;
+            targetRow = r;
+          }
+        }
+      }
+    }
+
+    return targetRow;
+  }
+
+  async function applySingleActionToTableAndDb(act) {
+    if (act.action_type === 'UPDATE_ITEM' && act.target_item_id) {
+      const updatePayload = {};
+      if (act.changes.item_name) updatePayload.item_name = act.changes.item_name;
+      if (typeof act.changes.volume !== 'undefined') updatePayload.volume = parseFloat(act.changes.volume);
+      if (act.changes.unit) updatePayload.unit = act.changes.unit;
+      if (typeof act.changes.unit_price !== 'undefined') updatePayload.unit_price = parseFloat(act.changes.unit_price);
+      if (act.changes.ahsp_code) {
+        updatePayload.ahsp_code = act.changes.ahsp_code;
+        updatePayload.ahsp_name = act.changes.item_name;
+      }
+
+      const res = await fetch(`<?= base_url("api/estimation-items") ?>/${act.target_item_id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(updatePayload)
+      });
+
+      if (!res.ok) throw new Error('Gagal update item');
+
+      // Update table cells directly in DOM
+      const tableRow = document.querySelector(`#rabTableBody tr[data-item-id="${act.target_item_id}"]`);
+      if (tableRow) {
+        const nameEl = tableRow.querySelector('.rab-item-name');
+        if (nameEl && updatePayload.item_name) {
+          nameEl.textContent = updatePayload.item_name;
+          tableRow.dataset.itemName = updatePayload.item_name.toLowerCase();
+        }
+        if (updatePayload.ahsp_name) {
+          tableRow.dataset.ahspName = updatePayload.ahsp_name.toLowerCase();
+        }
+        if (updatePayload.ahsp_code) {
+          tableRow.dataset.ahspCode = updatePayload.ahsp_code.toLowerCase();
+        }
+        if (updatePayload.unit) {
+          tableRow.dataset.itemUnit = updatePayload.unit.toLowerCase();
+        }
+        
+        const cells = tableRow.querySelectorAll('td');
+        if (cells.length >= 7) {
+          if (typeof updatePayload.volume !== 'undefined') {
+            cells[2].textContent = updatePayload.volume.toLocaleString('id-ID', { minimumFractionDigits: 2 });
+          }
+          if (updatePayload.unit) cells[3].textContent = updatePayload.unit;
+          if (typeof updatePayload.unit_price !== 'undefined') {
+            cells[4].textContent = 'Rp ' + updatePayload.unit_price.toLocaleString('id-ID', { minimumFractionDigits: 2 });
+          }
+          const currentVol = typeof updatePayload.volume !== 'undefined' 
+            ? updatePayload.volume 
+            : (parseFloat(cells[2].textContent.replace(/\./g, '').replace(',', '.')) || 0);
+          const currentPrice = typeof updatePayload.unit_price !== 'undefined'
+            ? updatePayload.unit_price
+            : (parseFloat(cells[4].textContent.replace(/Rp|\s|\./g, '').replace(',', '.')) || 0);
+          const newTotal = currentVol * currentPrice;
+          cells[5].textContent = 'Rp ' + newTotal.toLocaleString('id-ID', { minimumFractionDigits: 2 });
+        }
+
+        // Flash highlight on the updated row
+        tableRow.classList.remove('rab-row-flash-green');
+        void tableRow.offsetWidth;
+        tableRow.classList.add('rab-row-flash-green');
+        setTimeout(() => tableRow.classList.remove('rab-row-flash-green'), 3000);
+      }
+      return true;
+    } else if (act.action_type === 'ADD_ITEM') {
+      const res = await fetch(`<?= base_url("api/estimation-items") ?>`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          section_id: act.target_section_id || 1,
+          item_name: act.changes.item_name || act.description,
+          volume: parseFloat(act.changes.volume) || 1,
+          unit: act.changes.unit || 'm2',
+          unit_price: parseFloat(act.changes.unit_price) || 0,
+          ahsp_code: act.changes.ahsp_code || null,
+          ahsp_status: 'unmapped'
+        })
+      });
+      if (!res.ok) throw new Error('Gagal tambah item');
+      return true;
+    } else if (act.action_type === 'DELETE_ITEM' && act.target_item_id) {
+      const res = await fetch(`<?= base_url("api/estimation-items") ?>/${act.target_item_id}`, {
+        method: 'DELETE'
+      });
+      if (!res.ok) throw new Error('Gagal hapus item');
+      const tableRow = document.querySelector(`#rabTableBody tr[data-item-id="${act.target_item_id}"]`);
+      if (tableRow) {
+        tableRow.style.opacity = '0.35';
+        tableRow.style.textDecoration = 'line-through';
+      }
+      return true;
+    }
+  }
+
+  async function persistProposalActionsState(historyId, actions) {
+    if (!historyId) return;
+    try {
+      const projectId = `<?= esc($project['id']) ?>`;
+      const allApplied = actions.every(a => a.is_applied);
+      await fetch(`<?= base_url("api/projects") ?>/${projectId}/chat-history/${historyId}/applied`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          actions: actions,
+          is_applied: allApplied ? 1 : 0
+        })
+      });
+    } catch (err) {
+      console.warn('Failed to persist proposal actions state:', err);
+    }
+  }
+
+  function toggleProposalItemCheck(cardId, actIndex, isChecked) {
+    const cardData = activeProposedActionsMap[cardId];
+    if (!cardData || !cardData.actions || !cardData.actions[actIndex]) return;
+    cardData.actions[actIndex].selected = isChecked;
+    updateProposalCardState(cardId);
+  }
+
+  function renderProposalButtons(cardId) {
+    const cardData = activeProposedActionsMap[cardId];
+    if (!cardData || !cardData.actions) return;
+    const btnRow = document.getElementById('buttons_' + cardId);
+    if (!btnRow) return;
+
+    const unapplied = cardData.actions.filter(a => !a.is_applied);
+    const selected = unapplied.filter(a => a.selected !== false);
+
+    if (unapplied.length === 0) {
+      btnRow.innerHTML = `
+        <button type="button" class="btn btn-success w-100 rounded-pill fw-bold py-2 shadow-sm" disabled style="background-color: #087f23; border-color: #087f23; font-size: 13px;">
+          <i class="bi bi-check-circle-fill me-1.5"></i> Seluruh Perubahan Telah Diterapkan
+        </button>
+      `;
+      return;
+    }
+
+    const label = selected.length === unapplied.length 
+      ? `Terapkan Semua (${selected.length})` 
+      : (selected.length > 0 ? `Terapkan Terpilih (${selected.length})` : 'Pilih Item');
+    const disabled = selected.length === 0 ? 'disabled style="opacity: 0.6; cursor: not-allowed;"' : '';
+
+    btnRow.innerHTML = `
+      <button type="button" class="ai-btn-apply" id="btn_apply_${cardId}" onclick="executeApplyProposedActions('${cardId}')" ${disabled}>
+        <i class="bi bi-check-lg" style="font-size: 15px;"></i>
+        <span>${label}</span>
+      </button>
+      <button type="button" class="ai-btn-cancel" onclick="cancelProposedActions('${cardId}')">
+        Batal
+      </button>
+    `;
+  }
+
+  function updateProposalCardState(cardId) {
+    const cardData = activeProposedActionsMap[cardId];
+    if (!cardData || !cardData.actions) return;
+
+    const unapplied = cardData.actions.filter(a => !a.is_applied);
+    const selected = unapplied.filter(a => a.selected !== false);
+
+    // Update title count
+    const titleCountEl = document.querySelector(`#${cardId} .ai-proposal-title span:last-child`);
+    if (titleCountEl) {
+      titleCountEl.textContent = `Usulan Perubahan (${unapplied.length})`;
+    }
+
+    // Update cost badge in header for selected unapplied items
+    const headerCostBadge = document.querySelector(`#${cardId} .ai-proposal-cost-badge`);
+    if (headerCostBadge) {
+      const activeTotal = selected.reduce((acc, a) => acc + (parseFloat(a.cost_delta) || 0), 0);
+      const sign = activeTotal > 0 ? '+' : (activeTotal < 0 ? '-' : '');
+      headerCostBadge.textContent = `${sign} Rp ${Math.abs(Math.round(activeTotal)).toLocaleString('id-ID')}`;
+      headerCostBadge.className = `ai-proposal-cost-badge ${activeTotal > 0 ? 'ai-proposal-cost-positive' : (activeTotal < 0 ? 'ai-proposal-cost-negative' : 'ai-proposal-cost-neutral')}`;
+    }
+
+    // Update each item visual state
+    cardData.actions.forEach((act, idx) => {
+      const itemEl = document.getElementById(`prop_item_${cardId}_${idx}`);
+      if (itemEl && act.is_applied) {
+        itemEl.classList.add('applied');
+        const chk = itemEl.querySelector('.ai-item-checkbox');
+        if (chk) chk.outerHTML = '<i class="bi bi-check-circle-fill text-success" style="font-size: 14px;"></i>';
+        const accBtn = itemEl.querySelector('.ai-btn-acc-single');
+        if (accBtn) accBtn.outerHTML = '<span class="badge bg-success-subtle text-success border border-success-subtle py-1 px-2" style="font-size: 10px; font-weight: 600;">✓ Diterapkan</span>';
+      }
+    });
+
+    renderProposalButtons(cardId);
+  }
+
+  async function executeApplySingleAction(cardId, actIndex, event) {
+    if (event) event.stopPropagation();
+
+    const cardData = activeProposedActionsMap[cardId];
+    if (!cardData || !cardData.actions || !cardData.actions[actIndex]) return;
+    const act = cardData.actions[actIndex];
+    if (act.is_applied) return;
+
+    const itemEl = document.getElementById(`prop_item_${cardId}_${actIndex}`);
+    const applyBtn = itemEl ? itemEl.querySelector('.ai-btn-acc-single') : null;
+    if (applyBtn) {
+      applyBtn.disabled = true;
+      applyBtn.innerHTML = '<span class="spinner-border spinner-border-sm" style="width: 10px; height: 10px;"></span> Acc...';
+    }
+
+    try {
+      await applySingleActionToTableAndDb(act);
+      act.is_applied = true;
+      act.selected = false;
+      showToast('Sukses', `Perubahan item "${act.changes?.item_name || act.description || 'Pekerjaan'}" berhasil diterapkan!`, 'success');
+      recalculateRabTotals();
+
+      // Persist state to database
+      await persistProposalActionsState(cardData.historyId, cardData.actions);
+
+      // Check if all actions in card are now applied
+      const unapplied = cardData.actions.filter(a => !a.is_applied);
+      if (unapplied.length === 0) {
+        const wrapper = document.getElementById('wrapper_' + cardId) || (document.getElementById(cardId) ? document.getElementById(cardId).closest('.ai-proposal-container') || document.getElementById(cardId).closest('.d-flex.mb-3') : null);
+        if (wrapper) {
+          wrapper.style.transition = 'all 0.35s ease';
+          wrapper.style.opacity = '0';
+          wrapper.style.transform = 'translateY(-6px)';
+          setTimeout(() => { if (wrapper && wrapper.parentNode) wrapper.remove(); }, 350);
+        }
+        appendChatMessage('ai', `<div class="d-flex align-items-center gap-2 text-success fw-semibold"><i class="bi bi-check-circle-fill"></i> Seluruh usulan perubahan telah diterapkan ke tabel RAB.</div>`);
+      } else {
+        updateProposalCardState(cardId);
+      }
+    } catch (err) {
+      console.error('Error applying single action:', err);
+      showToast('Gagal', 'Gagal menerapkan perubahan pada item ini.', 'error');
+      if (applyBtn) {
+        applyBtn.disabled = false;
+        applyBtn.innerHTML = '<i class="bi bi-check2"></i> Acc';
+      }
+    }
+  }
+
+  function scrollToRabItemFromProposalAction(cardId, actIndex) {
+    const cardData = activeProposedActionsMap[cardId];
+    if (!cardData || !cardData.actions || !cardData.actions[actIndex]) return;
+    const act = cardData.actions[actIndex];
+
+    const rows = document.querySelectorAll('#rabTableBody tr.rab-row-item');
+    if (!rows || rows.length === 0) return;
+
+    // Reset previous flash highlights
+    rows.forEach(r => {
+      if (r._highlightTimer) clearTimeout(r._highlightTimer);
+      r.classList.remove('rab-row-flash-red', 'rab-row-flash-amber', 'rab-row-flash-green');
+    });
+
+    const targetRow = findRowForAction(act, rows);
+
+    // If target row was found, navigate & highlight like in audit rab
+    if (targetRow) {
+      // 1. Expand parent category section if it's collapsed (same mechanism as audit rab)
+      const secCode = targetRow.getAttribute('data-sec-code');
+      if (secCode) {
+        const minusLine = document.getElementById('minus-line-' + secCode);
+        const plusIcon = document.getElementById('plus-icon-' + secCode);
+        const hiddenItems = document.querySelectorAll('.sec-items-' + secCode + '.d-none');
+        if (hiddenItems.length > 0) {
+          hiddenItems.forEach(el => el.classList.remove('d-none'));
+          if (minusLine) minusLine.classList.remove('d-none');
+          if (plusIcon) plusIcon.classList.add('d-none');
+        }
+      }
+
+      // 2. Smoothly scroll into view centered
+      targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      // 3. Highlight / flash effect (same as audit rab: amber for ubah/warning)
+      const isDelete = act.action_type === 'DELETE_ITEM';
+      const isAdd = act.action_type === 'ADD_ITEM';
+      const flashClass = isDelete ? 'rab-row-flash-red' : (isAdd ? 'rab-row-flash-green' : 'rab-row-flash-amber');
+      
+      targetRow.classList.add(flashClass);
+      targetRow._highlightTimer = setTimeout(() => {
+        targetRow.classList.remove(flashClass);
+      }, 1500);
+    } else if (act.action_type === 'ADD_ITEM' && act.target_section_id) {
+      const secRow = document.querySelector(`#rabTableBody tr.rab-sec-row[data-sec-id="${act.target_section_id}"]`);
+      if (secRow) {
+        secRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        secRow.classList.add('rab-row-flash-green');
+        setTimeout(() => secRow.classList.remove('rab-row-flash-green'), 1500);
+      }
     }
   }
 
@@ -2184,15 +2770,27 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     const log = document.getElementById('aiChatHistoryLog');
     if (!log || !actions || actions.length === 0) return;
 
+    // Check if all actions are already applied
+    const unappliedAtStart = actions.filter(a => !a.is_applied);
+    if (unappliedAtStart.length === 0) return;
+
     const cardId = 'aiPropCard_' + (historyId ? historyId : Date.now());
     activeProposedActionsMap[cardId] = {
       actions: actions,
       historyId: historyId
     };
 
-    const totalImpact = (typeof costImpact === 'number') 
-      ? costImpact 
-      : actions.reduce((acc, a) => acc + (parseFloat(a.cost_delta) || 0), 0);
+    // Initialize selection state: only unapplied items are selected by default
+    actions.forEach(act => {
+      if (typeof act.selected === 'undefined') {
+        act.selected = !act.is_applied;
+      }
+    });
+
+    const activeToSum = actions.filter(a => !a.is_applied && a.selected !== false);
+    const totalImpact = (typeof costImpact === 'number' && actions.every(a => !a.is_applied))
+      ? costImpact
+      : activeToSum.reduce((acc, a) => acc + (parseFloat(a.cost_delta) || 0), 0);
     
     const sign = totalImpact > 0 ? '+' : (totalImpact < 0 ? '-' : '');
     const absImpactFormatted = 'Rp ' + Math.abs(Math.round(totalImpact)).toLocaleString('id-ID');
@@ -2206,15 +2804,18 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     }
 
     let itemsHtml = '';
-    actions.forEach(act => {
+    actions.forEach((act, idx) => {
       let badgeLabel = 'UBAH';
       let badgeCss = 'ai-badge-ubah';
+      let itemModifierClass = 'item-ubah';
       if (act.action_type === 'ADD_ITEM') {
         badgeLabel = '+ TAMBAH';
         badgeCss = 'ai-badge-tambah';
+        itemModifierClass = 'item-tambah';
       } else if (act.action_type === 'DELETE_ITEM') {
         badgeLabel = '- HAPUS';
         badgeCss = 'ai-badge-hapus';
+        itemModifierClass = 'item-hapus';
       }
 
       const itemDelta = parseFloat(act.cost_delta) || 0;
@@ -2233,10 +2834,39 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
       }
 
       itemsHtml += `
-        <div class="ai-proposal-item">
-          <div class="d-flex align-items-center justify-content-between mb-1">
-            <span class="ai-proposal-item-badge ${badgeCss}">${badgeLabel}</span>
-            <span style="font-size: 12px; font-weight: 700; color: ${deltaColor};">${itemDeltaFormatted}</span>
+        <div class="ai-proposal-item ${itemModifierClass} ${act.is_applied ? 'applied' : ''}" 
+             id="prop_item_${cardId}_${idx}"
+             onclick="scrollToRabItemFromProposalAction('${cardId}', ${idx})" 
+             title="Klik untuk menuju ke baris data di tabel RAB">
+          <div class="d-flex align-items-center justify-content-between mb-1.5 gap-2">
+            <div class="d-flex align-items-center gap-2">
+              ${!act.is_applied ? `
+                <input type="checkbox" 
+                       class="form-check-input ai-item-checkbox m-0" 
+                       id="chk_${cardId}_${idx}" 
+                       ${act.selected !== false ? 'checked' : ''} 
+                       onclick="event.stopPropagation()" 
+                       onchange="toggleProposalItemCheck('${cardId}', ${idx}, this.checked)"
+                       title="Pilih item ini"
+                >
+              ` : `
+                <i class="bi bi-check-circle-fill text-success" style="font-size: 14px;"></i>
+              `}
+              <span class="ai-proposal-item-badge ${badgeCss}">${badgeLabel}</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <span style="font-size: 12px; font-weight: 700; color: ${deltaColor};">${itemDeltaFormatted}</span>
+              ${!act.is_applied ? `
+                <button type="button" 
+                        class="ai-btn-acc-single" 
+                        onclick="executeApplySingleAction('${cardId}', ${idx}, event)"
+                        title="Terapkan hanya item ini ke tabel RAB">
+                  <i class="bi bi-check2"></i> Acc
+                </button>
+              ` : `
+                <span class="badge bg-success-subtle text-success border border-success-subtle py-1 px-2" style="font-size: 10px; font-weight: 600;">✓ Diterapkan</span>
+              `}
+            </div>
           </div>
           <div style="font-size: 12.5px; font-weight: 600; color: #1e293b; line-height: 1.45;">
             ${escapeHtml(act.description || act.changes?.item_name || 'Penyesuaian spesifikasi pekerjaan')}
@@ -2246,24 +2876,22 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
       `;
     });
 
-    let buttonsHtml = '';
-    if (isApplied) {
-      buttonsHtml = `
-        <button type="button" class="btn btn-success w-100 rounded-pill fw-bold py-2 shadow-sm" disabled style="background-color: #087f23; border-color: #087f23; font-size: 13px;">
-          <i class="bi bi-check-circle-fill me-1.5"></i> Perubahan Telah Diterapkan ke Tabel RAB
-        </button>
-      `;
-    } else {
-      buttonsHtml = `
-        <button type="button" class="ai-btn-apply" onclick="executeApplyProposedActions('${cardId}')">
-          <i class="bi bi-check-lg" style="font-size: 15px;"></i>
-          <span>Terapkan Perubahan</span>
-        </button>
-        <button type="button" class="ai-btn-cancel" onclick="cancelProposedActions('${cardId}')">
-          Batal
-        </button>
-      `;
-    }
+    const unappliedCount = unappliedAtStart.length;
+    const selectedCount = activeToSum.length;
+    const label = selectedCount === unappliedCount 
+      ? `Terapkan Semua (${selectedCount})` 
+      : (selectedCount > 0 ? `Terapkan Terpilih (${selectedCount})` : 'Pilih Item');
+    const disabled = selectedCount === 0 ? 'disabled style="opacity: 0.6; cursor: not-allowed;"' : '';
+
+    const buttonsHtml = `
+      <button type="button" class="ai-btn-apply" id="btn_apply_${cardId}" onclick="executeApplyProposedActions('${cardId}')" ${disabled}>
+        <i class="bi bi-check-lg" style="font-size: 15px;"></i>
+        <span>${label}</span>
+      </button>
+      <button type="button" class="ai-btn-cancel" onclick="cancelProposedActions('${cardId}')">
+        Batal
+      </button>
+    `;
 
     const cardDiv = document.createElement('div');
     cardDiv.className = 'd-flex mb-3 justify-content-start ai-proposal-container';
@@ -2275,7 +2903,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
           <div class="ai-proposal-header">
             <div class="ai-proposal-title">
               <span>📝</span>
-              <span style="color: #087f23;">Usulan Perubahan (${actions.length})</span>
+              <span style="color: #087f23;">Usulan Perubahan (${unappliedCount})</span>
             </div>
             <div class="ai-proposal-cost-badge ${badgeClass}">
               ${badgeText}
@@ -2359,19 +2987,21 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
   // Execute Applying Proposed Changes into Database and Update Table
   async function executeApplyProposedActions(cardId) {
     const cardData = activeProposedActionsMap[cardId];
-    if (!cardData) return;
-    const actions = cardData.actions || cardData;
-    const historyId = cardData.historyId || null;
+    if (!cardData || !cardData.actions) return;
 
-    if (!actions || actions.length === 0) return;
+    // Apply only items that are unapplied AND selected
+    const toApply = cardData.actions.filter(a => !a.is_applied && a.selected !== false);
+    if (toApply.length === 0) {
+      showToast('Perhatian', 'Pilih minimal satu item perubahan untuk diterapkan.', 'warning');
+      return;
+    }
 
     const btnRow = document.getElementById('buttons_' + cardId);
-
     if (btnRow) {
       btnRow.innerHTML = `
         <button type="button" class="ai-btn-apply w-100" disabled style="opacity: 0.85; cursor: not-allowed;">
           <span class="spinner-border spinner-border-sm me-2" style="width: 13px; height: 13px;"></span>
-          Menerapkan ke tabel RAB...
+          Menerapkan ${toApply.length} item ke tabel RAB...
         </button>
       `;
     }
@@ -2379,159 +3009,38 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     let successCount = 0;
     let failCount = 0;
 
-    for (const act of actions) {
+    for (const act of toApply) {
       try {
-        if (act.action_type === 'UPDATE_ITEM' && act.target_item_id) {
-          const updatePayload = {};
-          if (act.changes.item_name) updatePayload.item_name = act.changes.item_name;
-          if (typeof act.changes.volume !== 'undefined') updatePayload.volume = parseFloat(act.changes.volume);
-          if (act.changes.unit) updatePayload.unit = act.changes.unit;
-          if (typeof act.changes.unit_price !== 'undefined') updatePayload.unit_price = parseFloat(act.changes.unit_price);
-          if (act.changes.ahsp_code) {
-            updatePayload.ahsp_code = act.changes.ahsp_code;
-            updatePayload.ahsp_name = act.changes.item_name;
-          }
-
-          const res = await fetch(`<?= base_url("api/estimation-items") ?>/${act.target_item_id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify(updatePayload)
-          });
-
-          if (res.ok) {
-            successCount++;
-            // Update table cells directly in DOM
-            const tableRow = document.querySelector(`#rabTableBody tr[data-item-id="${act.target_item_id}"]`);
-            if (tableRow) {
-              const nameEl = tableRow.querySelector('.rab-item-name');
-              if (nameEl && updatePayload.item_name) {
-                nameEl.textContent = updatePayload.item_name;
-                tableRow.dataset.itemName = updatePayload.item_name.toLowerCase();
-              }
-              if (updatePayload.ahsp_name) {
-                tableRow.dataset.ahspName = updatePayload.ahsp_name.toLowerCase();
-              }
-              if (updatePayload.ahsp_code) {
-                tableRow.dataset.ahspCode = updatePayload.ahsp_code.toLowerCase();
-              }
-              if (updatePayload.unit) {
-                tableRow.dataset.itemUnit = updatePayload.unit.toLowerCase();
-              }
-              
-              const cells = tableRow.querySelectorAll('td');
-              if (cells.length >= 7) {
-                if (typeof updatePayload.volume !== 'undefined') {
-                  cells[2].textContent = updatePayload.volume.toLocaleString('id-ID', { minimumFractionDigits: 2 });
-                }
-                if (updatePayload.unit) cells[3].textContent = updatePayload.unit;
-                if (typeof updatePayload.unit_price !== 'undefined') {
-                  cells[4].textContent = 'Rp ' + updatePayload.unit_price.toLocaleString('id-ID', { minimumFractionDigits: 2 });
-                }
-                const currentVol = typeof updatePayload.volume !== 'undefined' 
-                  ? updatePayload.volume 
-                  : (parseFloat(cells[2].textContent.replace(/\./g, '').replace(',', '.')) || 0);
-                const currentPrice = typeof updatePayload.unit_price !== 'undefined'
-                  ? updatePayload.unit_price
-                  : (parseFloat(cells[4].textContent.replace(/Rp|\s|\./g, '').replace(',', '.')) || 0);
-                const newTotal = currentVol * currentPrice;
-                cells[5].textContent = 'Rp ' + newTotal.toLocaleString('id-ID', { minimumFractionDigits: 2 });
-              }
-
-              // Flash highlight on the updated row
-              tableRow.classList.remove('rab-row-flash-green');
-              void tableRow.offsetWidth; // trigger reflow
-              tableRow.classList.add('rab-row-flash-green');
-              setTimeout(() => tableRow.classList.remove('rab-row-flash-green'), 3000);
-            }
-          } else {
-            failCount++;
-          }
-        } else if (act.action_type === 'ADD_ITEM') {
-          const res = await fetch(`<?= base_url("api/estimation-items") ?>`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify({
-              section_id: act.target_section_id || 1,
-              item_name: act.changes.item_name || act.description,
-              volume: parseFloat(act.changes.volume) || 1,
-              unit: act.changes.unit || 'm2',
-              unit_price: parseFloat(act.changes.unit_price) || 0,
-              ahsp_code: act.changes.ahsp_code || null,
-              ahsp_status: 'unmapped'
-            })
-          });
-          if (res.ok) successCount++; else failCount++;
-        } else if (act.action_type === 'DELETE_ITEM' && act.target_item_id) {
-          const res = await fetch(`<?= base_url("api/estimation-items") ?>/${act.target_item_id}`, {
-            method: 'DELETE'
-          });
-          if (res.ok) {
-            successCount++;
-            const tableRow = document.querySelector(`#rabTableBody tr[data-item-id="${act.target_item_id}"]`);
-            if (tableRow) {
-              tableRow.style.opacity = '0.35';
-              tableRow.style.textDecoration = 'line-through';
-            }
-          } else {
-            failCount++;
-          }
-        }
+        await applySingleActionToTableAndDb(act);
+        act.is_applied = true;
+        act.selected = false;
+        successCount++;
       } catch (err) {
         console.error('Error applying action:', err);
         failCount++;
       }
     }
 
-    // Persist applied status to database if historyId exists
-    if (historyId) {
-      try {
-        const projectId = `<?= esc($project['id']) ?>`;
-        await fetch(`<?= base_url("api/projects") ?>/${projectId}/chat-history/${historyId}/applied`, {
-          method: 'PATCH'
-        });
-      } catch (err) {
-        console.warn('Failed to update applied status in database:', err);
-      }
-    }
+    recalculateRabTotals();
 
-    if (failCount === 0) {
+    // Persist state to database
+    await persistProposalActionsState(cardData.historyId, cardData.actions);
+
+    const remainingUnapplied = cardData.actions.filter(a => !a.is_applied);
+    if (remainingUnapplied.length === 0) {
       showToast('Sukses', `${successCount} perubahan berhasil diterapkan ke tabel RAB!`, 'success');
 
-      // Update calculations in the background RAB table
-      recalculateRabTotals();
-
-      // Smoothly hide and remove the proposed changes card ("usulan perubahannya hilang")
       const wrapper = document.getElementById('wrapper_' + cardId) || (document.getElementById(cardId) ? document.getElementById(cardId).closest('.ai-proposal-container') || document.getElementById(cardId).closest('.d-flex.mb-3') : null);
       if (wrapper) {
         wrapper.style.transition = 'all 0.35s ease';
         wrapper.style.opacity = '0';
         wrapper.style.transform = 'translateY(-6px)';
-        setTimeout(() => {
-          if (wrapper && wrapper.parentNode) {
-            wrapper.remove();
-          }
-        }, 350);
+        setTimeout(() => { if (wrapper && wrapper.parentNode) wrapper.remove(); }, 350);
       }
-
-      // Add a concise success notification in the AI chat log
-      appendChatMessage('ai', `<div class="d-flex align-items-center gap-2 text-success fw-semibold"><i class="bi bi-check-circle-fill"></i> Usulan perubahan (${successCount} item) telah berhasil diterapkan ke tabel RAB.</div>`);
-
-      // Ensure user stays in Konsultasi RAB tab and input is focused ("tetap stay di konsultasi rab")
-      const chatTabEl = document.getElementById('aiTabChat-tab');
-      if (chatTabEl && !chatTabEl.classList.contains('active')) {
-        const tab = new bootstrap.Tab(chatTabEl);
-        tab.show();
-      }
-      focusAiChatInput();
+      appendChatMessage('ai', `<div class="d-flex align-items-center gap-2 text-success fw-semibold"><i class="bi bi-check-circle-fill"></i> Seluruh usulan perubahan (${successCount} item) telah berhasil diterapkan ke tabel RAB.</div>`);
     } else {
-      if (btnRow) {
-        btnRow.innerHTML = `
-          <div class="text-danger small fw-semibold text-center w-100 py-1">
-            Sebagian perubahan gagal diterapkan. Silakan coba lagi.
-          </div>
-        `;
-      }
-      showToast('Peringatan', 'Sebagian perubahan gagal diterapkan.', 'warning');
+      showToast('Sukses', `${successCount} item berhasil diterapkan. Masih ada ${remainingUnapplied.length} item tersisa.`, 'info');
+      updateProposalCardState(cardId);
     }
   }
 
