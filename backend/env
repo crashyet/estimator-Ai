@@ -26,7 +26,7 @@
 # app.forceGlobalSecureRequests = false
 # app.CSPEnabled = false
 
-# PYTHON_API_URL = http://localhost:8200
+# PYTHON_API_URL = 'http://localhost:8200'
 
 #--------------------------------------------------------------------
 # DATABASE

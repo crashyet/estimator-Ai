@@ -29,6 +29,8 @@ from dotenv import load_dotenv
 
 from routers.takeoff import router as takeoff_router, estimator_engine
 from routers.ahsp import router as ahsp_router
+from routers.rab_audit import router as rab_audit_router
+from routers.rab_agent import router as rab_agent_router
 from src.exporter import export_takeoff_to_excel, export_takeoff_to_json
 from src.bim_parser import BIMEntityExtractor
 from src.cad_parser import CADEntityExtractor
@@ -115,6 +117,8 @@ app.add_middleware(
 # Register modular routers
 app.include_router(takeoff_router)
 app.include_router(ahsp_router)
+app.include_router(rab_audit_router)
+app.include_router(rab_agent_router)
 
 
 @app.get("/")
