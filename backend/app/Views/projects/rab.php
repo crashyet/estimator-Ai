@@ -233,6 +233,12 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
   .rab-row-anomaly-warning > td {
     background-color: #fef3c7 !important;
   }
+  .rab-row-item.rab-row-anomaly-critical:hover > td {
+    background-color: #fecaca !important;
+  }
+  .rab-row-item.rab-row-anomaly-warning:hover > td {
+    background-color: #fde68a !important;
+  }
 
   /* Active Hover & Highlight State Matching Static Status Colors (Like Gambar Kedua) */
   .rab-row-item.rab-row-hover-active > td {
@@ -335,10 +341,12 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
   }
   .audit-ribbon-card[data-category="critical"]:hover {
     border-color: #dc2626 !important;
+    background-color: #fef2f2 !important;
     box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15) !important;
   }
   .audit-ribbon-card[data-category="warning"]:hover {
     border-color: #d97706 !important;
+    background-color: #fffbeb !important;
     box-shadow: 0 4px 12px rgba(217, 119, 6, 0.15) !important;
   }
   .audit-ribbon-card.audit-card-selected {
@@ -346,12 +354,12 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
   }
   .audit-ribbon-card[data-category="critical"].audit-card-selected {
     border-color: #dc2626 !important;
-    background-color: #fffaf0 !important;
+    background-color: #fef2f2 !important;
     box-shadow: 0 4px 14px rgba(220, 38, 38, 0.18) !important;
   }
   .audit-ribbon-card[data-category="warning"].audit-card-selected {
     border-color: #d97706 !important;
-    background-color: #fffdf5 !important;
+    background-color: #fffbeb !important;
     box-shadow: 0 4px 14px rgba(217, 119, 6, 0.18) !important;
   }
   .audit-card-header {
@@ -1308,9 +1316,9 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
                   <div>
                     <h6 class="fw-bold text-dark mb-1" style="font-size: 13px;">Status Kelayakan Item</h6>
                     <div class="d-flex flex-wrap gap-2 mt-2">
-                      <span class="badge-critical" id="badgeCountCritical" onclick="scrollToRabItemByText('', 'critical')" style="cursor: pointer;">- Kritis</span>
-                      <span class="badge-warning-custom" id="badgeCountWarning" onclick="scrollToRabItemByText('', 'warning')" style="cursor: pointer;">- Peringatan</span>
-                      <span class="badge-success-custom" id="badgeCountNormal" onclick="scrollToRabItemByText('', 'normal')" style="cursor: pointer;">- Normal</span>
+                      <span class="badge-critical" id="badgeCountCritical" onclick="scrollToRabItemByText('', 'critical')" style="cursor: pointer;" title="Klik untuk meninjau item kritis">- Kritis</span>
+                      <span class="badge-warning-custom" id="badgeCountWarning" onclick="scrollToRabItemByText('', 'warning')" style="cursor: pointer;" title="Klik untuk meninjau item peringatan">- Peringatan</span>
+                      <span class="badge-success-custom" id="badgeCountNormal" onclick="scrollToRabItemByText('', 'normal')" style="cursor: pointer;" title="Klik untuk meninjau item normal">- Normal</span>
                     </div>
                   </div>
                 </div>
@@ -1402,7 +1410,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
               <!-- STATE B: ACTIVE CHAT HEADER BAR -->
               <div id="aiActiveChatHeader" class="d-none align-items-center justify-content-between pb-2 mb-1 border-bottom border-light-subtle">
                 <span class="fw-bold text-dark d-flex align-items-center gap-1.5" style="font-size: 13px;">
-                  <i class="bi bi-stars" style="color: #087f23;"></i> Riwayat Konsultasi
+                  Riwayat Konsultasi
                 </span>
                 <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill py-0.5 px-2.5" style="font-size: 11px;" onclick="clearAiChatHistory()" title="Bersihkan riwayat percakapan">
                   <i class="bi bi-trash me-1"></i> Bersihkan Chat
@@ -1848,6 +1856,40 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
       .trim();
   }
 
+  function getAuditToastIconSvg(type, size = 16) {
+    if (type === 'critical' || type === 'error') {
+      // Error Toast Sample (lingkaran merah dengan silang putih)
+      return `<svg width="${size}" height="${size}" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink: 0; vertical-align: -1px;">
+        <circle cx="10" cy="10" r="10" fill="#dc2626"/>
+        <path d="M6.5 6.5L13.5 13.5M13.5 6.5L6.5 13.5" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>
+      </svg>`;
+    }
+    if (type === 'info-yellow' || type === 'info' || type === 'warning-circle') {
+      // Info Toast Sample - Versi Kuning (lingkaran kuning dengan tanda seru putih)
+      return `<svg width="${size}" height="${size}" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink: 0; vertical-align: -1px;">
+        <circle cx="10" cy="10" r="10" fill="#d97706"/>
+        <path d="M10 5.25V11" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>
+        <circle cx="10" cy="14.5" r="1.2" fill="#ffffff"/>
+      </svg>`;
+    }
+    if (type === 'warning-triangle' || type === 'warning' || type === 'missing-scope') {
+      // Warning Toast Sample - Versi Segitiga Kuning (segitiga kuning dengan tanda seru putih)
+      return `<svg width="${size}" height="${size}" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink: 0; vertical-align: -1px;">
+        <path d="M8.28 3.52c.76-1.34 2.68-1.34 3.44 0l6.38 11.23c.75 1.32-.21 2.97-1.72 2.97H3.62c-1.51 0-2.47-1.65-1.72-2.97L8.28 3.52z" fill="#d97706"/>
+        <path d="M10 8V11.5" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="10" cy="14.5" r="1.1" fill="#ffffff"/>
+      </svg>`;
+    }
+    if (type === 'message' || type === 'suggestion' || type === 'chat') {
+      // Message / suggestion icon (subtle & compact)
+      return `<svg width="${size}" height="${size}" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="flex-shrink: 0; margin-top: 2px; color: #94a3b8;">
+        <path d="M14 1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4.414A2 2 0 0 0 3 11.586l-2 2V2a1 1 0 0 1 1-1zM2 0a2 2 0 0 0-2 2v12.793a.5.5 0 0 0 .854.353l2.853-2.853A1 1 0 0 1 4.414 12H14a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z"/>
+        <path d="M3 3.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5M3 6a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9A.5.5 0 0 1 3 6m0 2.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5"/>
+      </svg>`;
+    }
+    return '';
+  }
+
   async function renderAuditResults() {
     const items = collectRABData();
     const itemRows = document.querySelectorAll('#rabTableBody tr.rab-row-item');
@@ -1918,6 +1960,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
         const isCrit = an.severity === 'CRITICAL';
         if (isCrit) criticalCount++; else warningCount++;
 
+        const matchedItem = items.find(it => it.id === an.item_id);
         const targetRow = Array.from(itemRows).find(r => {
           const rId = parseInt(r.getAttribute('data-item-id') || r.getAttribute('data-id'));
           return rId === an.item_id;
@@ -1927,8 +1970,17 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
           targetRow.classList.add(isCrit ? 'rab-row-anomaly-critical' : 'rab-row-anomaly-warning');
         }
 
-        const rawName = targetRow ? (targetRow.querySelector('.rab-item-name')?.textContent || '') : '';
-        const cleanItemName = rawName.replace(/[\r\n\t]+/g, ' ').trim() || `Item #${an.item_id}`;
+        const rawName = (targetRow ? (targetRow.querySelector('.rab-item-name')?.textContent || '') : '') || (matchedItem ? (matchedItem.description || '') : '');
+        const cleanItemName = rawName.replace(/[\r\n\t]+/g, ' ').trim() || 'Item Pekerjaan';
+
+        const sevIconSvg = isCrit
+          ? getAuditToastIconSvg('critical', 16)
+          : getAuditToastIconSvg('info-yellow', 16);
+        const msgIconSvg = getAuditToastIconSvg('message', 12);
+
+        // Format pesan: tebalkan nama item pekerjaan tanpa tanda petik
+        let formattedMessage = escapeHtml(an.message || '');
+        formattedMessage = formattedMessage.replace(/(?:&quot;|")([^"&]+)(?:&quot;|")/g, '<strong>$1</strong>');
 
         warningCardsHTML += `
           <div class="audit-ribbon-card mb-3" 
@@ -1936,18 +1988,20 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
                data-category="${isCrit ? 'critical' : 'warning'}"
                data-item-name="${escapeHtml(cleanItemName)}"
                onclick="handleAnomalyCardClick(this)">
-            <div class="d-flex align-items-center gap-1.5 mb-1.5">
-              <span style="font-size: 11px;">${isCrit ? '🔴' : '🟡'}</span>
+            <div class="d-flex align-items-center gap-2 mb-1.5" style="gap: 8px;">
+              ${sevIconSvg}
               <span class="fw-bold" style="color: ${isCrit ? '#dc2626' : '#d97706'}; font-size: 11.5px; letter-spacing: 0.03em; text-transform: uppercase;">
-                ${(an.type || 'ANOMALI').replace(/_/g, ' ')} · ITEM #${an.item_id}
+                ${(an.type || 'ANOMALI').replace(/_/g, ' ')}
               </span>
             </div>
-            <div style="font-size: 12.5px; line-height: 1.5; color: #475569; margin-bottom: 8px;">
-              ${escapeHtml(an.message)}
+            <div style="font-size: 12.5px; line-height: 1.5; color: #475569;${an.recommendation ? ' margin-bottom: 6px;' : ''}">
+              ${formattedMessage}
             </div>
-            <div class="ps-2.5" style="border-left: 2px solid #cbd5e1; font-size: 11.5px; color: #64748b; line-height: 1.45;">
-              💡 ${escapeHtml(an.recommendation || 'Periksa kembali perhitungan kuantitas dan dimensi volume pekerjaan.')}
-            </div>
+            ${an.recommendation ? `
+            <div class="d-flex align-items-start gap-2" style="gap: 8px; font-size: 11.5px; line-height: 1.45; color: #64748b;">
+              ${msgIconSvg}
+              <span>${escapeHtml(an.recommendation)}</span>
+            </div>` : ''}
           </div>
         `;
       });
@@ -1958,13 +2012,15 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
       auditData.missing_scopes.forEach(ms => {
         warningCount++;
         const catName = (ms.category || 'Pekerjaan').replace(/[\r\n\t]+/g, ' ').trim();
+        const missingScopeIconSvg = getAuditToastIconSvg('warning-triangle', 16);
+
         warningCardsHTML += `
           <div class="audit-ribbon-card mb-3" style="border-left-color: #f59e0b;"
                data-category="warning"
                data-category-name="${escapeHtml(catName)}"
                onclick="handleMissingScopeCardClick(this)">
-            <div class="d-flex align-items-center gap-1.5 mb-1.5">
-              <span style="font-size: 11px;">⚠️</span>
+            <div class="d-flex align-items-center gap-2 mb-1.5" style="gap: 8px;">
+              ${missingScopeIconSvg}
               <span class="fw-bold" style="color: #d97706; font-size: 11.5px; letter-spacing: 0.03em; text-transform: uppercase;">
                 MISSING SCOPE · ${escapeHtml(ms.category || 'Pekerjaan')}
               </span>
@@ -2047,6 +2103,23 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     [sliceRed, sliceYellow, sliceGreen].forEach(bindDynamicTooltip);
   }
 
+  const auditCategoryCycleState = {
+    lastCategory: null,
+    currentIndex: -1
+  };
+
+  function ensureRabSectionExpanded(secCode) {
+    if (!secCode) return;
+    const minusLine = document.getElementById('minus-line-' + secCode);
+    const plusIcon = document.getElementById('plus-icon-' + secCode);
+    const hiddenItems = document.querySelectorAll('.sec-items-' + secCode + '.d-none');
+    if (hiddenItems.length > 0) {
+      hiddenItems.forEach(item => item.classList.remove('d-none'));
+      if (minusLine) minusLine.classList.remove('d-none');
+      if (plusIcon) plusIcon.classList.add('d-none');
+    }
+  }
+
   function handleAnomalyCardClick(el) {
     if (!el) return;
     const itemId = parseInt(el.getAttribute('data-item-id')) || null;
@@ -2079,16 +2152,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
 
     if (targetSecRow) {
       const secCode = targetSecRow.getAttribute('data-sec-code');
-      if (secCode) {
-        const minusLine = document.getElementById('minus-line-' + secCode);
-        const plusIcon = document.getElementById('plus-icon-' + secCode);
-        const hiddenItems = document.querySelectorAll('.sec-items-' + secCode + '.d-none');
-        if (hiddenItems.length > 0) {
-          hiddenItems.forEach(item => item.classList.remove('d-none'));
-          if (minusLine) minusLine.classList.remove('d-none');
-          if (plusIcon) plusIcon.classList.add('d-none');
-        }
-      }
+      ensureRabSectionExpanded(secCode);
       targetSecRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
       targetSecRow.classList.remove('rab-row-flash-amber');
       void targetSecRow.offsetWidth;
@@ -2099,110 +2163,132 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
 
   function scrollToRabItemByText(queryText, category, itemId = null) {
     const q = (queryText || '').toLowerCase().trim();
-    const rows = document.querySelectorAll('#rabTableBody tr.rab-row-item');
+    const allRows = Array.from(document.querySelectorAll('#rabTableBody tr.rab-row-item'));
 
-    rows.forEach(r => {
+    // Bersihkan highlight dan timer animasi yang sedang berjalan
+    allRows.forEach(r => {
       if (r._highlightTimer) clearTimeout(r._highlightTimer);
       r.classList.remove('rab-row-flash-red', 'rab-row-flash-amber', 'rab-row-flash-green', 'rab-row-hover-active');
     });
 
-    if (category === 'normal' && !q && !itemId) {
-      const normalRows = [];
-      rows.forEach(r => {
-        if (!r.classList.contains('rab-row-anomaly-critical') && !r.classList.contains('rab-row-anomaly-warning')) {
-          normalRows.push(r);
-        }
-      });
-
-      if (normalRows.length > 0) {
-        normalRows.forEach(r => {
-          const secCode = r.getAttribute('data-sec-code');
-          if (secCode) {
-            const minusLine = document.getElementById('minus-line-' + secCode);
-            const plusIcon = document.getElementById('plus-icon-' + secCode);
-            const hiddenItems = document.querySelectorAll('.sec-items-' + secCode + '.d-none');
-            if (hiddenItems.length > 0) {
-              hiddenItems.forEach(el => el.classList.remove('d-none'));
-              if (minusLine) minusLine.classList.remove('d-none');
-              if (plusIcon) plusIcon.classList.add('d-none');
-            }
+    // 1. Navigasi Spesifik Item (dari klik kartu Detail Anomali atau pencarian teks)
+    if (itemId || q) {
+      let targetRow = null;
+      if (itemId) {
+        targetRow = document.querySelector(`#rabTableBody tr.rab-row-item[data-item-id="${itemId}"]`);
+      }
+      if (!targetRow && q) {
+        allRows.forEach(r => {
+          const nameSpan = r.querySelector('.rab-item-name');
+          const rowName = (nameSpan ? nameSpan.textContent : (r.getAttribute('data-item-name') || '')).toLowerCase().trim();
+          if (rowName.includes(q) || q.includes(rowName)) {
+            targetRow = r;
           }
         });
+      }
 
-        normalRows[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (targetRow) {
+        const secCode = targetRow.getAttribute('data-sec-code');
+        ensureRabSectionExpanded(secCode);
 
-        normalRows.forEach(r => {
-          r.classList.add('rab-row-flash-green');
-          r._highlightTimer = setTimeout(() => {
-            r.classList.remove('rab-row-flash-green');
-          }, 2500);
-        });
+        targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        const isCrit = category === 'critical' || targetRow.classList.contains('rab-row-anomaly-critical');
+        const isWarn = category === 'warning' || targetRow.classList.contains('rab-row-anomaly-warning');
+        const flashClass = isCrit ? 'rab-row-flash-red' : (isWarn ? 'rab-row-flash-amber' : 'rab-row-flash-green');
+
+        void targetRow.offsetWidth;
+        targetRow.classList.add(flashClass, 'rab-row-hover-active');
+        targetRow._highlightTimer = setTimeout(() => {
+          targetRow.classList.remove(flashClass, 'rab-row-hover-active');
+        }, 2500);
+
+        // Sinkronisasi status siklus (cycle) agar jika user mengklik badge kategori berikutnya, siklus berlanjut mulus
+        const rowCategory = isCrit ? 'critical' : (isWarn ? 'warning' : 'normal');
+        let groupRows = [];
+        if (rowCategory === 'critical') {
+          groupRows = Array.from(document.querySelectorAll('#rabTableBody tr.rab-row-item.rab-row-anomaly-critical'));
+        } else if (rowCategory === 'warning') {
+          groupRows = Array.from(document.querySelectorAll('#rabTableBody tr.rab-row-item.rab-row-anomaly-warning'));
+        } else {
+          groupRows = allRows.filter(r => !r.classList.contains('rab-row-anomaly-critical') && !r.classList.contains('rab-row-anomaly-warning'));
+        }
+
+        const idx = groupRows.indexOf(targetRow);
+        auditCategoryCycleState.lastCategory = rowCategory;
+        auditCategoryCycleState.currentIndex = idx !== -1 ? idx : 0;
       }
       return;
     }
 
-    let targetRow = null;
-
-    if (itemId) {
-      targetRow = document.querySelector(`#rabTableBody tr.rab-row-item[data-item-id="${itemId}"]`);
-    }
-
-    if (!targetRow && q) {
-      rows.forEach(r => {
-        const nameSpan = r.querySelector('.rab-item-name');
-        const rowName = (nameSpan ? nameSpan.textContent : (r.getAttribute('data-item-name') || '')).toLowerCase().trim();
-        if (rowName.includes(q) || q.includes(rowName)) {
-          targetRow = r;
-        }
-      });
-    }
-
-    if (!targetRow && category) {
-      targetRow = document.querySelector(`#rabTableBody tr.rab-row-anomaly-${category}`);
-    }
-
-    if (!targetRow && rows.length > 0) {
-      targetRow = rows[0];
-    }
-
-    if (targetRow) {
-      const secCode = targetRow.getAttribute('data-sec-code');
-      if (secCode) {
-        const minusLine = document.getElementById('minus-line-' + secCode);
-        const plusIcon = document.getElementById('plus-icon-' + secCode);
-        const hiddenItems = document.querySelectorAll('.sec-items-' + secCode + '.d-none');
-        
-        if (hiddenItems.length > 0) {
-          hiddenItems.forEach(el => el.classList.remove('d-none'));
-          if (minusLine) minusLine.classList.remove('d-none');
-          if (plusIcon) plusIcon.classList.add('d-none');
-        }
+    // 2. Navigasi Agregat Kategori (dari klik Badge atau Donut Slice: 'critical', 'warning', 'normal')
+    if (category) {
+      let matchingRows = [];
+      if (category === 'critical') {
+        matchingRows = Array.from(document.querySelectorAll('#rabTableBody tr.rab-row-item.rab-row-anomaly-critical'));
+      } else if (category === 'warning') {
+        matchingRows = Array.from(document.querySelectorAll('#rabTableBody tr.rab-row-item.rab-row-anomaly-warning'));
+      } else if (category === 'normal') {
+        matchingRows = allRows.filter(r => 
+          !r.classList.contains('rab-row-anomaly-critical') && !r.classList.contains('rab-row-anomaly-warning')
+        );
       }
 
-      targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (matchingRows.length === 0) return;
 
-      const isCrit = category === 'critical' || targetRow.classList.contains('rab-row-anomaly-critical');
-      const isWarn = category === 'warning' || targetRow.classList.contains('rab-row-anomaly-warning');
+      // Expand seluruh accordion section tempat item-item ini berada
+      matchingRows.forEach(r => {
+        ensureRabSectionExpanded(r.getAttribute('data-sec-code'));
+      });
 
-      const flashClass = isCrit ? 'rab-row-flash-red' : (isWarn ? 'rab-row-flash-amber' : 'rab-row-flash-green');
-      
-      targetRow.classList.remove('rab-row-flash-red', 'rab-row-flash-amber', 'rab-row-flash-green', 'rab-row-hover-active');
-      void targetRow.offsetWidth;
-      targetRow.classList.add(flashClass);
+      // Opsi B: Cycle index (bergantian ke item berikutnya setiap kali diklik)
+      if (auditCategoryCycleState.lastCategory === category) {
+        auditCategoryCycleState.currentIndex = (auditCategoryCycleState.currentIndex + 1) % matchingRows.length;
+      } else {
+        auditCategoryCycleState.lastCategory = category;
+        auditCategoryCycleState.currentIndex = 0;
+      }
 
-      targetRow._highlightTimer = setTimeout(() => {
-        targetRow.classList.remove(flashClass);
-      }, 2500);
+      const activeRow = matchingRows[auditCategoryCycleState.currentIndex];
 
-      // Synchronize active card selection in Detail Anomali list
-      const targetItemId = targetRow.getAttribute('data-item-id');
-      if (targetItemId) {
-        const matchedCard = document.querySelector(`.audit-ribbon-card[data-item-id="${targetItemId}"]`);
-        if (matchedCard && !matchedCard.classList.contains('audit-card-selected')) {
+      // Scroll viewport ke baris yang sedang aktif
+      activeRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      // Highlight/Flash SEMUA baris dalam kategori (konsisten seperti warna hijau)
+      const flashClass = category === 'critical' ? 'rab-row-flash-red' : (category === 'warning' ? 'rab-row-flash-amber' : 'rab-row-flash-green');
+      matchingRows.forEach(r => {
+        void r.offsetWidth;
+        r.classList.add(flashClass);
+        r._highlightTimer = setTimeout(() => {
+          r.classList.remove(flashClass, 'rab-row-hover-active');
+        }, 2500);
+      });
+
+      // Berikan fokus aktif khusus pada baris target saat ini
+      activeRow.classList.add('rab-row-hover-active');
+
+      // Sinkronisasi pemilihan kartu pada daftar Detail Anomali di sidebar
+      const activeItemId = activeRow.getAttribute('data-item-id');
+      if (activeItemId) {
+        const matchedCard = document.querySelector(`.audit-ribbon-card[data-item-id="${activeItemId}"]`);
+        if (matchedCard) {
           document.querySelectorAll('.audit-ribbon-card').forEach(c => c.classList.remove('audit-card-selected'));
           matchedCard.classList.add('audit-card-selected');
           matchedCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
+      } else {
+        document.querySelectorAll('.audit-ribbon-card').forEach(c => c.classList.remove('audit-card-selected'));
+      }
+
+      // Update tooltip/title badge sebagai indikator posisi siklus
+      const badgeIdMap = {
+        critical: 'badgeCountCritical',
+        warning: 'badgeCountWarning',
+        normal: 'badgeCountNormal'
+      };
+      const badgeEl = document.getElementById(badgeIdMap[category]);
+      if (badgeEl && matchingRows.length > 1) {
+        badgeEl.setAttribute('title', `Item ${auditCategoryCycleState.currentIndex + 1} dari ${matchingRows.length} (Klik lagi untuk item berikutnya)`);
       }
     }
   }
