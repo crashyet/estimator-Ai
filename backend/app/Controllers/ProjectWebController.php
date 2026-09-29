@@ -747,14 +747,18 @@ class ProjectWebController extends BaseController
                 foreach ($dbItems as $iIdx => $item) {
                     $vol = (float) $item['volume'];
 
-                    // Prioritaskan harga_satuan dari tabel master ahsp_items
+                    // Prioritaskan harga satuan dari item yang tersimpan di database (hasil input / ubah pengguna)
                     $price = 0.0;
-                    if (!empty($item['ahsp_price']) && (float) $item['ahsp_price'] > 0) {
-                        $price = (float) $item['ahsp_price'];
-                    } elseif (!empty($item['unit_price']) && (float) $item['unit_price'] > 0) {
+                    if (!empty($item['unit_price']) && (float) $item['unit_price'] > 0) {
                         $price = (float) $item['unit_price'];
+                    } elseif (!empty($item['ahsp_price']) && (float) $item['ahsp_price'] > 0) {
+                        // Default: ambil dari DB AHSP jika unit_price masih 0 / belum pernah diisi
+                        $price = (float) $item['ahsp_price'];
+                        if (!empty($item['id'])) {
+                            $db->table('estimation_items')->where('id', $item['id'])->update(['unit_price' => $price]);
+                        }
                     } else {
-                        // Fallback: cari ke ahsp_items berdasarkan nama pekerjaan
+                        // Fallback: cari ke ahsp_items berdasarkan nama pekerjaan jika ahsp_code belum terpetakan
                         $searchName = !empty($item['ahsp_name']) ? $item['ahsp_name'] : ($item['item_name'] ?? '');
                         if (!empty($searchName)) {
                             $ahspRow = $db->table('ahsp_items')
@@ -769,13 +773,11 @@ class ProjectWebController extends BaseController
                             }
                             if ($ahspRow && !empty($ahspRow['harga_satuan'])) {
                                 $price = (float) $ahspRow['harga_satuan'];
+                                if (!empty($item['id'])) {
+                                    $db->table('estimation_items')->where('id', $item['id'])->update(['unit_price' => $price]);
+                                }
                             }
                         }
-                    }
-
-                    // Sinkronkan unit_price di database estimation_items jika berbeda dan price > 0
-                    if ($price > 0 && abs((float) $item['unit_price'] - $price) > 0.001 && !empty($item['id'])) {
-                        $db->table('estimation_items')->where('id', $item['id'])->update(['unit_price' => $price]);
                     }
 
                     // Hitung total harga (harga satuan dikalikan volume)

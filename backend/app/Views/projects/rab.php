@@ -1103,7 +1103,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
                   </td>
 
                   <!-- Col 5: Harga Satuan -->
-                  <td class="text-end text-dark fw-medium tab-num" style="font-size: 12px;">
+                  <td class="text-end text-dark fw-medium tab-num" style="font-size: 12px; cursor: pointer;" title="Klik untuk mengubah volume & harga" onclick="openEditItemModal('<?= esc($it['id']) ?>', '<?= esc(addslashes($it['ahsp_name'] ?: $it['name'])) ?>', <?= (float)$it['volume'] ?>, '<?= esc(addslashes($it['unit'])) ?>', <?= (float)$it['unit_price'] ?>)">
                     Rp <?= number_format($it['unit_price'], 2, ',', '.') ?>
                   </td>
 
@@ -1488,7 +1488,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
       </div>
       <div class="modal-footer bg-light p-2 justify-content-end">
         <button type="button" class="btn btn-secondary btn-sm rounded-pill" data-bs-dismiss="modal">Batal</button>
-        <button type="button" class="btn btn-success btn-sm rounded-pill px-3" onclick="saveRabItemEdit()" style="background-color: #00802b; border-color: #00802b;">
+        <button type="button" class="btn btn-success btn-sm rounded-pill px-3" id="btnSaveRabItem" onclick="saveRabItemEdit()" style="background-color: #087f23; border-color: #087f23;">
           Simpan
         </button>
       </div>
@@ -2535,7 +2535,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
           <td class="text-center text-muted" style="font-size: 12px;">
             ${escapeHtml(finalUnit)}
           </td>
-          <td class="text-end text-dark fw-medium tab-num" style="font-size: 12px;">
+          <td class="text-end text-dark fw-medium tab-num" style="font-size: 12px; cursor: pointer;" title="Klik untuk mengubah volume & harga" onclick="openEditItemModal('${newItem.id}', '${escapeHtml(displayAhspName)}', ${finalVol}, '${escapeHtml(finalUnit)}', ${finalPrice})">
             Rp ${finalPrice.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </td>
           <td class="text-end text-dark fw-medium tab-num" style="font-size: 12px;">
@@ -3544,6 +3544,12 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     const id = document.getElementById('editRabItemId').value;
     const vol = parseFloat(document.getElementById('editRabVolumeInput').value) || 0;
     const price = parseFloat(document.getElementById('editRabPriceInput').value) || 0;
+    const saveBtn = document.getElementById('btnSaveRabItem');
+
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Menyimpan...';
+    }
 
     try {
       const res = await fetch(`<?= base_url('api/estimation-items') ?>/${id}`, {
@@ -3557,9 +3563,17 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
         setTimeout(() => location.reload(), 500);
       } else {
         showToast('Gagal', 'Gagal memperbarui pekerjaan.', 'error');
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Simpan';
+        }
       }
     } catch (e) {
       showToast('Error', e.message || 'Terjadi kesalahan.', 'error');
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Simpan';
+      }
     } finally {
       editModalInstance.hide();
     }
