@@ -2433,20 +2433,161 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
       }
       return true;
     } else if (act.action_type === 'ADD_ITEM') {
+      const projectId = `<?= esc($project['id']) ?>`;
+      const itemName = (act.changes && act.changes.item_name) || act.item_name || act.description || 'Pekerjaan Baru';
+      const volume = (act.changes && typeof act.changes.volume !== 'undefined') ? parseFloat(act.changes.volume) : (typeof act.volume !== 'undefined' ? parseFloat(act.volume) : 1);
+      const unit = (act.changes && act.changes.unit) || act.unit || 'm2';
+      const unitPrice = (act.changes && typeof act.changes.unit_price !== 'undefined') ? parseFloat(act.changes.unit_price) : (typeof act.unit_price !== 'undefined' ? parseFloat(act.unit_price) : 0);
+      const ahspCode = (act.changes && act.changes.ahsp_code) || act.ahsp_code || null;
+      const targetCategory = act.target_category || (act.changes && act.changes.category) || null;
+
       const res = await fetch(`<?= base_url("api/estimation-items") ?>`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify({
-          section_id: act.target_section_id || 1,
-          item_name: act.changes.item_name || act.description,
-          volume: parseFloat(act.changes.volume) || 1,
-          unit: act.changes.unit || 'm2',
-          unit_price: parseFloat(act.changes.unit_price) || 0,
-          ahsp_code: act.changes.ahsp_code || null,
-          ahsp_status: 'unmapped'
+          project_id: projectId,
+          section_id: act.target_section_id || null,
+          target_category: targetCategory,
+          item_name: itemName,
+          volume: volume,
+          unit: unit,
+          unit_price: unitPrice,
+          ahsp_code: ahspCode,
+          ahsp_status: ahspCode ? 'mapped_high' : 'unmapped'
         })
       });
-      if (!res.ok) throw new Error('Gagal tambah item');
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.message || 'Gagal tambah item ke database');
+      }
+
+      const resJson = await res.json();
+      const newItem = resJson.data || {};
+
+      // If empty project placeholder row exists, remove it
+      const emptyRow = document.querySelector('#rabTableBody tr td.text-muted');
+      if (emptyRow && emptyRow.closest('tr')) {
+        emptyRow.closest('tr').remove();
+      }
+
+      // Find target section row in DOM
+      let targetSecId = newItem.section_id || act.target_section_id;
+      let secRow = null;
+      if (targetSecId) {
+        secRow = document.querySelector(`#rabTableBody tr.rab-sec-row[data-sec-id="${targetSecId}"]`);
+      }
+      if (!secRow && newItem.section_code) {
+        secRow = document.querySelector(`#rabTableBody tr.rab-sec-row[data-sec-code="${newItem.section_code}"]`);
+      }
+      if (!secRow && (targetCategory || newItem.section_name)) {
+        const searchCat = (targetCategory || newItem.section_name).toLowerCase();
+        for (const sr of document.querySelectorAll('#rabTableBody tr.rab-sec-row')) {
+          const sName = (sr.dataset.secName || '').toLowerCase();
+          if (sName.includes(searchCat) || searchCat.includes(sName)) {
+            secRow = sr;
+            break;
+          }
+        }
+      }
+      if (!secRow) {
+        secRow = document.querySelector('#rabTableBody tr.rab-sec-row');
+      }
+
+      if (secRow) {
+        const secCode = secRow.dataset.secCode || newItem.section_code || '1';
+        const secName = secRow.dataset.secName || newItem.section_name || '';
+
+        // Build new table row matching the exact 1:1 view structure
+        const newRow = document.createElement('tr');
+        newRow.className = `rab-row-item sec-items-${secCode} rab-row-flash-green`;
+        newRow.setAttribute('data-sec-code', secCode);
+        newRow.setAttribute('data-sec-name', secName.toLowerCase());
+        newRow.setAttribute('data-item-id', newItem.id);
+        const displayName = newItem.item_name || newItem.name || itemName;
+        const displayAhspName = newItem.ahsp_name || displayName;
+        const displayAhspCode = newItem.ahsp_code || '-';
+        newRow.setAttribute('data-item-name', displayAhspName);
+        newRow.setAttribute('data-raw-name', displayName.toLowerCase());
+        newRow.setAttribute('data-ahsp-name', displayAhspName.toLowerCase());
+        newRow.setAttribute('data-ahsp-code', displayAhspCode.toLowerCase());
+        newRow.setAttribute('data-item-no', String(newItem.item_no || ''));
+        newRow.setAttribute('data-item-unit', String(newItem.unit || 'm2').toLowerCase());
+
+        const finalVol = parseFloat(newItem.volume) || volume;
+        const finalPrice = parseFloat(newItem.unit_price) || unitPrice;
+        const finalSubtotal = finalVol * finalPrice;
+        const finalUnit = newItem.unit || unit;
+        const finalItemNo = newItem.item_no || (document.querySelectorAll(`#rabTableBody tr.sec-items-${secCode}`).length + 1);
+
+        newRow.innerHTML = `
+          <td class="text-center text-muted fw-semibold tab-num" style="font-size: 11.5px;">
+            ${finalItemNo}
+          </td>
+          <td style="padding-left: 32px;">
+            <div class="d-flex align-items-center gap-1.5">
+              <span class="rab-item-name">${escapeHtml(displayName)}</span>
+            </div>
+          </td>
+          <td class="text-center text-dark fw-medium tab-num" style="font-size: 12px; cursor: pointer;" title="Klik untuk mengubah volume & harga" onclick="openEditItemModal('${newItem.id}', '${escapeHtml(displayAhspName)}', ${finalVol}, '${escapeHtml(finalUnit)}', ${finalPrice})">
+            ${finalVol.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </td>
+          <td class="text-center text-muted" style="font-size: 12px;">
+            ${escapeHtml(finalUnit)}
+          </td>
+          <td class="text-end text-dark fw-medium tab-num" style="font-size: 12px;">
+            Rp ${finalPrice.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </td>
+          <td class="text-end text-dark fw-medium tab-num" style="font-size: 12px;">
+            Rp ${finalSubtotal.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </td>
+          <td class="text-end text-dark fw-medium tab-num" style="font-size: 12px;">
+            0.00 %
+          </td>
+          <td class="text-center">
+            <div class="d-inline-flex align-items-center justify-content-center gap-1">
+              <button 
+                type="button" 
+                class="btn-item-icon edit-icon" 
+                onclick="openEditItemModal('${newItem.id}', '${escapeHtml(displayAhspName)}', ${finalVol}, '${escapeHtml(finalUnit)}', ${finalPrice})" 
+                title="Ubah Item"
+              >
+                <i class="bi bi-pencil-square" style="font-size: 13.5px;"></i>
+              </button>
+              <button 
+                type="button" 
+                class="btn-item-icon trash-icon" 
+                onclick="confirmDeleteItem('${newItem.id}', '${escapeHtml(displayName)}')" 
+                title="Hapus Item"
+              >
+                <i class="bi bi-trash" style="font-size: 13.5px;"></i>
+              </button>
+            </div>
+          </td>
+        `;
+
+        // Insert after last existing item in this section or after section row
+        const existingSecItems = document.querySelectorAll(`#rabTableBody tr.sec-items-${secCode}`);
+        if (existingSecItems.length > 0) {
+          existingSecItems[existingSecItems.length - 1].insertAdjacentElement('afterend', newRow);
+        } else {
+          secRow.insertAdjacentElement('afterend', newRow);
+        }
+
+        // Expand section if collapsed
+        if (typeof collapsedSections !== 'undefined' && collapsedSections[secCode]) {
+          toggleCategoryCollapse(secCode);
+        }
+
+        // Scroll to new row and flash highlight
+        setTimeout(() => {
+          newRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+        setTimeout(() => {
+          newRow.classList.remove('rab-row-flash-green');
+        }, 3000);
+      }
+
       return true;
     } else if (act.action_type === 'DELETE_ITEM' && act.target_item_id) {
       const res = await fetch(`<?= base_url("api/estimation-items") ?>/${act.target_item_id}`, {
