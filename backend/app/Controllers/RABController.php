@@ -22,7 +22,7 @@ class RabController extends ResourceController
             ], 400);
         }
 
-        $envUrl = env('PYTHON_API_URL') ?: 'https://api-esti.eyi.my.id';
+        $envUrl = env('PYTHON_API_URL') ?: 'https://crashyet-burnout-predict.hf.space/';
         $pythonBaseUrl = rtrim($envUrl, '/');
         $pythonUrl = $pythonBaseUrl . '/api/estimate'; 
 
@@ -108,7 +108,7 @@ class RabController extends ResourceController
         $clientName  = $this->request->getPost('client') ?? 'Klien Internal';
 
         // 3. Arahkan ke URL FastAPI Python (dinamis via .env dengan fallback)
-        $envUrl = env('PYTHON_API_URL') ?: 'https://api-esti.eyi.my.id';
+        $envUrl = env('PYTHON_API_URL') ?: 'https://crashyet-burnout-predict.hf.space/';
         $pythonBaseUrl = rtrim($envUrl, '/');
         $pythonUrl = $pythonBaseUrl . '/api/rab/analyze-image';
 
@@ -172,7 +172,7 @@ class RabController extends ResourceController
         }
 
         // 2. Arahkan ke URL FastAPI Python (dinamis via .env dengan fallback)
-        $envUrl = env('PYTHON_API_URL') ?: 'https://api-esti.eyi.my.id';
+        $envUrl = env('PYTHON_API_URL') ?: 'https://crashyet-burnout-predict.hf.space/';
         $pythonBaseUrl = rtrim($envUrl, '/');
         $pythonUrl = $pythonBaseUrl . '/api/rab/analyze-prompt';
 
