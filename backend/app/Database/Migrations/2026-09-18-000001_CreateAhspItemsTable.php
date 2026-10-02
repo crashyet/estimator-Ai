@@ -20,12 +20,6 @@ class CreateAhspItemsTable extends Migration
                 'constraint' => 100,
                 'comment'    => 'Kode unik AHSP, contoh: 1.6.14',
             ],
-            'kode_ahsp' => [
-                'type'       => 'VARCHAR',
-                'constraint' => 100,
-                'null'       => true,
-                'comment'    => 'Alias kode AHSP untuk kompatibilitas query',
-            ],
             'nama_pekerjaan' => [
                 'type'       => 'VARCHAR',
                 'constraint' => 500,
