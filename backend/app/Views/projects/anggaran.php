@@ -209,6 +209,31 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
     box-shadow: none;
   }
 
+  /* Button Mulai Deteksi */
+  .btn-batal-deteksi {
+    background-color: #fff;
+    color: #8b8b8bff;
+    font-size: 14px;
+    font-weight: 700;
+    border: 1px solid #8b8b8bff;
+    border-radius: 9999px;
+    padding: 10px 28px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-batal-deteksi:hover:not(:disabled) {
+    background-color: #f3f3f3ff;
+  }
+  .btn-batal-deteksi:disabled {
+    background-color: #e2e8f0;
+    color: #94a3b8;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
   /* Stepper */
   .processing-step-item {
     display: flex;
@@ -289,7 +314,7 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
     overflow: hidden;
   }
   .wbs-table-scroll-area {
-    max-height: 65vh;
+    max-height: 100vh;
     overflow-x: auto;
     overflow-y: auto;
     position: relative;
@@ -601,14 +626,14 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
       <!-- Selection Form View -->
       <div id="detectionFormSection">
         <div class="text-center mb-4">
-          <h2 class="fw-bold text-dark fs-5 mb-1">Pilih Metode Deteksi</h2>
-          <p class="text-secondary small mb-0">
+          <h2 class="fw-bold text-dark fs-5 mb-1" id="detectFormTitle">Pilih Metode Deteksi</h2>
+          <p class="text-secondary small mb-0" id="detectFormSubtitle">
             Pilih metode analisis yang ingin Anda gunakan untuk mendeteksi rincian anggaran proyek
           </p>
         </div>
 
         <!-- 2 Method Selection Cards -->
-        <div class="row g-3 mb-4">
+        <div class="row g-3 mb-4" id="methodSelectionContainer">
           <!-- Option 1: Berdasarkan Desain -->
           <div class="col-12 col-md-6">
             <div 
@@ -647,7 +672,7 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
                   <path d="M86 20L87.5 14L93.5 12.5L87.5 11L86 5L84.5 11L78.5 12.5L84.5 14Z" fill="#089613" />
                 </svg>
               </div>
-              <div class="detect-method-title">Prompt AI</div>
+              <div class="detect-method-title">Deskripsi Teks</div>
               <div class="detect-method-desc">Deskripsi & Spesifikasi Bangunan</div>
             </div>
           </div>
@@ -745,7 +770,7 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
         <!-- Footer Action Buttons -->
         <div class="d-flex align-items-center justify-content-end gap-3 pt-3 border-top border-light-subtle">
           <?php if ($hasRuns): ?>
-            <button type="button" class="btn btn-outline-secondary btn-sm px-4 rounded-pill" onclick="cancelDetectMode()">
+            <button type="button" class="btn-batal-deteksi" onclick="cancelDetectMode()">
               Batal
             </button>
           <?php endif; ?>
@@ -756,8 +781,8 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
             disabled 
             onclick="startDetectionProcess()"
           >
-            <i class="bi bi-play-fill fs-5"></i>
-            <span>Mulai Deteksi</span>
+            <i class="bi bi-play-fill fs-6"></i>
+            <span id="btnMulaiDeteksiText"><?= $hasRuns ? 'Deteksi Ulang' : 'Mulai Deteksi' ?></span>
           </button>
         </div>
       </div>
@@ -768,7 +793,7 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
     <!-- ============================================================== -->
     <div id="wbsTableContainerSection" class="<?= $showDetect ? 'd-none' : '' ?>">
 
-      <!-- Action Toolbar: Search Control -->
+      <!-- Action Toolbar: Search & Deteksi Ulang Control -->
       <div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3 mb-3 pb-2">
         <div class="anggaran-search-box">
           <i class="bi bi-search anggaran-search-icon"></i>
@@ -787,6 +812,23 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
             title="Hapus pencarian"
           >&times;</button>
         </div>
+
+        <?php if ($hasRuns): ?>
+          <div class="d-flex align-items-center gap-2">
+            <button 
+              type="button" 
+              class="btn btn-sm rounded-pill px-3 py-1.5 fw-bold d-inline-flex align-items-center gap-2 shadow-sm"
+              onclick="handleDeteksiUlang()"
+              style="background-color: #ffffff; color: #089613; border: 1.5px solid #089613; font-size: 13px; transition: all 0.2s ease;"
+              onmouseover="this.style.backgroundColor='#089613'; this.style.color='#ffffff';"
+              onmouseout="this.style.backgroundColor='#ffffff'; this.style.color='#089613';"
+              title="Lakukan deteksi ulang untuk proyek ini"
+            >
+              <i class="bi bi-arrow-repeat fs-6"></i>
+              <span>Deteksi Ulang</span>
+            </button>
+          </div>
+        <?php endif; ?>
       </div>
 
       <!-- WBS Table Wrapper -->
@@ -1130,6 +1172,8 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
   const PROJECT_ID = "<?= esc($project['id']) ?>";
   const PROJECT_UUID = "<?= esc($project['uuid']) ?>";
   const PROJECT_TITLE = "<?= esc(addslashes($project['title'])) ?>";
+  const LAST_DETECTION_METHOD = "<?= esc($detectionMethod ?? 'file') ?>";
+  const LAST_PROMPT_TEXT = <?= json_encode($lastPromptText ?? '') ?>;
 
   // State variables
   let currentMethod = 'file'; // 'file' | 'prompt'
@@ -1164,24 +1208,46 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
   // ----------------------------------------------------------------
   // PILIH METODE DETEKSI LOGIC
   // ----------------------------------------------------------------
+  function updateDetectFormHeader(method, isFocusedMode) {
+    const titleEl = document.getElementById('detectFormTitle');
+    const subtitleEl = document.getElementById('detectFormSubtitle');
+    if (!titleEl || !subtitleEl) return;
+
+    if (isFocusedMode) {
+      if (method === 'prompt') {
+        titleEl.textContent = 'Deteksi Ulang melalui Deskripsi Teks';
+        subtitleEl.textContent = 'Perbarui deskripsi konsep atau spesifikasi teknis bangunan untuk menghitung ulang estimasi WBS';
+      } else {
+        titleEl.textContent = 'Deteksi Ulang melalui Upload Berkas DED';
+        subtitleEl.textContent = 'Unggah dokumen DED atau gambar kerja terbaru untuk menghitung ulang estimasi WBS';
+      }
+    } else {
+      titleEl.textContent = 'Pilih Metode Deteksi';
+      subtitleEl.textContent = 'Pilih metode analisis yang ingin Anda gunakan untuk mendeteksi rincian anggaran proyek';
+    }
+  }
+
   function selectDetectMethod(method) {
     currentMethod = method;
     const optFile = document.getElementById('methodOptionFile');
     const optPrompt = document.getElementById('methodOptionPrompt');
     const subFile = document.getElementById('subformFile');
     const subPrompt = document.getElementById('subformPrompt');
+    const methodCards = document.getElementById('methodSelectionContainer');
+    const isFocused = methodCards && methodCards.classList.contains('d-none');
 
     if (method === 'file') {
-      optFile.classList.add('active');
-      optPrompt.classList.remove('active');
-      subFile.classList.remove('d-none');
-      subPrompt.classList.add('d-none');
+      if (optFile) optFile.classList.add('active');
+      if (optPrompt) optPrompt.classList.remove('active');
+      if (subFile) subFile.classList.remove('d-none');
+      if (subPrompt) subPrompt.classList.add('d-none');
     } else {
-      optFile.classList.remove('active');
-      optPrompt.classList.add('active');
-      subFile.classList.add('d-none');
-      subPrompt.classList.remove('d-none');
+      if (optFile) optFile.classList.remove('active');
+      if (optPrompt) optPrompt.classList.add('active');
+      if (subFile) subFile.classList.add('d-none');
+      if (subPrompt) subPrompt.classList.remove('d-none');
     }
+    updateDetectFormHeader(method, isFocused);
     updateMulaiButtonState();
   }
 
@@ -1263,6 +1329,8 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
     document.getElementById('detectionSelectionCard').classList.remove('d-none');
     document.getElementById('detectionProcessingState').classList.add('d-none');
     document.getElementById('detectionFormSection').classList.remove('d-none');
+    const btnText = document.getElementById('btnMulaiDeteksiText');
+    if (btnText) btnText.textContent = HAS_RUNS ? 'Deteksi Ulang' : 'Mulai Deteksi';
     window.scrollTo({ top: 120, behavior: 'smooth' });
   }
 
@@ -1402,13 +1470,19 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
       if (subTitleEl) subTitleEl.textContent = 'Menyimpan rincian estimasi WBS ke basis data...';
 
       const activeProjectIdentifier = PROJECT_UUID || PROJECT_ID;
+      const payloadToSave = {
+        ...aiResult,
+        detection_method: currentMethod,
+        prompt_text: (currentMethod === 'prompt' ? promptText : '')
+      };
+
       const saveResponse = await fetch('/api/projects/' + encodeURIComponent(activeProjectIdentifier) + '/save-estimation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: JSON.stringify(aiResult)
+        body: JSON.stringify(payloadToSave)
       });
 
       const saveJson = await saveResponse.json().catch(() => ({}));
@@ -1426,7 +1500,7 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
       }
 
       setTimeout(() => {
-        window.location.href = '/anggaran?id=' + encodeURIComponent(activeProjectIdentifier);
+        window.location.href = '/anggaran?id=' + encodeURIComponent(activeProjectIdentifier) + '&view=anggaran';
       }, 700);
 
     } catch (err) {
@@ -1694,15 +1768,76 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
     }
   }
 
-  function confirmProceedToRab() {
+  async function confirmProceedToRab() {
     if (proceedModalInstance) proceedModalInstance.hide();
     if (typeof showToast === 'function') {
       showToast('Lanjut ke RAB', 'Menyimpan struktur estimasi dan beralih ke tahap penyusunan Rencana Anggaran Biaya (RAB)...', 'success');
     }
+    const activeProjectIdentifier = PROJECT_UUID || PROJECT_ID;
+    try {
+      await fetch(`/api/projects/${encodeURIComponent(activeProjectIdentifier)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'Tahap RAB' })
+      });
+    } catch (_e) {}
     setTimeout(() => {
-      const activeProjectIdentifier = PROJECT_UUID || PROJECT_ID;
       window.location.href = `/rab?id=${encodeURIComponent(activeProjectIdentifier)}`;
-    }, 700);
+    }, 450);
+  }
+
+  function handleDeteksiUlang() {
+    const selectionCard = document.getElementById('detectionSelectionCard');
+    const tableSection = document.getElementById('wbsTableContainerSection');
+
+    if (tableSection) tableSection.classList.add('d-none');
+    if (selectionCard) selectionCard.classList.remove('d-none');
+
+    const procState = document.getElementById('detectionProcessingState');
+    const formSec = document.getElementById('detectionFormSection');
+    if (procState) procState.classList.add('d-none');
+    if (formSec) formSec.classList.remove('d-none');
+
+    // Focus strictly on active method by hiding selection cards by default during re-detection
+    const methodCards = document.getElementById('methodSelectionContainer');
+    if (methodCards) methodCards.classList.add('d-none');
+
+    const btnText = document.getElementById('btnMulaiDeteksiText');
+    if (btnText) btnText.textContent = 'Deteksi Ulang';
+
+    const activeMethod = LAST_DETECTION_METHOD || 'file';
+    updateDetectFormHeader(activeMethod, true);
+
+    if (activeMethod === 'prompt') {
+      selectDetectMethod('prompt');
+      if (LAST_PROMPT_TEXT) {
+        const textarea = document.getElementById('promptTextInput');
+        if (textarea) {
+          textarea.value = LAST_PROMPT_TEXT;
+          handlePromptInput(LAST_PROMPT_TEXT);
+        }
+      }
+    } else {
+      selectDetectMethod('file');
+    }
+
+    selectionCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function toggleMethodSelection(targetMethod) {
+    const methodCards = document.getElementById('methodSelectionContainer');
+    if (methodCards) {
+      if (methodCards.classList.contains('d-none')) {
+        methodCards.classList.remove('d-none');
+        updateDetectFormHeader(targetMethod || currentMethod, false);
+      } else if (!targetMethod) {
+        methodCards.classList.add('d-none');
+        updateDetectFormHeader(currentMethod, true);
+      }
+    }
+    if (targetMethod) {
+      selectDetectMethod(targetMethod);
+    }
   }
 </script>
 <?= $this->endSection() ?>

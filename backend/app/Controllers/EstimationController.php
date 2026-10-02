@@ -117,24 +117,35 @@ class EstimationController extends ResourceController
                 : ($totalItems > 0 ? round($mappedHigh / $totalItems, 4) : 0);
 
             $engineStats  = $json['engine_stats'] ?? ($json['metadata']['engine_stats'] ?? null);
+            $detectionMethod = $json['detection_method'] ?? 'file';
+            $promptText      = $json['prompt_text'] ?? null;
 
             $runData = [
-                'project_id'    => (int) $project['id'],
-                'project_uuid'  => $project['uuid'],
-                'run_timestamp' => date('Y-m-d H:i:s'),
-                'total_items'   => $totalItems,
-                'mapped_high'   => $mappedHigh,
-                'mapped_medium' => $mappedMedium,
-                'unmapped'      => $unmapped,
-                'high_ratio'    => $highRatio,
-                'engine_stats'  => $engineStats ? json_encode($engineStats) : null,
-                'created_at'    => date('Y-m-d H:i:s'),
+                'project_id'       => (int) $project['id'],
+                'run_timestamp'    => date('Y-m-d H:i:s'),
+                'total_items'      => $totalItems,
+                'mapped_high'      => $mappedHigh,
+                'mapped_medium'    => $mappedMedium,
+                'unmapped'         => $unmapped,
+                'high_ratio'       => $highRatio,
+                'engine_stats'     => $engineStats ? json_encode($engineStats) : null,
+                'detection_method' => $detectionMethod,
+                'created_at'       => date('Y-m-d H:i:s'),
             ];
 
             $runModel = new EstimationRunModel();
             $runId    = $runModel->insert($runData); // returns inserted integer id
             $run      = $runModel->find($runId);
             $runUuid  = $run['uuid'];
+
+            // If method is prompt and prompt_text exists, save to project_prompts table
+            if ($detectionMethod === 'prompt' && !empty($promptText)) {
+                $promptModel = new \App\Models\ProjectPromptModel();
+                $promptModel->insert([
+                    'run_id'      => (int) $runId,
+                    'prompt_text' => $promptText,
+                ]);
+            }
 
             // 2. Insert WBS Sections & Items
             $wbsSectionModel     = new WbsSectionModel();
@@ -145,7 +156,6 @@ class EstimationController extends ResourceController
             foreach ($sections as $sec) {
                 $sectionData = [
                     'run_id'          => (int) $runId,
-                    'run_uuid'        => $runUuid,
                     'section_id_code' => $sec['id'] ?? ('sec-' . ($sec['code'] ?? $sortOrder)),
                     'code'            => $sec['code'] ?? chr(64 + $sortOrder),
                     'name'            => $sec['name'] ?? '',
@@ -157,7 +167,7 @@ class EstimationController extends ResourceController
 
                 // Insert Items
                 $items = $sec['items'] ?? [];
-                foreach ($items as $item) {
+                foreach ($items as $iIdx => $item) {
                     $itemAhsp = $item['ahsp_mapping'] ?? ($item['final_mapping'] ?? []);
 
                     $ahspCode   = $item['ahsp_code'] ?? ($itemAhsp['ahsp_code'] ?? null);
@@ -166,11 +176,22 @@ class EstimationController extends ResourceController
                     $ahspScore  = isset($item['ahsp_score']) ? (float) $item['ahsp_score'] : (isset($itemAhsp['ahsp_score']) ? (float) $itemAhsp['ahsp_score'] : null);
                     $ahspStatus = $item['ahsp_status'] ?? ($itemAhsp['ahsp_status'] ?? 'unmapped');
 
+                    $rawAhspCode = trim($ahspCode ?? '');
+                    if (empty($rawAhspCode) || $rawAhspCode === '-' || $ahspStatus === 'unmapped') {
+                        $ahspCode = generate_ahsp_code(
+                            $item['name'] ?? '',
+                            $sec['name'] ?? '',
+                            $sec['code'] ?? '',
+                            $sortOrder - 1,
+                            $iIdx,
+                            $item['code'] ?? ''
+                        );
+                    }
+
                     $itemData = [
                         'section_id'         => (int) $sectionId,
-                        'section_uuid'       => $sectionUuid,
                         'item_uid'           => $item['id'] ?? null,
-                        'item_no'            => (int) ($item['no'] ?? 0),
+                        'item_no'            => (int) ($item['no'] ?? ($iIdx + 1)),
                         'item_code'          => $item['code'] ?? '',
                         'item_name'          => $item['name'] ?? '',
                         'volume'             => (float) ($item['volume'] ?? 0),
@@ -178,7 +199,7 @@ class EstimationController extends ResourceController
                         'confidence'         => $item['confidence'] ?? 'high',
                         'warning_note'       => $item['warning_note'] ?? null,
                         'ahsp_code'          => $ahspCode,
-                        'ahsp_name'          => $ahspName,
+                        'ahsp_name'          => $ahspName ?: ($item['name'] ?? ''),
                         'ahsp_unit'          => $ahspUnit,
                         'ahsp_score'         => $ahspScore,
                         'ahsp_status'        => $ahspStatus,
@@ -201,7 +222,6 @@ class EstimationController extends ResourceController
                         foreach ($candidates as $cand) {
                             $candData = [
                                 'item_id'        => (int) $itemId,
-                                'item_uuid'      => $itemUuid,
                                 'rank'           => (int) ($cand['rank'] ?? $rank++),
                                 'id_pekerjaan'   => $cand['id_pekerjaan'] ?? ($cand['code'] ?? ''),
                                 'nama_pekerjaan' => $cand['nama_pekerjaan'] ?? ($cand['name'] ?? ''),
@@ -216,16 +236,16 @@ class EstimationController extends ResourceController
                 }
             }
 
-            // Update project summary if provided
+            // Always reset project status to 'Tahap Estimasi' on new/re-detection run so user can review the results
             $projectSummary = $json['project_summary'] 
                 ?? ($json['raw_llm_response']['project_summary'] 
                 ?? ($json['metadata']['project_summary'] ?? null));
 
+            $projectUpdateFields = ['status' => 'Tahap Estimasi'];
             if (!empty($projectSummary)) {
-                $projectModel->update($project['id'], [
-                    'summary' => $projectSummary,
-                ]);
+                $projectUpdateFields['summary'] = $projectSummary;
             }
+            $projectModel->update($project['id'], $projectUpdateFields);
 
             $db->transComplete();
 
@@ -272,7 +292,6 @@ class EstimationController extends ResourceController
 
         $latestRun = $db->table('estimation_runs')
             ->where('project_id', $project['id'])
-            ->orWhere('project_uuid', $project['uuid'])
             ->orderBy('run_timestamp', 'DESC')
             ->get()
             ->getRowArray();
@@ -296,6 +315,201 @@ class EstimationController extends ResourceController
     public function getEstimationRun($runIdOrUuid = null)
     {
         return $this->formatRunData($runIdOrUuid);
+    }
+
+    /**
+     * POST /api/estimation-items
+     * POST /api/projects/(:segment)/items
+     * Create a new estimation item in a section
+     */
+    public function createItem($projectUuidOrId = null)
+    {
+        $json = $this->request->getJSON(true) ?: $this->request->getPost();
+        if (!$json) {
+            return $this->fail('Payload JSON tidak valid.', 400);
+        }
+
+        $db = \Config\Database::connect();
+        $itemModel = new EstimationItemModel();
+        $projectModel = new \App\Models\ProjectModel();
+
+        $projectId = $json['project_id'] ?? $projectUuidOrId ?? null;
+        $project = null;
+        if ($projectId) {
+            $project = $projectModel->findByIdOrUuid($projectId);
+        }
+
+        $sectionId = $json['section_id'] ?? null;
+        $category = trim($json['target_category'] ?? $json['category'] ?? $json['section_name'] ?? '');
+
+        // 1. Verify section if provided
+        $secRow = null;
+        if (!empty($sectionId) && is_numeric($sectionId)) {
+            $secRow = $db->table('wbs_sections')->where('id', (int) $sectionId)->get()->getRowArray();
+        }
+
+        // 2. If section not found or invalid, resolve using project
+        if (!$secRow && $project) {
+            $latestRun = $db->table('estimation_runs')
+                ->where('project_id', $project['id'])
+                ->orderBy('id', 'DESC')
+                ->get()
+                ->getRowArray();
+
+            if (!$latestRun) {
+                $runUuid = \App\Models\ProjectModel::generateUuidV4();
+                $db->table('estimation_runs')->insert([
+                    'uuid'          => $runUuid,
+                    'project_id'    => $project['id'],
+                    'run_timestamp' => date('Y-m-d H:i:s'),
+                    'total_items'   => 0,
+                    'created_at'    => date('Y-m-d H:i:s'),
+                ]);
+                $runId = (int) $db->insertID();
+                $latestRun = ['id' => $runId, 'uuid' => $runUuid];
+            }
+
+            $sections = $db->table('wbs_sections')
+                ->where('run_id', $latestRun['id'])
+                ->orderBy('sort_order', 'ASC')
+                ->get()
+                ->getResultArray();
+
+            if (!empty($category) && !empty($sections)) {
+                foreach ($sections as $s) {
+                    if (stripos($s['name'], $category) !== false || stripos($category, $s['name']) !== false) {
+                        $secRow = $s;
+                        break;
+                    }
+                }
+            }
+
+            if (!$secRow && !empty($sections)) {
+                $secRow = $sections[0];
+            }
+
+            if (!$secRow) {
+                $secName = !empty($category) ? strtoupper($category) : 'PEKERJAAN UMUM';
+                $secUuid = \App\Models\ProjectModel::generateUuidV4();
+                $db->table('wbs_sections')->insert([
+                    'uuid'            => $secUuid,
+                    'run_id'          => $latestRun['id'],
+                    'section_id_code' => 'sec-A',
+                    'code'            => 'A',
+                    'name'            => $secName,
+                    'sort_order'      => 1
+                ]);
+                $newSecId = (int) $db->insertID();
+                $secRow = $db->table('wbs_sections')->where('id', $newSecId)->get()->getRowArray();
+            }
+        }
+
+        // 3. Fallback to any existing wbs_section if still null
+        if (!$secRow) {
+            $secRow = $db->table('wbs_sections')->orderBy('id', 'ASC')->get()->getRowArray();
+        }
+
+        if (!$secRow) {
+            return $this->fail('Bagian pekerjaan (section/kategori) tidak ditemukan untuk proyek ini.', 404);
+        }
+
+        $sectionId = (int) $secRow['id'];
+
+        // Get max item_no in this section
+        $maxNoRow = $db->table('estimation_items')
+            ->where('section_id', $sectionId)
+            ->selectMax('item_no')
+            ->get()
+            ->getRowArray();
+        $nextNo = ((int) ($maxNoRow['item_no'] ?? 0)) + 1;
+
+        $itemName = trim($json['item_name'] ?? $json['name'] ?? 'Pekerjaan Baru');
+        $ahspCode = trim($json['ahsp_code'] ?? '');
+        $unitPrice = (float) ($json['unit_price'] ?? 0);
+        $volume = (float) ($json['volume'] ?? 1.0);
+        $unit = trim($json['unit'] ?? 'm2');
+        $ahspName = trim($json['ahsp_name'] ?? $itemName);
+
+        // Price and AHSP auto resolution
+        if ($unitPrice <= 0 || empty($ahspCode)) {
+            $ahspRow = null;
+            if (!empty($ahspCode) && $ahspCode !== '-') {
+                $ahspRow = $db->table('ahsp_items')->where('id_pekerjaan', $ahspCode)->get()->getRowArray();
+            }
+            if (!$ahspRow && !empty($itemName)) {
+                $ahspRow = $db->table('ahsp_items')->where('nama_pekerjaan', $itemName)->get()->getRowArray();
+                if (!$ahspRow) {
+                    $ahspRow = $db->table('ahsp_items')->like('nama_pekerjaan', $itemName)->get()->getRowArray();
+                }
+            }
+            if ($ahspRow) {
+                if ($unitPrice <= 0 && !empty($ahspRow['harga_satuan'])) {
+                    $unitPrice = (float) $ahspRow['harga_satuan'];
+                }
+                if (empty($ahspCode)) {
+                    $ahspCode = $ahspRow['id_pekerjaan'];
+                }
+                if (empty($ahspName) && !empty($ahspRow['nama_pekerjaan'])) {
+                    $ahspName = $ahspRow['nama_pekerjaan'];
+                }
+                if (empty($unit) && !empty($ahspRow['satuan'])) {
+                    $unit = $ahspRow['satuan'];
+                }
+            }
+        }
+
+        $secCode = $secRow['code'] ?? '1';
+        $itemCode = $secCode . '.' . $nextNo;
+        $ahspStatus = !empty($ahspCode) && $ahspCode !== '-' ? 'mapped_high' : ($json['ahsp_status'] ?? 'unmapped');
+
+        $itemData = [
+            'section_id'   => $sectionId,
+            'item_no'      => $nextNo,
+            'item_code'    => $itemCode,
+            'item_name'    => $itemName,
+            'volume'       => $volume,
+            'unit'         => $unit,
+            'unit_price'   => $unitPrice,
+            'ahsp_code'    => $ahspCode ?: null,
+            'ahsp_name'    => $ahspName ?: $itemName,
+            'ahsp_unit'    => $unit,
+            'ahsp_status'  => $ahspStatus,
+            'confidence'   => 'high',
+        ];
+
+        $insertId = $itemModel->insert($itemData);
+        if (!$insertId) {
+            return $this->fail('Gagal menambahkan item pekerjaan.', 500);
+        }
+
+        // Update total_items count in estimation_runs if run_id exists
+        if (!empty($secRow['run_id'])) {
+            $totalCount = $db->table('estimation_items as ei')
+                ->join('wbs_sections as ws', 'ws.id = ei.section_id')
+                ->where('ws.run_id', $secRow['run_id'])
+                ->countAllResults();
+            $db->table('estimation_runs')->where('id', $secRow['run_id'])->update(['total_items' => $totalCount]);
+        }
+
+        $createdItem = $itemModel->find($insertId);
+        $subtotal = (float)$createdItem['volume'] * (float)$createdItem['unit_price'];
+
+        $responseData = array_merge($createdItem, [
+            'name'         => $createdItem['item_name'],
+            'section_id'   => (int) $secRow['id'],
+            'section_code' => $secRow['code'],
+            'section_name' => $secRow['name'],
+            'subtotal'     => $subtotal,
+            'no'           => (int) $createdItem['item_no'],
+            'code'         => $createdItem['item_code'] ?: ($secRow['code'] . '.' . $createdItem['item_no']),
+        ]);
+
+        return $this->respondCreated([
+            'status'  => 201,
+            'success' => true,
+            'message' => 'Item estimasi berhasil ditambahkan.',
+            'data'    => $responseData,
+        ]);
     }
 
     /**
@@ -332,6 +546,15 @@ class EstimationController extends ResourceController
         }
 
         if (!empty($updateData)) {
+            // Auto fetch harga_satuan dari ahsp_items jika ahsp_code diupdate dan unit_price belum diisi / 0
+            if (isset($updateData['ahsp_code']) && (!isset($updateData['unit_price']) || (float)$updateData['unit_price'] <= 0)) {
+                $db = \Config\Database::connect();
+                $ahspRow = $db->table('ahsp_items')->where('id_pekerjaan', $updateData['ahsp_code'])->get()->getRowArray();
+                if ($ahspRow && !empty($ahspRow['harga_satuan'])) {
+                    $updateData['unit_price'] = (float) $ahspRow['harga_satuan'];
+                }
+            }
+
             $itemModel->update($item['id'], $updateData);
         }
 
@@ -387,7 +610,6 @@ class EstimationController extends ResourceController
 
         $project = $db->table('projects')
             ->where('id', $run['project_id'])
-            ->orWhere('uuid', $run['project_uuid'])
             ->get()
             ->getRowArray();
 
@@ -475,7 +697,7 @@ class EstimationController extends ResourceController
                 'run_id'          => (int) $run['id'],
                 'run_uuid'        => $run['uuid'],
                 'project_id'      => (int) ($project['id'] ?? $run['project_id']),
-                'project_uuid'    => $run['project_uuid'],
+                'project_uuid'    => $project['uuid'] ?? '',
                 'project_title'   => $project['title'] ?? '',
                 'project_client'  => $project['client'] ?? '',
                 'run_timestamp'   => $run['run_timestamp'],

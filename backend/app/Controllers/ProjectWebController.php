@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\ProjectModel;
+use App\Models\AhspItemModel;
 
 class ProjectWebController extends BaseController
 {
@@ -22,7 +23,6 @@ class ProjectWebController extends BaseController
         $dataProjects = array_map(function ($project) use ($db) {
             $latestRun = $db->table('estimation_runs')
                 ->where('project_id', $project['id'])
-                ->orWhere('project_uuid', $project['uuid'])
                 ->orderBy('run_timestamp', 'DESC')
                 ->get()
                 ->getRowArray();
@@ -158,14 +158,20 @@ class ProjectWebController extends BaseController
             return redirect()->to(base_url('buat_proyek'));
         }
 
+        // If project status is already at RAB stage, redirect directly to RAB page UNLESS explicit view parameter is passed (e.g. from navbar link &view=anggaran)
+        $explicitView = $this->request->getGet('view') ?: $this->request->getGet('mode') ?: $this->request->getGet('override') ?: $this->request->getGet('force');
+        if (empty($explicitView)) {
+            $statusLower = strtolower(trim($project['status'] ?? ''));
+            if (in_array($statusLower, ['rab', 'tahap rab', 'penyusunan rab', 'selesai', 'disetujui ke rab', 'disetujui'])) {
+                return redirect()->to(base_url('rab?id=' . urlencode($project['uuid'] ?: $project['id'])));
+            }
+        }
+
         $db = \Config\Database::connect();
 
         // 1. Fetch latest estimation run
         $latestRun = $db->table('estimation_runs')
-            ->groupStart()
             ->where('project_id', $project['id'])
-            ->orWhere('project_uuid', $project['uuid'])
-            ->groupEnd()
             ->orderBy('id', 'DESC')
             ->get()
             ->getRowArray();
@@ -512,14 +518,26 @@ class ProjectWebController extends BaseController
         $totalItems = 0;
         $unmappedItems = [];
 
-        foreach ($sections as $sec) {
-            foreach ($sec['items'] as $it) {
+        foreach ($sections as $sIdx => &$sec) {
+            foreach ($sec['items'] as $iIdx => &$it) {
                 $totalItems++;
+                $rawCode = trim($it['ahsp_code'] ?? '');
+                if (empty($rawCode) || $rawCode === '-' || ($it['ahsp_status'] ?? '') === 'unmapped') {
+                    $it['ahsp_code'] = generate_ahsp_code(
+                        $it['name'] ?? '',
+                        $sec['name'] ?? '',
+                        $sec['code'] ?? '',
+                        $sIdx,
+                        $iIdx,
+                        $it['code'] ?? ''
+                    );
+                }
                 if (($it['ahsp_status'] ?? '') === 'unmapped') {
                     $unmappedItems[] = $it;
                 }
             }
         }
+        unset($sec, $it);
 
         // If the database has an explicit total_items count in latestRun, use it or fallback to counted
         if ($latestRun && !empty($latestRun['total_items'])) {
@@ -529,14 +547,29 @@ class ProjectWebController extends BaseController
         $hasRuns = !empty($latestRun);
         $showDetect = !$hasRuns || ($this->request->getGet('detect') === '1');
 
+        $detectionMethod = $latestRun['detection_method'] ?? 'file';
+        $lastPromptText  = '';
+
+        if ($latestRun) {
+            $promptRow = $db->table('project_prompts')
+                ->where('run_id', $latestRun['id'])
+                ->get()
+                ->getRowArray();
+            if ($promptRow) {
+                $lastPromptText = $promptRow['prompt_text'];
+            }
+        }
+
         return view('projects/anggaran', [
-            'project' => $project,
-            'latestRun' => $latestRun,
-            'hasRuns' => $hasRuns,
-            'showDetect' => $showDetect,
-            'sections' => $sections,
-            'totalItems' => $totalItems,
-            'unmappedItems' => $unmappedItems,
+            'project'         => $project,
+            'latestRun'       => $latestRun,
+            'hasRuns'         => $hasRuns,
+            'showDetect'      => $showDetect,
+            'sections'        => $sections,
+            'totalItems'      => $totalItems,
+            'unmappedItems'   => $unmappedItems,
+            'detectionMethod' => $detectionMethod,
+            'lastPromptText'  => $lastPromptText,
         ]);
     }
 
@@ -565,10 +598,7 @@ class ProjectWebController extends BaseController
 
         // 1. Fetch latest estimation run
         $latestRun = $db->table('estimation_runs')
-            ->groupStart()
             ->where('project_id', $project['id'])
-            ->orWhere('project_uuid', $project['uuid'])
-            ->groupEnd()
             ->orderBy('id', 'DESC')
             ->get()
             ->getRowArray();
@@ -678,14 +708,18 @@ class ProjectWebController extends BaseController
             return redirect()->to(base_url('buat_proyek'));
         }
 
+        // Auto update project status to 'Tahap RAB' if it's not already in RAB stage
+        $statusLower = strtolower(trim($project['status'] ?? ''));
+        if (empty($statusLower) || !in_array($statusLower, ['rab', 'tahap rab', 'penyusunan rab', 'selesai', 'disetujui'])) {
+            $projectModel->update($project['id'], ['status' => 'Tahap RAB']);
+            $project['status'] = 'Tahap RAB';
+        }
+
         $db = \Config\Database::connect();
 
         // 1. Fetch latest estimation run
         $latestRun = $db->table('estimation_runs')
-            ->groupStart()
             ->where('project_id', $project['id'])
-            ->orWhere('project_uuid', $project['uuid'])
-            ->groupEnd()
             ->orderBy('id', 'DESC')
             ->get()
             ->getRowArray();
@@ -700,9 +734,11 @@ class ProjectWebController extends BaseController
                 ->getResultArray();
 
             foreach ($dbSections as $sIdx => $sec) {
-                $dbItems = $db->table('estimation_items')
-                    ->where('section_id', $sec['id'])
-                    ->orderBy('item_no', 'ASC')
+                $dbItems = $db->table('estimation_items as ei')
+                    ->select('ei.*, ai.harga_satuan as ahsp_price')
+                    ->join('ahsp_items as ai', 'ai.id_pekerjaan = ei.ahsp_code', 'left')
+                    ->where('ei.section_id', $sec['id'])
+                    ->orderBy('ei.item_no', 'ASC')
                     ->get()
                     ->getResultArray();
 
@@ -710,7 +746,41 @@ class ProjectWebController extends BaseController
                 $secSubtotal = 0;
                 foreach ($dbItems as $iIdx => $item) {
                     $vol = (float) $item['volume'];
-                    $price = (float) $item['unit_price'];
+
+                    // Prioritaskan harga satuan dari item yang tersimpan di database (hasil input / ubah pengguna)
+                    $price = 0.0;
+                    if (!empty($item['unit_price']) && (float) $item['unit_price'] > 0) {
+                        $price = (float) $item['unit_price'];
+                    } elseif (!empty($item['ahsp_price']) && (float) $item['ahsp_price'] > 0) {
+                        // Default: ambil dari DB AHSP jika unit_price masih 0 / belum pernah diisi
+                        $price = (float) $item['ahsp_price'];
+                        if (!empty($item['id'])) {
+                            $db->table('estimation_items')->where('id', $item['id'])->update(['unit_price' => $price]);
+                        }
+                    } else {
+                        // Fallback: cari ke ahsp_items berdasarkan nama pekerjaan jika ahsp_code belum terpetakan
+                        $searchName = !empty($item['ahsp_name']) ? $item['ahsp_name'] : ($item['item_name'] ?? '');
+                        if (!empty($searchName)) {
+                            $ahspRow = $db->table('ahsp_items')
+                                ->where('nama_pekerjaan', $searchName)
+                                ->get()
+                                ->getRowArray();
+                            if (!$ahspRow) {
+                                $ahspRow = $db->table('ahsp_items')
+                                    ->like('nama_pekerjaan', $searchName)
+                                    ->get()
+                                    ->getRowArray();
+                            }
+                            if ($ahspRow && !empty($ahspRow['harga_satuan'])) {
+                                $price = (float) $ahspRow['harga_satuan'];
+                                if (!empty($item['id'])) {
+                                    $db->table('estimation_items')->where('id', $item['id'])->update(['unit_price' => $price]);
+                                }
+                            }
+                        }
+                    }
+
+                    // Hitung total harga (harga satuan dikalikan volume)
                     $subtotal = $vol * $price;
                     $secSubtotal += $subtotal;
 
@@ -916,6 +986,28 @@ class ProjectWebController extends BaseController
                     ]
                 ],
             ];
+
+            // Resolve harga_satuan dari master ahsp_items dan hitung subtotal (harga satuan * volume)
+            foreach ($sections as &$sec) {
+                $secSubtotal = 0;
+                foreach ($sec['items'] as &$it) {
+                    $code = trim($it['ahsp_code'] ?? '');
+                    $ahspRow = null;
+                    if (!empty($code) && $code !== '-') {
+                        $ahspRow = $db->table('ahsp_items')->where('id_pekerjaan', $code)->get()->getRowArray();
+                    }
+                    if (!$ahspRow && !empty($it['name'])) {
+                        $ahspRow = $db->table('ahsp_items')->where('nama_pekerjaan', $it['name'])->get()->getRowArray();
+                    }
+                    if ($ahspRow && !empty($ahspRow['harga_satuan'])) {
+                        $it['unit_price'] = (float) $ahspRow['harga_satuan'];
+                    }
+                    $it['subtotal'] = (float) $it['volume'] * (float) $it['unit_price'];
+                    $secSubtotal += $it['subtotal'];
+                }
+                $sec['subtotal'] = $secSubtotal;
+            }
+            unset($sec, $it);
         }
 
         // Calculate Grand Total and Weights
@@ -928,19 +1020,41 @@ class ProjectWebController extends BaseController
             }
         }
 
-        foreach ($sections as &$sec) {
+        foreach ($sections as $sIdx => &$sec) {
             $secSubtotal = 0;
-            foreach ($sec['items'] as &$it) {
+            foreach ($sec['items'] as $iIdx => &$it) {
                 $itSubtotal = (float) ($it['subtotal'] ?? 0);
                 $secSubtotal += $itSubtotal;
                 $it['bobot'] = $grandTotal > 0 ? ($itSubtotal / $grandTotal) * 100 : 0.00;
+
+                // Auto generate AHSP code if item is unmapped or ahsp_code is empty/dash
+                $rawCode = trim($it['ahsp_code'] ?? '');
+                $status  = $it['ahsp_status'] ?? '';
+                if (empty($rawCode) || $rawCode === '-' || $status === 'unmapped') {
+                    $it['ahsp_code'] = generate_ahsp_code(
+                        $it['name'] ?? '',
+                        $sec['name'] ?? '',
+                        $sec['code'] ?? '',
+                        $sIdx,
+                        $iIdx,
+                        $it['code'] ?? ''
+                    );
+                }
             }
             $sec['subtotal'] = $secSubtotal;
             $sec['bobot'] = $grandTotal > 0 ? ($secSubtotal / $grandTotal) * 100 : 0.00;
         }
         unset($sec, $it);
 
-        $ppnRate = 0.00; // Reference screenshot specifies PPN 0.00 %
+        // Prioritaskan PPN dari data project, default pembuatan project awal adalah 11%
+        $ppnRate = (!empty($project['ppn']) && (float)$project['ppn'] > 0) 
+            ? (float) $project['ppn'] 
+            : 11.00;
+
+        if (empty($project['ppn']) || (float)$project['ppn'] <= 0) {
+            $projectModel->update($project['id'], ['ppn' => 11.00]);
+            $project['ppn'] = 11.00;
+        }
 
         return view('projects/rab', [
             'project' => $project,

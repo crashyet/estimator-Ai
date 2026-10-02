@@ -13,13 +13,14 @@ $isProyekActive = $path === '/' || str_contains($path, '/proyek') || (!$isInside
 $isHasilDeteksiActive = str_contains($path, '/anggaran') || str_contains($path, '/pemetaan-ahsp');
 $isRabActive = str_contains($path, '/rab');
 
-// Menu RAB hidden when user is still on Hasil Deteksi / Anggaran
-$isAnggaranPage = str_contains($path, '/anggaran') || str_contains($path, '/pemetaan-ahsp');
-$shouldShowRab = $isInsideProject && !$isAnggaranPage;
+// Menu RAB shown if inside project and either on RAB page or project has already reached RAB stage
+$projectStatus = strtolower(trim($project['status'] ?? ''));
+$hasEnteredRab = in_array($projectStatus, ['rab', 'tahap rab', 'penyusunan rab', 'selesai', 'disetujui ke rab', 'disetujui']);
+$shouldShowRab = $isInsideProject && ($isRabActive || $hasEnteredRab);
 
 $activeProjectId = $request->getGet('id') ?: $request->getGet('uuid') ?: ($project['uuid'] ?? ($project['id'] ?? ''));
 $queryString = !empty($activeProjectId) ? '?id=' . esc($activeProjectId) : '';
-$anggaranUrl = '/anggaran' . $queryString;
+$anggaranUrl = '/anggaran' . (!empty($queryString) ? $queryString . '&view=anggaran' : '?view=anggaran');
 $rabUrl = '/rab' . $queryString;
 ?>
 <header class="app-navbar">
@@ -56,14 +57,16 @@ $rabUrl = '/rab' . $queryString;
 
         <!-- Menu saat proyek dibuka: Hasil Deteksi dan RAB -->
         <?php if ($isInsideProject): ?>
-          <div class="nav-item-wrapper h-100 d-flex align-items-center position-relative">
-            <a href="<?= $anggaranUrl ?>" class="nav-link-proyek <?= $isHasilDeteksiActive ? 'active' : '' ?>">
-              Hasil Deteksi
-            </a>
-            <?php if ($isHasilDeteksiActive): ?>
-              <div class="nav-active-indicator"></div>
-            <?php endif; ?>
-          </div>
+          <?php if (!$isRabActive): ?>
+            <div class="nav-item-wrapper h-100 d-flex align-items-center position-relative">
+              <a href="<?= $anggaranUrl ?>" class="nav-link-proyek <?= $isHasilDeteksiActive ? 'active' : '' ?>">
+                Hasil Deteksi
+              </a>
+              <?php if ($isHasilDeteksiActive): ?>
+                <div class="nav-active-indicator"></div>
+              <?php endif; ?>
+            </div>
+          <?php endif; ?>
 
           <?php if ($shouldShowRab): ?>
             <div class="nav-item-wrapper h-100 d-flex align-items-center position-relative">
@@ -76,15 +79,6 @@ $rabUrl = '/rab' . $queryString;
             </div>
           <?php endif; ?>
         <?php endif; ?>
-
-        <!-- Menu API Docs -->
-        <div class="nav-item-wrapper h-100 d-flex align-items-center position-relative">
-          <a href="/docs" target="_blank" class="nav-link-proyek d-flex align-items-center gap-1" title="Buka Dokumentasi API Interaktif">
-            <i class="bi bi-code-slash text-success"></i>
-            API Docs
-          </a>
-        </div>
-      </nav>
 
       <!-- Avatar Button (Green circle with SVG profile icon) -->
       <button type="button" class="avatar-btn" title="Profil Pengguna" onclick="showToast('Profil', 'Pengguna: Administrator Estimator', 'info')">

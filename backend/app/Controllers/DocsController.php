@@ -36,8 +36,8 @@ class DocsController extends Controller
                 'title' => 'Estimator AI - CodeIgniter 4 REST API',
                 'description' => "Dokumentasi resmi REST API Backend CodeIgniter 4 untuk Estimator Konstruksi & Rencana Anggaran Biaya (RAB).\n\n"
                     . "Mendukung manajemen proyek konstruksi, proxy analisis AI berkas CAD/BIM/DED dan prompt teks, "
-                    . "serta katalog master data AHSP (Analisis Harga Satuan Pekerjaan).",
-                'version' => '2.0.0',
+                    . "audit integritas WBS, konsultasi interaktif AI Co-Pilot, serta katalog master data AHSP.",
+                'version' => '2.1.0',
                 'contact' => [
                     'name' => 'Beecons Estimator Team',
                     'url' => 'https://esti.eyi.my.id'
@@ -49,8 +49,8 @@ class DocsController extends Controller
                     'description' => 'Current Server (Relative Origin)'
                 ],
                 [
-                    'url' => 'http://127.0.0.1:80',
-                    'description' => 'Local Direct (Port 80/8080)'
+                    'url' => 'http://localhost:8080',
+                    'description' => 'Local Development (Port 8080)'
                 ],
                 [
                     'url' => 'https://esti.eyi.my.id',
@@ -71,18 +71,35 @@ class DocsController extends Controller
                     'description' => 'Penyimpanan dan manipulasi hasil estimasi, sections, dan item pekerjaan'
                 ],
                 [
+                    'name' => 'AI Auditor & Co-Pilot',
+                    'description' => 'Audit anomali RAB, chat konsultasi interaktif, dan rekomendasi perubahan WBS oleh AI'
+                ],
+                [
                     'name' => 'AHSP Master',
                     'description' => 'Katalog data master AHSP dan pencocokan semantic AI'
                 ]
             ],
             'paths' => [
+                // ==========================================
                 // 1. AI Analysis Endpoints
+                // ==========================================
                 '/api/rab/analyze' => [
                     'post' => [
                         'tags' => ['AI Analysis'],
-                        'summary' => 'Analisis Berkas DED / CAD / BIM / PDF / Gambar',
+                        'summary' => 'Analisis Berkas DED atau Payload JSON',
+                        'description' => "Menganalisis berkas DED (otomatis mendeteksi multipart berkas) atau meneruskan payload JSON ke AI service.",
+                        'responses' => [
+                            '200' => ['description' => 'Analisis berhasil diekstraksi'],
+                            '400' => ['description' => 'Request body atau file tidak valid']
+                        ]
+                    ]
+                ],
+                '/api/rab/analyze-image' => [
+                    'post' => [
+                        'tags' => ['AI Analysis'],
+                        'summary' => 'Analisis Berkas Desain Teknis (CAD / BIM / PDF / Gambar)',
                         'description' => "Mengunggah berkas teknis desain (maksimal 500 MB) untuk dianalisis oleh AI menjadi struktur WBS, estimasi volume, dan pemetaan AHSP awal.\n\n"
-                            . "Format didukung: **BIM** (.rvt, .ifc, .skp, .nwd), **CAD** (.dwg, .dxf, .svg), **Dokumen** (.pdf, .png, .jpg).",
+                            . "Format didukung: **BIM** (.rvt, .ifc, .skp, .nwd, .nwc), **CAD** (.dwg, .dxf, .svg, .plt), **Dokumen** (.pdf, .png, .jpg, .jpeg).",
                         'requestBody' => [
                             'required' => true,
                             'content' => [
@@ -105,11 +122,6 @@ class DocsController extends Controller
                                                 'type' => 'string',
                                                 'example' => 'PT Graha Abadi',
                                                 'description' => 'Nama pemilik proyek'
-                                            ],
-                                            'project_id' => [
-                                                'type' => 'string',
-                                                'example' => '1',
-                                                'description' => 'ID atau UUID proyek (opsional)'
                                             ]
                                         ]
                                     ]
@@ -126,14 +138,15 @@ class DocsController extends Controller
                                             'properties' => [
                                                 'success' => ['type' => 'boolean', 'example' => true],
                                                 'project' => ['type' => 'object'],
-                                                'anggaran' => ['type' => 'array', 'items' => ['type' => 'object']]
+                                                'summary_metrics' => ['type' => 'object'],
+                                                'sections' => ['type' => 'array', 'items' => ['type' => 'object']]
                                             ]
                                         ]
                                     ]
                                 ]
                             ],
                             '400' => ['description' => 'File tidak valid atau format tidak didukung'],
-                            '413' => ['description' => 'Ukuran file melebihi batas 500 MB']
+                            '413' => ['description' => 'Ukuran file melebihi batas upload web server']
                         ]
                     ]
                 ],
@@ -174,7 +187,9 @@ class DocsController extends Controller
                     ]
                 ],
 
+                // ==========================================
                 // 2. Projects Endpoints
+                // ==========================================
                 '/api/projects' => [
                     'get' => [
                         'tags' => ['Projects'],
@@ -252,7 +267,7 @@ class DocsController extends Controller
                     ],
                     'put' => [
                         'tags' => ['Projects'],
-                        'summary' => 'Update Data Proyek',
+                        'summary' => 'Update Data Proyek (PUT)',
                         'parameters' => [
                             [
                                 'name' => 'id',
@@ -284,6 +299,22 @@ class DocsController extends Controller
                             '404' => ['description' => 'Proyek tidak ditemukan']
                         ]
                     ],
+                    'patch' => [
+                        'tags' => ['Projects'],
+                        'summary' => 'Update Sebagian Data Proyek (PATCH)',
+                        'parameters' => [
+                            [
+                                'name' => 'id',
+                                'in' => 'path',
+                                'required' => true,
+                                'schema' => ['type' => 'string']
+                            ]
+                        ],
+                        'responses' => [
+                            '200' => ['description' => 'Proyek berhasil diperbarui'],
+                            '404' => ['description' => 'Proyek tidak ditemukan']
+                        ]
+                    ],
                     'delete' => [
                         'tags' => ['Projects'],
                         'summary' => 'Hapus Proyek',
@@ -303,7 +334,9 @@ class DocsController extends Controller
                     ]
                 ],
 
+                // ==========================================
                 // 3. Estimation Endpoints
+                // ==========================================
                 '/api/projects/{id}/save-estimation' => [
                     'post' => [
                         'tags' => ['Estimation & WBS'],
@@ -331,7 +364,7 @@ class DocsController extends Controller
                             ]
                         ],
                         'responses' => [
-                            '200' => ['description' => 'Estimasi berhasil disimpan'],
+                            '201' => ['description' => 'Estimasi berhasil disimpan'],
                             '400' => ['description' => 'Payload JSON tidak valid'],
                             '404' => ['description' => 'Proyek tidak ditemukan']
                         ]
@@ -356,6 +389,43 @@ class DocsController extends Controller
                         ]
                     ]
                 ],
+                '/api/projects/{id}/items' => [
+                    'post' => [
+                        'tags' => ['Estimation & WBS'],
+                        'summary' => 'Tambah Item Pekerjaan Baru ke Proyek',
+                        'parameters' => [
+                            [
+                                'name' => 'id',
+                                'in' => 'path',
+                                'required' => true,
+                                'schema' => ['type' => 'string']
+                            ]
+                        ],
+                        'requestBody' => [
+                            'required' => true,
+                            'content' => [
+                                'application/json' => [
+                                    'schema' => [
+                                        'type' => 'object',
+                                        'required' => ['item_name'],
+                                        'properties' => [
+                                            'item_name' => ['type' => 'string', 'example' => 'Pemasangan Pintu Kayu Kamper'],
+                                            'volume' => ['type' => 'number', 'example' => 4.0],
+                                            'unit' => ['type' => 'string', 'example' => 'unit'],
+                                            'unit_price' => ['type' => 'number', 'example' => 1250000],
+                                            'ahsp_code' => ['type' => 'string', 'example' => 'A.4.6.1.1'],
+                                            'target_category' => ['type' => 'string', 'example' => 'PEKERJAAN KUSEN DAN PINTU']
+                                        ]
+                                    ]
+                                ]
+                            ]
+                        ],
+                        'responses' => [
+                            '201' => ['description' => 'Item berhasil ditambahkan'],
+                            '404' => ['description' => 'Proyek tidak ditemukan']
+                        ]
+                    ]
+                ],
                 '/api/estimation-runs/{run_id}' => [
                     'get' => [
                         'tags' => ['Estimation & WBS'],
@@ -374,10 +444,37 @@ class DocsController extends Controller
                         ]
                     ]
                 ],
+                '/api/estimation-items' => [
+                    'post' => [
+                        'tags' => ['Estimation & WBS'],
+                        'summary' => 'Tambah Baris Item Estimasi Baru (Mandiri)',
+                        'requestBody' => [
+                            'required' => true,
+                            'content' => [
+                                'application/json' => [
+                                    'schema' => [
+                                        'type' => 'object',
+                                        'properties' => [
+                                            'project_id' => ['type' => 'string', 'example' => '1'],
+                                            'section_id' => ['type' => 'integer', 'example' => 5],
+                                            'item_name' => ['type' => 'string', 'example' => 'Plesteran Dinding'],
+                                            'volume' => ['type' => 'number', 'example' => 100.0],
+                                            'unit' => ['type' => 'string', 'example' => 'm2']
+                                        ]
+                                    ]
+                                ]
+                            ]
+                        ],
+                        'responses' => [
+                            '201' => ['description' => 'Item berhasil dibuat'],
+                            '400' => ['description' => 'Input tidak valid']
+                        ]
+                    ]
+                ],
                 '/api/estimation-items/{item_id}' => [
                     'put' => [
                         'tags' => ['Estimation & WBS'],
-                        'summary' => 'Update Satu Baris Item Pekerjaan',
+                        'summary' => 'Update Satu Baris Item Pekerjaan (PUT)',
                         'description' => 'Mengubah volume, unit price, atau kode AHSP pada item spesifik.',
                         'parameters' => [
                             [
@@ -408,6 +505,22 @@ class DocsController extends Controller
                             '404' => ['description' => 'Item tidak ditemukan']
                         ]
                     ],
+                    'patch' => [
+                        'tags' => ['Estimation & WBS'],
+                        'summary' => 'Update Sebagian Atribut Item Pekerjaan (PATCH)',
+                        'parameters' => [
+                            [
+                                'name' => 'item_id',
+                                'in' => 'path',
+                                'required' => true,
+                                'schema' => ['type' => 'string']
+                            ]
+                        ],
+                        'responses' => [
+                            '200' => ['description' => 'Item berhasil diupdate'],
+                            '404' => ['description' => 'Item tidak ditemukan']
+                        ]
+                    ],
                     'delete' => [
                         'tags' => ['Estimation & WBS'],
                         'summary' => 'Hapus Item Pekerjaan',
@@ -426,7 +539,213 @@ class DocsController extends Controller
                     ]
                 ],
 
-                // 4. AHSP Master Endpoints
+                // ==========================================
+                // 4. AI Auditor & Co-Pilot Endpoints
+                // ==========================================
+                '/api/projects/{id}/audit' => [
+                    'get' => [
+                        'tags' => ['AI Auditor & Co-Pilot'],
+                        'summary' => 'Audit Integritas Data WBS Proyek (Lokal)',
+                        'description' => 'Pemeriksaan integritas item RAB terhadap anomali volume 0 dan kelengkapan mapping AHSP.',
+                        'parameters' => [
+                            [
+                                'name' => 'id',
+                                'in' => 'path',
+                                'required' => true,
+                                'schema' => ['type' => 'string']
+                            ]
+                        ],
+                        'responses' => [
+                            '200' => [
+                                'description' => 'Hasil audit anomali WBS',
+                                'content' => [
+                                    'application/json' => [
+                                        'schema' => ['$ref' => '#/components/schemas/AuditResult']
+                                    ]
+                                ]
+                            ],
+                            '404' => ['description' => 'Proyek tidak ditemukan']
+                        ]
+                    ],
+                    'post' => [
+                        'tags' => ['AI Auditor & Co-Pilot'],
+                        'summary' => 'Audit Integritas Data WBS Proyek (POST)',
+                        'parameters' => [
+                            [
+                                'name' => 'id',
+                                'in' => 'path',
+                                'required' => true,
+                                'schema' => ['type' => 'string']
+                            ]
+                        ],
+                        'responses' => [
+                            '200' => ['description' => 'Hasil audit anomali WBS']
+                        ]
+                    ]
+                ],
+                '/api/projects/{id}/ai-audit' => [
+                    'post' => [
+                        'tags' => ['AI Auditor & Co-Pilot'],
+                        'summary' => 'Audit Cerdas Berbasis AI LLM (Konteks Proyek Terisi Otomatis)',
+                        'parameters' => [
+                            [
+                                'name' => 'id',
+                                'in' => 'path',
+                                'required' => true,
+                                'schema' => ['type' => 'string']
+                            ]
+                        ],
+                        'responses' => [
+                            '200' => ['description' => 'Hasil audit AI berhasil diterima'],
+                            '502' => ['description' => 'Layanan AI offline']
+                        ]
+                    ]
+                ],
+                '/api/projects/{id}/chat' => [
+                    'post' => [
+                        'tags' => ['AI Auditor & Co-Pilot'],
+                        'summary' => 'Konsultasi Interaktif Chat AI RAB & Usulan Perubahan WBS',
+                        'description' => 'Mengajukan pertanyaan atau perintah modifikasi RAB. Jawaban dan aksi otomatis disimpan ke riwayat konsultasi.',
+                        'parameters' => [
+                            [
+                                'name' => 'id',
+                                'in' => 'path',
+                                'required' => true,
+                                'schema' => ['type' => 'string']
+                            ]
+                        ],
+                        'requestBody' => [
+                            'required' => true,
+                            'content' => [
+                                'application/json' => [
+                                    'schema' => [
+                                        'type' => 'object',
+                                        'required' => ['prompt'],
+                                        'properties' => [
+                                            'prompt' => [
+                                                'type' => 'string',
+                                                'example' => 'Ganti lantai keramik ke granit 60x60 cm dan hitung dampaknya.'
+                                            ]
+                                        ]
+                                    ]
+                                ]
+                            ]
+                        ],
+                        'responses' => [
+                            '200' => [
+                                'description' => 'Respon AI beserta usulan perubahan WBS',
+                                'content' => [
+                                    'application/json' => [
+                                        'schema' => [
+                                            'type' => 'object',
+                                            'properties' => [
+                                                'success' => ['type' => 'boolean', 'example' => true],
+                                                'reply' => ['type' => 'string'],
+                                                'cost_impact' => ['type' => 'number', 'example' => 14500000],
+                                                'history_id' => ['type' => 'integer', 'example' => 12],
+                                                'actions' => ['type' => 'array', 'items' => ['type' => 'object']]
+                                            ]
+                                        ]
+                                    ]
+                                ]
+                            ],
+                            '400' => ['description' => 'Prompt kosong'],
+                            '404' => ['description' => 'Proyek tidak ditemukan']
+                        ]
+                    ]
+                ],
+                '/api/projects/{id}/chat-history' => [
+                    'get' => [
+                        'tags' => ['AI Auditor & Co-Pilot'],
+                        'summary' => 'Ambil Riwayat Konsultasi Chat AI Proyek',
+                        'parameters' => [
+                            [
+                                'name' => 'id',
+                                'in' => 'path',
+                                'required' => true,
+                                'schema' => ['type' => 'string']
+                            ]
+                        ],
+                        'responses' => [
+                            '200' => ['description' => 'Daftar riwayat percakapan']
+                        ]
+                    ],
+                    'delete' => [
+                        'tags' => ['AI Auditor & Co-Pilot'],
+                        'summary' => 'Hapus Seluruh Riwayat Konsultasi Chat AI Proyek',
+                        'parameters' => [
+                            [
+                                'name' => 'id',
+                                'in' => 'path',
+                                'required' => true,
+                                'schema' => ['type' => 'string']
+                            ]
+                        ],
+                        'responses' => [
+                            '200' => ['description' => 'Riwayat berhasil dibersihkan']
+                        ]
+                    ]
+                ],
+                '/api/projects/{id}/chat-history/{history_id}/applied' => [
+                    'patch' => [
+                        'tags' => ['AI Auditor & Co-Pilot'],
+                        'summary' => 'Tandai Status Usulan Aksi AI Diterapkan / Belum',
+                        'parameters' => [
+                            [
+                                'name' => 'id',
+                                'in' => 'path',
+                                'required' => true,
+                                'schema' => ['type' => 'string']
+                            ],
+                            [
+                                'name' => 'history_id',
+                                'in' => 'path',
+                                'required' => true,
+                                'schema' => ['type' => 'integer']
+                            ]
+                        ],
+                        'requestBody' => [
+                            'required' => true,
+                            'content' => [
+                                'application/json' => [
+                                    'schema' => [
+                                        'type' => 'object',
+                                        'properties' => [
+                                            'is_applied' => ['type' => 'integer', 'example' => 1]
+                                        ]
+                                    ]
+                                ]
+                            ]
+                        ],
+                        'responses' => [
+                            '200' => ['description' => 'Status usulan perubahan diperbarui']
+                        ]
+                    ]
+                ],
+                '/api/v2/ai/rab-audit' => [
+                    'post' => [
+                        'tags' => ['AI Auditor & Co-Pilot'],
+                        'summary' => 'Proxy Langsung Stateless ke Layanan AI RAB Audit',
+                        'responses' => [
+                            '200' => ['description' => 'Audit berhasil'],
+                            '502' => ['description' => 'Layanan AI offline']
+                        ]
+                    ]
+                ],
+                '/api/v2/ai/rab-agent' => [
+                    'post' => [
+                        'tags' => ['AI Auditor & Co-Pilot'],
+                        'summary' => 'Proxy Langsung Stateless ke Layanan AI Co-Pilot Agent',
+                        'responses' => [
+                            '200' => ['description' => 'Respon agent berhasil diterima'],
+                            '502' => ['description' => 'Layanan AI offline']
+                        ]
+                    ]
+                ],
+
+                // ==========================================
+                // 5. AHSP Master Endpoints
+                // ==========================================
                 '/api/ahsp/list' => [
                     'get' => [
                         'tags' => ['AHSP Master'],
@@ -502,6 +821,35 @@ class DocsController extends Controller
                             'ppn' => ['type' => 'number', 'example' => 11.0],
                             'status' => ['type' => 'string', 'example' => 'Perencanaan'],
                             'total_budget' => ['type' => 'number', 'example' => 450000000.0]
+                        ]
+                    ],
+                    'AuditResult' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'success' => ['type' => 'boolean', 'example' => true],
+                            'summary' => [
+                                'type' => 'object',
+                                'properties' => [
+                                    'total' => ['type' => 'integer', 'example' => 35],
+                                    'critical' => ['type' => 'integer', 'example' => 1],
+                                    'warning' => ['type' => 'integer', 'example' => 2],
+                                    'normal' => ['type' => 'integer', 'example' => 32],
+                                    'normal_percentage' => ['type' => 'integer', 'example' => 91]
+                                ]
+                            ],
+                            'anomalies' => [
+                                'type' => 'array',
+                                'items' => [
+                                    'type' => 'object',
+                                    'properties' => [
+                                        'item_id' => ['type' => 'integer'],
+                                        'item_name' => ['type' => 'string'],
+                                        'type' => ['type' => 'string', 'example' => 'critical'],
+                                        'subtitle' => ['type' => 'string'],
+                                        'reason' => ['type' => 'string']
+                                    ]
+                                ]
+                            ]
                         ]
                     ]
                 ]

@@ -26,7 +26,6 @@ class ProjectController extends ResourceController
             // Get latest estimation run by project_id or project_uuid
             $latestRun = $db->table('estimation_runs')
                 ->where('project_id', $project['id'])
-                ->orWhere('project_uuid', $project['uuid'])
                 ->orderBy('run_timestamp', 'DESC')
                 ->get()
                 ->getRowArray();
@@ -60,7 +59,6 @@ class ProjectController extends ResourceController
                     'id'            => (int) $latestRun['id'],
                     'uuid'          => $latestRun['uuid'],
                     'project_id'    => (int) $latestRun['project_id'],
-                    'project_uuid'  => $latestRun['project_uuid'],
                     'run_timestamp' => $latestRun['run_timestamp'],
                     'total_items'   => (int) $latestRun['total_items'],
                     'mapped_high'   => (int) $latestRun['mapped_high'],
@@ -141,10 +139,19 @@ class ProjectController extends ResourceController
             return $this->failNotFound('Proyek tidak ditemukan.');
         }
 
+        // Auto update status if referer indicates RAB stage
+        $referer = $this->request->getHeaderLine('referer');
+        if (!empty($referer) && strpos($referer, '/rab') !== false) {
+            $statusLower = strtolower(trim($project['status'] ?? ''));
+            if (empty($statusLower) || !in_array($statusLower, ['rab', 'tahap rab', 'penyusunan rab', 'selesai', 'disetujui'])) {
+                $projectModel->update($project['id'], ['status' => 'Tahap RAB']);
+                $project['status'] = 'Tahap RAB';
+            }
+        }
+
         $db = \Config\Database::connect();
         $runs = $db->table('estimation_runs')
             ->where('project_id', $project['id'])
-            ->orWhere('project_uuid', $project['uuid'])
             ->orderBy('run_timestamp', 'DESC')
             ->get()
             ->getResultArray();

@@ -16,7 +16,6 @@ class EstimationRunModel extends Model
         'id',
         'uuid',
         'project_id',
-        'project_uuid',
         'run_timestamp',
         'total_items',
         'mapped_high',
@@ -24,6 +23,7 @@ class EstimationRunModel extends Model
         'unmapped',
         'high_ratio',
         'engine_stats',
+        'detection_method',
     ];
 
     // Dates

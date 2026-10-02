@@ -16,7 +16,6 @@ class EstimationItemModel extends Model
         'id',
         'uuid',
         'section_id',
-        'section_uuid',
         'item_uid',
         'item_no',
         'item_code',
