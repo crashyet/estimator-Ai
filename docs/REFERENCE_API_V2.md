@@ -167,7 +167,24 @@ Memetakan satu item pekerjaan kustom ke AHSP Vector Database.
 
 ---
 
-## 5. Referensi Environment Variables
+## 5. AI RAB Auditor & Co-Pilot Agent Endpoints
+
+Dokumentasi lengkap dan spesifikasi skema tersedia di **[API_AI_AUDITOR_AND_AGENT.md](API_AI_AUDITOR_AND_AGENT.md)**.
+
+### 5.1 `POST /api/v2/ai/rab-audit`
+Audit kelayakan RAB otomatis menggunakan arsitektur Dual-Layer:
+- **Layer 1**: Deterministic Engine (volume nol, deviasi harga terhadap standar HSPK lokal).
+- **Layer 2**: Gemini LLM Reasoning (missing scope / pekerjaan yang hilang, volume outlier).
+- **Output**: Health Score (0–100), status (`EXCELLENT`, `GOOD`, `NEEDS_REVIEW`, `POOR`), daftar anomali, dan missing scope.
+
+### 5.2 `POST /api/v2/ai/rab-agent`
+AI Co-Pilot interaktif untuk memodifikasi tabel RAB berbasis instruksi bahasa alami:
+- **Input**: Prompt pengguna, snapshot baris tabel RAB saat ini, dan konteks proyek.
+- **Output**: Rekomendasi aksi terstruktur (`UPDATE_ITEM`, `ADD_ITEM`, `DELETE_ITEM`), grounding AHSP, preview perbandingan nilai lama/baru, dan dampak perubahan total biaya (`cost_impact`) yang dihitung secara deterministik (bebas halusinasi hitungan matematika).
+
+---
+
+## 6. Referensi Environment Variables
 
 ### `api_v2/.env`
 

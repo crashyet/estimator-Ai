@@ -49,28 +49,63 @@ def get_gemini_client():
     return _gemini_client
 
 
-def _extract_search_keywords(prompt: str) -> List[str]:
-    """Ekstraksi kata kunci material/pekerjaan dari prompt user untuk grounding AHSP."""
+def _is_affirmation_prompt(prompt: str) -> bool:
+    """Mendeteksi apakah prompt user merupakan respons konfirmasi/persetujuan singkat."""
+    clean = prompt.lower().strip()
+    words = re.findall(r'\b\w+\b', clean)
+    if len(words) <= 5:
+        confirm_words = {
+            "mau", "iya", "ya", "yaudah", "boleh", "silakan", "silahkan",
+            "oke", "ok", "setuju", "ubah", "ganti", "terapkan", "lanjut",
+            "lanjutkan", "acc", "gas", "deal", "sip"
+        }
+        if any(w in confirm_words for w in words):
+            return True
+    return False
+
+
+def _extract_keywords_from_text(text: str) -> List[str]:
+    """Ekstraksi target kata benda/pekerjaan dari sekuens teks."""
     keywords = []
-    # Pola kata setelah "ganti ... jadi/ke [target]" atau "tambah [target]"
-    match_swap = re.search(r'(?:jadi|ke|dengan|pake|pakai)\s+([a-zA-Z0-9\s]+?)(?:$|\bdi\b|\buntuk\b|\bsemua\b)', prompt, re.IGNORECASE)
+    match_swap = re.search(r'(?:jadi|ke|dengan|pake|pakai|menjadi)\s+([a-zA-Z0-9\s\.\,\-\/]+?)(?:\.|\?|\!|$|\bdi\b|\buntuk\b|\bsemua\b|\bapakah\b|\bkarena\b)', text, re.IGNORECASE)
     if match_swap:
-        cand = match_swap.group(1).strip()
+        cand = match_swap.group(1).strip(" .?,!-\t\n")
         if len(cand) > 3:
             keywords.append(cand)
 
-    match_add = re.search(r'(?:tambah|tambahkan|pasang)\s+(?:pekerjaan\s+)?([a-zA-Z0-9\s]+?)(?:$|\bdi\b|\bsebanyak\b)', prompt, re.IGNORECASE)
+    match_add = re.search(r'(?:tambah|tambahkan|pasang|memasang)\s+(?:pekerjaan\s+)?([a-zA-Z0-9\s\.\,\-\/]+?)(?:\.|\?|\!|$|\bdi\b|\bsebanyak\b|\bapakah\b|\bkarena\b)', text, re.IGNORECASE)
     if match_add:
-        cand = match_add.group(1).strip()
+        cand = match_add.group(1).strip(" .?,!-\t\n")
         if len(cand) > 3 and cand not in keywords:
             keywords.append(cand)
 
     return keywords
 
 
-def _build_ahsp_hint(prompt: str) -> Optional[str]:
+def _extract_search_keywords(prompt: str, history: Optional[List[Any]] = None) -> List[str]:
+    """Ekstraksi kata kunci material/pekerjaan dari prompt user untuk grounding AHSP."""
+    keywords = _extract_keywords_from_text(prompt)
+
+    # Jika prompt merupakan konfirmasi ("mau", "ubah", dll) atau belum menemukan kata kunci,
+    # telusuri 2 pesan terakhir pada percakapan sebelumnya
+    if (not keywords or _is_affirmation_prompt(prompt)) and history:
+        for msg in reversed(history[-2:]):
+            content = getattr(msg, "content", "") if not isinstance(msg, dict) else msg.get("content", "")
+            if not content:
+                continue
+            hist_keywords = _extract_keywords_from_text(content)
+            for kw in hist_keywords:
+                if kw not in keywords:
+                    keywords.append(kw)
+            if keywords:
+                break
+
+    return keywords
+
+
+def _build_ahsp_hint(prompt: str, history: Optional[List[Any]] = None) -> Optional[str]:
     """Mencari referensi AHSP dari database jika user menyebut material spesifik."""
-    keywords = _extract_search_keywords(prompt)
+    keywords = _extract_search_keywords(prompt, history)
     if not keywords:
         return None
 
@@ -95,8 +130,8 @@ async def run_rab_agent(request: RABAgentRequest) -> RABAgentResponse:
     """
     items_map: Dict[int, RABItemContext] = {it.id: it for it in request.items}
 
-    # 1. Grounding AHSP jika ada indikasi spesifikasi baru
-    ahsp_hint = _build_ahsp_hint(request.prompt)
+    # 1. Grounding AHSP jika ada indikasi spesifikasi baru (memperhitungkan history jika prompt konfirmasi)
+    ahsp_hint = _build_ahsp_hint(request.prompt, request.history)
 
     # 2. Susun prompt
     user_prompt = build_agent_user_prompt(
@@ -137,6 +172,16 @@ async def run_rab_agent(request: RABAgentRequest) -> RABAgentResponse:
         reply_message = data.get("reply_message", "Saya telah menyiapkan usulan perubahan berikut:")
         raw_actions = data.get("actions", [])
 
+        # Sanitasi teks dari penyebutan ID database kasar jika model masih memunculkannya
+        def _clean_ids(text: str) -> str:
+            if not text:
+                return text
+            cleaned = re.sub(r'\s*\((?:ID|id|Id|SysID|sys_id)\s*:\s*[\d,\s\w]+\)', '', text)
+            cleaned = re.sub(r'\b(?:ID|id|Id|SysID)\s*:\s*\d+\b', '', cleaned)
+            return re.sub(r'\s{2,}', ' ', cleaned).strip()
+
+        reply_message = _clean_ids(reply_message)
+
         # 3. Validasi & normalisasi actions
         validated_actions: List[Dict[str, Any]] = []
         for act in raw_actions:
@@ -159,12 +204,14 @@ async def run_rab_agent(request: RABAgentRequest) -> RABAgentResponse:
                         target_id = it_id
                         break
 
+            act_desc = _clean_ids(act.get("description") or f"{act_type} pada tabel RAB")
+
             validated_actions.append({
                 "action_type": act_type,
                 "target_item_id": target_id,
                 "target_section_id": act.get("target_section_id"),
                 "target_category": act.get("target_category") or "",
-                "description": act.get("description") or f"{act_type} pada tabel RAB",
+                "description": act_desc,
                 "changes": act.get("changes") or {},
                 "old_values": None,
                 "cost_delta": 0.0

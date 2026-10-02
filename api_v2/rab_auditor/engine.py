@@ -163,6 +163,7 @@ def check_volume_zero(item: RABAuditItem) -> Optional[AnomalyResult]:
     if item.volume is None or item.volume == 0.0:
         return AnomalyResult(
             item_id=item.id,
+            item_name=item.description,
             type="VOLUME_ZERO",
             severity="CRITICAL",
             field="volume",
@@ -217,6 +218,7 @@ def check_price_deviation(
         # CRITICAL: Overpriced berat
         return AnomalyResult(
             item_id=item.id,
+            item_name=item.description,
             type="PRICE_OVERPRICED",
             severity="CRITICAL",
             field="unit_price",
@@ -237,6 +239,7 @@ def check_price_deviation(
         # WARNING: Overpriced ringan
         return AnomalyResult(
             item_id=item.id,
+            item_name=item.description,
             type="PRICE_OVERPRICED",
             severity="WARNING",
             field="unit_price",
@@ -257,6 +260,7 @@ def check_price_deviation(
         # WARNING: Underpriced
         return AnomalyResult(
             item_id=item.id,
+            item_name=item.description,
             type="PRICE_UNDERPRICED",
             severity="WARNING",
             field="unit_price",

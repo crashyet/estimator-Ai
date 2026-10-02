@@ -1,62 +1,48 @@
 """
-hspk_loader.py — Loader & Parser Data HSPK dari File JSON
+hspk_loader.py — Loader Data HSPK/AHSP dari Database PostgreSQL
 
-Membaca file JSON HSPK dari folder hspk/{province}/{city}.json,
-menghitung harga satuan pekerjaan (Σ koefisien × harga), dan menyediakan
-index lookup by kode dan by nama_pekerjaan untuk digunakan oleh engine.py.
-
-Struktur data HSPK per item:
-{
-    "kode": "1.1.1.1",
-    "nama_pekerjaan": "Pembuatan 1 m' pagar sementara...",
-    "jenis_pekerjaan": "PEKERJAAN PERSIAPAN",
-    "satuan": "m'",
-    "list": [
-        { "koefisien": 0.6, "harga": 126000, "jenis_uraian": "tenaga", ... },
-        { "koefisien": 0.012, "harga": 6500000, "jenis_uraian": "bahan", ... }
-    ]
-}
+Mengambil data master AHSP beserta harga satuannya langsung dari database PostgreSQL
+(tabel `ahsp_items`), dengan konfigurasi yang dibaca otomatis dari `backend/.env`
+(atau environment variables). Menyediakan index lookup by kode dan by nama_pekerjaan
+untuk digunakan oleh engine.py dalam audit kelayakan harga RAB.
 """
 
 import os
-import json
+import time
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
+import psycopg2
+from psycopg2.extras import DictCursor
+from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 
-# Path relatif dari api_v2/ ke folder hspk/
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent  # estimator/
-_HSPK_ROOT = _PROJECT_ROOT / "hspk"
+_CURRENT_DIR = Path(__file__).resolve().parent
+_API_V2_ROOT = _CURRENT_DIR.parent
+_ENV_PATH = _API_V2_ROOT / ".env"
 
-# Mapping nama provinsi → nama folder
-PROVINCE_FOLDER_MAP = {
-    "jawa tengah": "jateng",
-    "jateng": "jateng",
-    "jawa timur": "jatim",
-    "jatim": "jatim",
-}
+# Muat variabel environment dari api_v2/.env
+if _ENV_PATH.is_file():
+    load_dotenv(_ENV_PATH)
+else:
+    load_dotenv()
 
-# Mapping nama kota/kabupaten → nama file (tanpa .json)
-CITY_FILE_MAP = {
-    "banyumas": "banyumas",
-    "kabupaten banyumas": "banyumas",
-    "kab. banyumas": "banyumas",
-    "kab banyumas": "banyumas",
-    "cilacap": "cilacap",
-    "kabupaten cilacap": "cilacap",
-    "kab. cilacap": "cilacap",
-    "kab cilacap": "cilacap",
-    "purbalingga": "purbalingga",
-    "kabupaten purbalingga": "purbalingga",
-    "kab. purbalingga": "purbalingga",
-    "kab purbalingga": "purbalingga",
-}
+
+def get_db_config() -> dict:
+    """Konfigurasi koneksi PostgreSQL langsung dari .env api_v2."""
+    return {
+        "host": os.getenv("DB_HOST", "aws-0-ap-south-1.pooler.supabase.com"),
+        "port": int(os.getenv("DB_PORT", "5432")),
+        "dbname": os.getenv("DB_NAME", "postgres"),
+        "user": os.getenv("DB_USER", "postgres.mevkrbsjgwliglxrdemm"),
+        "password": os.getenv("DB_PASSWORD", "Estimat0r100!@"),
+        "connect_timeout": 10,
+    }
 
 
 class HSPKItem:
-    """Representasi satu item pekerjaan HSPK beserta harga satuan yang sudah dihitung."""
+    """Representasi satu item pekerjaan HSPK/AHSP beserta harga satuan dari database."""
 
     __slots__ = (
         "kode", "nama_pekerjaan", "jenis_pekerjaan", "satuan",
@@ -70,8 +56,8 @@ class HSPKItem:
         jenis_pekerjaan: str,
         satuan: str,
         harga_satuan: float,
-        komponen_bahan: float,
-        komponen_tenaga: float,
+        komponen_bahan: float = 0.0,
+        komponen_tenaga: float = 0.0,
         komponen_alat: float = 0.0,
     ):
         self.kode = kode
@@ -96,142 +82,99 @@ class HSPKItem:
         }
 
 
-def _calculate_unit_price(item_data: dict) -> Tuple[float, float, float, float]:
+# Cache in-memory untuk data database
+_hspk_db_cache: Optional[List[HSPKItem]] = None
+
+
+def load_hspk_from_db(force_refresh: bool = False) -> List[HSPKItem]:
     """
-    Hitung harga satuan dari sub-item koefisien × harga.
-
-    Returns:
-        (harga_satuan_total, komponen_bahan, komponen_tenaga, komponen_alat)
-    """
-    total = 0.0
-    bahan = 0.0
-    tenaga = 0.0
-    alat = 0.0
-
-    for sub in item_data.get("list", []):
-        koef = sub.get("koefisien", 0) or 0
-        harga = sub.get("harga", 0) or 0
-        subtotal = float(koef) * float(harga)
-        total += subtotal
-
-        jenis = (sub.get("jenis_uraian", "") or "").lower()
-        if jenis == "bahan":
-            bahan += subtotal
-        elif jenis == "tenaga":
-            tenaga += subtotal
-        elif jenis in ("alat", "peralatan"):
-            alat += subtotal
-
-    return round(total, 2), round(bahan, 2), round(tenaga, 2), round(alat, 2)
-
-
-def _resolve_hspk_path(province: str, city: str) -> Optional[Path]:
-    """
-    Resolve path file HSPK berdasarkan nama provinsi dan kota/kabupaten.
-    Mendukung berbagai format penamaan lokasi:
-    - Dengan atau tanpa awalan 'Kabupaten', 'Kab.', 'Kota'
-    - Pencarian langsung ke folder provinsi atau fallback scanning ke seluruh subfolder hspk/
-    Returns None jika file tidak ditemukan.
-    """
-    prov_key = (province or "").strip().lower()
-    city_key = (city or "").strip().lower()
-
-    if not city_key and not prov_key:
-        return None
-
-    # Normalisasi nama kota/kabupaten
-    city_clean = (
-        city_key.replace("kabupaten ", "")
-        .replace("kab. ", "")
-        .replace("kab ", "")
-        .replace("kota ", "")
-        .strip()
-    )
-
-    city_file = CITY_FILE_MAP.get(city_key) or CITY_FILE_MAP.get(city_clean) or city_clean
-
-    # 1. Coba lookup jika provinsi diketahui
-    if prov_key:
-        prov_folder = PROVINCE_FOLDER_MAP.get(prov_key)
-        if not prov_folder:
-            candidate = _HSPK_ROOT / prov_key.replace(" ", "_")
-            if candidate.is_dir():
-                prov_folder = prov_key.replace(" ", "_")
-
-        if prov_folder:
-            path = _HSPK_ROOT / prov_folder / f"{city_file}.json"
-            if path.is_file():
-                return path
-
-    # 2. Fallback: Cari nama kota di seluruh folder provinsi yang ada di hspk/
-    if _HSPK_ROOT.is_dir():
-        for prov_dir in sorted(_HSPK_ROOT.iterdir()):
-            if not prov_dir.is_dir() or prov_dir.name.startswith("."):
-                continue
-            path = prov_dir / f"{city_file}.json"
-            if path.is_file():
-                return path
-
-    logger.warning(f"File HSPK tidak ditemukan untuk kota='{city}', prov='{province}'")
-    return None
-
-
-# In-memory cache: key = path string, value = list[HSPKItem]
-_hspk_cache: Dict[str, List[HSPKItem]] = {}
-
-
-def load_hspk_data(province: str, city: str) -> List[HSPKItem]:
-    """
-    Load dan parse data HSPK untuk provinsi/kota tertentu.
-    Hasilnya di-cache di memory untuk performa.
+    Mengambil seluruh data master AHSP/HSPK langsung dari tabel `ahsp_items` di database PostgreSQL.
+    Menggunakan kolom `harga_satuan` yang sudah tersimpan di database.
 
     Args:
-        province: Nama provinsi (case-insensitive)
-        city: Nama kabupaten/kota (case-insensitive)
+        force_refresh: Jika True, paksa query ulang ke database.
 
     Returns:
-        List HSPKItem yang sudah dihitung harga satuannya.
-        Mengembalikan list kosong jika data tidak tersedia.
+        List of HSPKItem.
     """
-    path = _resolve_hspk_path(province, city)
-    if path is None:
-        return []
+    global _hspk_db_cache
+    if _hspk_db_cache is not None and not force_refresh:
+        return _hspk_db_cache
 
-    path_key = str(path)
-    if path_key in _hspk_cache:
-        return _hspk_cache[path_key]
-
-    logger.info(f"Loading HSPK data from: {path}")
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            raw = json.load(f)
-    except (json.JSONDecodeError, OSError) as e:
-        logger.error(f"Gagal membaca file HSPK {path}: {e}")
-        return []
-
-    items_raw = raw.get("data", [])
+    cfg = get_db_config()
     items: List[HSPKItem] = []
 
-    for item_data in items_raw:
-        if item_data.get("deleted", 0) == 1:
-            continue
+    for attempt in range(1, 3):
+        try:
+            conn = psycopg2.connect(**cfg)
+            try:
+                with conn.cursor(cursor_factory=DictCursor) as cursor:
+                    sql = """
+                        SELECT id_pekerjaan, nama_pekerjaan, satuan, harga_satuan, sumber
+                        FROM ahsp_items
+                        ORDER BY id ASC
+                    """
+                    cursor.execute(sql)
+                    rows = cursor.fetchall()
 
-        harga_satuan, bahan, tenaga, alat = _calculate_unit_price(item_data)
+                    for row in rows:
+                        kode = str(row["id_pekerjaan"] or "").strip()
+                        nama = str(row["nama_pekerjaan"] or "").strip()
+                        satuan = str(row["satuan"] or "").strip()
+                        harga = float(row["harga_satuan"] or 0.0)
+                        sumber = str(row["sumber"] or "").strip()
 
-        items.append(HSPKItem(
-            kode=item_data.get("kode", ""),
-            nama_pekerjaan=item_data.get("nama_pekerjaan", ""),
-            jenis_pekerjaan=item_data.get("jenis_pekerjaan", ""),
-            satuan=item_data.get("satuan", ""),
-            harga_satuan=harga_satuan,
-            komponen_bahan=bahan,
-            komponen_tenaga=tenaga,
-            komponen_alat=alat,
-        ))
+                        if kode or nama:
+                            items.append(
+                                HSPKItem(
+                                    kode=kode,
+                                    nama_pekerjaan=nama,
+                                    jenis_pekerjaan=sumber,
+                                    satuan=satuan,
+                                    harga_satuan=harga,
+                                    komponen_bahan=0.0,
+                                    komponen_tenaga=0.0,
+                                    komponen_alat=0.0,
+                                )
+                            )
 
-    _hspk_cache[path_key] = items
-    logger.info(f"Loaded {len(items)} HSPK items dari {path.name}")
-    return items
+                _hspk_db_cache = items
+                logger.info(
+                    f"Berhasil memuat {len(items)} item HSPK/AHSP langsung dari PostgreSQL "
+                    f"({cfg['host']}:{cfg['port']}/{cfg['dbname']}.ahsp_items)."
+                )
+                return items
+            finally:
+                conn.close()
+
+        except Exception as e:
+            if attempt < 2:
+                logger.warning(f"Koneksi PostgreSQL attempt {attempt} gagal ({e}), mencoba kembali...")
+                time.sleep(1)
+                continue
+            logger.error(f"Gagal memuat AHSP dari database PostgreSQL: {e}", exc_info=True)
+            return []
+
+    return []
+
+
+def load_hspk_data(
+    province: str = "",
+    city: str = "",
+    force_refresh: bool = False,
+) -> List[HSPKItem]:
+    """
+    Load data master HSPK/AHSP langsung dari database PostgreSQL.
+
+    Args:
+        province: Parameter kompatibilitas lokasi proyek
+        city: Parameter kompatibilitas lokasi proyek
+        force_refresh: Paksa pemuatan ulang dari database tanpa cache
+
+    Returns:
+        List HSPKItem yang sudah memiliki harga satuan dari database.
+    """
+    return load_hspk_from_db(force_refresh=force_refresh)
 
 
 def build_hspk_index(items: List[HSPKItem]) -> Dict[str, HSPKItem]:
@@ -244,28 +187,28 @@ def build_hspk_index(items: List[HSPKItem]) -> Dict[str, HSPKItem]:
     Returns:
         Dict mapping kode → HSPKItem
     """
-    return {item.kode: item for item in items if item.kode}
+    index: Dict[str, HSPKItem] = {}
+    for item in items:
+        if item.kode:
+            index[item.kode] = item
+            clean_kode = item.kode.strip()
+            if clean_kode and clean_kode not in index:
+                index[clean_kode] = item
+    return index
 
 
 def get_available_regions() -> List[dict]:
     """
-    List semua region (provinsi/kota) yang tersedia di database HSPK.
+    List informasi sumber data HSPK (Database PostgreSQL).
 
     Returns:
-        List dict dengan keys: province_folder, city_file, full_path
+        List dict berisi info database PostgreSQL.
     """
-    regions = []
-    if not _HSPK_ROOT.is_dir():
-        return regions
-
-    for prov_dir in sorted(_HSPK_ROOT.iterdir()):
-        if not prov_dir.is_dir() or prov_dir.name.startswith("."):
-            continue
-        for city_file in sorted(prov_dir.glob("*.json")):
-            regions.append({
-                "province_folder": prov_dir.name,
-                "city_file": city_file.stem,
-                "full_path": str(city_file),
-            })
-
-    return regions
+    cfg = get_db_config()
+    return [
+        {
+            "province_folder": "database_postgresql",
+            "city_file": "ahsp_items",
+            "full_path": f"postgresql://{cfg['host']}:{cfg['port']}/{cfg['dbname']}/ahsp_items",
+        }
+    ]
