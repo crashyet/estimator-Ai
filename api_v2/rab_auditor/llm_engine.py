@@ -224,10 +224,14 @@ def check_volume_sanity(
         raw_text = response.text.strip()
         parsed = json.loads(raw_text)
 
+        item_map = {it.id: it for it in items}
         results = []
         for anomaly in parsed:
+            a_id = int(anomaly.get("item_id", 0))
+            a_name = item_map[a_id].description if a_id in item_map else None
             results.append(AnomalyResult(
-                item_id=int(anomaly.get("item_id", 0)),
+                item_id=a_id,
+                item_name=a_name,
                 type="VOLUME_OUTLIER",
                 severity="WARNING",
                 field="volume",

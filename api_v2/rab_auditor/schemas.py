@@ -56,6 +56,7 @@ class RABAuditRequest(BaseModel):
 class AnomalyResult(BaseModel):
     """Satu temuan anomali dari proses audit."""
     item_id: int = Field(..., description="ID item yang bermasalah")
+    item_name: Optional[str] = Field(default=None, description="Nama item pekerjaan yang bermasalah")
     type: str = Field(
         ...,
         description="Tipe anomali: VOLUME_ZERO, PRICE_OVERPRICED, PRICE_UNDERPRICED, VOLUME_OUTLIER"

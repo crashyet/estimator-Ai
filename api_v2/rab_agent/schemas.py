@@ -39,8 +39,15 @@ class RABItemContext(BaseModel):
 
 
 class ChatMessage(BaseModel):
-    role: Literal["user", "assistant"] = Field(..., description="Peran pesan")
+    role: str = Field(..., description="Peran pesan: user atau assistant/ai")
     content: str = Field(..., description="Isi pesan")
+
+    def model_post_init(self, __context: Any) -> None:
+        role_str = str(self.role).lower().strip()
+        if role_str in ("ai", "model", "assistant", "bot"):
+            self.role = "assistant"
+        else:
+            self.role = "user"
 
 
 class RABAction(BaseModel):
