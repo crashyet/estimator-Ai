@@ -22,7 +22,7 @@ class RabController extends ResourceController
             ], 400);
         }
 
-        $envUrl = env('PYTHON_API_URL') ?: 'http://192.168.1.24:8200';
+        $envUrl = env('PYTHON_API_URL') ?: 'https://crashyet-burnout-predict.hf.space/';
         $pythonBaseUrl = rtrim($envUrl, '/');
         $pythonUrl = $pythonBaseUrl . '/api/estimate'; 
 
@@ -108,7 +108,7 @@ class RabController extends ResourceController
         $clientName  = $this->request->getPost('client') ?? 'Klien Internal';
 
         // 3. Arahkan ke URL FastAPI Python (dinamis via .env dengan fallback)
-        $envUrl = env('PYTHON_API_URL') ?: 'http://192.168.1.24:8200';
+        $envUrl = env('PYTHON_API_URL') ?: 'https://crashyet-burnout-predict.hf.space/';
         $pythonBaseUrl = rtrim($envUrl, '/');
         $pythonUrl = $pythonBaseUrl . '/api/rab/analyze-image';
 
@@ -172,7 +172,7 @@ class RabController extends ResourceController
         }
 
         // 2. Arahkan ke URL FastAPI Python (dinamis via .env dengan fallback)
-        $envUrl = env('PYTHON_API_URL') ?: 'http://192.168.1.24:8200';
+        $envUrl = env('PYTHON_API_URL') ?: 'https://crashyet-burnout-predict.hf.space/';
         $pythonBaseUrl = rtrim($envUrl, '/');
         $pythonUrl = $pythonBaseUrl . '/api/rab/analyze-prompt';
 
@@ -330,12 +330,12 @@ class RabController extends ResourceController
             ->get()
             ->getResultArray();
 
-        $formatted = array_map(function ($row) {
+        $formatted = array_map(function ($row) use ($project) {
             $actions = null;
             if (!empty($row['actions_data'])) {
                 $decoded = json_decode($row['actions_data'], true);
                 if (is_array($decoded)) {
-                    $actions = $decoded;
+                    $actions = $this->normalizeActionsForProject($project['id'], $decoded);
                 }
             }
             return [
@@ -453,7 +453,7 @@ class RabController extends ResourceController
         ]);
 
         // 2. Try proxying to Python FastAPI AI RAB Agent (Port 8200) for real LLM response
-        $envUrl = env('PYTHON_API_URL') ?: 'http://192.168.1.24:8200';
+        $envUrl = env('PYTHON_API_URL') ?: 'https://api-esti.eyi.my.id';
         $pythonBaseUrl = rtrim($envUrl, '/');
         $pythonUrl = $pythonBaseUrl . '/api/v2/ai/rab-agent';
 
@@ -494,11 +494,12 @@ class RabController extends ResourceController
                 $bodyData = json_decode($response->getBody(), true);
                 $reply = $bodyData['reply_message'] ?? ($bodyData['reply'] ?? '');
                 if (!empty($reply)) {
+                    $actions = $this->normalizeActionsForProject($project['id'], $bodyData['actions'] ?? []);
                     $db->table('ai_chat_histories')->insert([
                         'project_id'   => $project['id'],
                         'sender'       => 'ai',
                         'message'      => $reply,
-                        'actions_data' => !empty($bodyData['actions']) ? json_encode($bodyData['actions']) : null,
+                        'actions_data' => !empty($actions) ? json_encode($actions) : null,
                         'cost_impact'  => (float) ($bodyData['cost_impact'] ?? 0),
                         'is_applied'   => 0,
                         'created_at'   => date('Y-m-d H:i:s'),
@@ -509,7 +510,7 @@ class RabController extends ResourceController
                     return $this->respond([
                         'success'     => true,
                         'reply'       => $reply,
-                        'actions'     => $bodyData['actions'] ?? [],
+                        'actions'     => $actions,
                         'cost_impact' => $bodyData['cost_impact'] ?? 0,
                         'history_id'  => $insertedAiId
                     ]);
@@ -567,7 +568,7 @@ class RabController extends ResourceController
             }
         }
 
-        $envUrl = env('PYTHON_API_URL') ?: 'http://192.168.1.24:8200';
+        $envUrl = env('PYTHON_API_URL') ?: 'https://api-esti.eyi.my.id';
         $pythonBaseUrl = rtrim($envUrl, '/');
         $pythonUrl = $pythonBaseUrl . '/api/v2/ai/rab-audit';
 
@@ -672,7 +673,7 @@ class RabController extends ResourceController
             ]);
         }
 
-        $envUrl = env('PYTHON_API_URL') ?: 'http://192.168.1.24:8200';
+        $envUrl = env('PYTHON_API_URL') ?: 'https://api-esti.eyi.my.id';
         $pythonBaseUrl = rtrim($envUrl, '/');
         $pythonUrl = $pythonBaseUrl . '/api/v2/ai/rab-agent';
 
@@ -700,11 +701,12 @@ class RabController extends ResourceController
             if ($statusCode === 200) {
                 $pyBody = json_decode($body, true);
                 if ($pyBody && $project) {
+                    $actions = $this->normalizeActionsForProject($project['id'], $pyBody['actions'] ?? []);
                     $db->table('ai_chat_histories')->insert([
                         'project_id'   => $project['id'],
                         'sender'       => 'ai',
                         'message'      => $pyBody['reply_message'] ?? ($pyBody['reply'] ?? ''),
-                        'actions_data' => !empty($pyBody['actions']) ? json_encode($pyBody['actions']) : null,
+                        'actions_data' => !empty($actions) ? json_encode($actions) : null,
                         'cost_impact'  => (float) ($pyBody['cost_impact'] ?? 0),
                         'is_applied'   => 0,
                         'created_at'   => $now,
@@ -712,6 +714,7 @@ class RabController extends ResourceController
                     ]);
                     $insertedAiId = (int) $db->insertID();
                     $pyBody['history_id'] = $insertedAiId;
+                    $pyBody['actions'] = $actions;
                     return $this->respond($pyBody);
                 }
 
@@ -739,5 +742,76 @@ class RabController extends ResourceController
                 'message' => 'Tidak dapat terhubung ke AI RAB Agent (' . $pythonUrl . '): ' . $e->getMessage()
             ], 502);
         }
+    }
+
+    /**
+     * Enrich and normalize actions generated by AI to ensure target_section_id and category match this project
+     */
+    private function normalizeActionsForProject($projectId, array $actions)
+    {
+        if (empty($actions)) {
+            return [];
+        }
+
+        $db = \Config\Database::connect();
+        $latestRun = $db->table('estimation_runs')
+            ->where('project_id', $projectId)
+            ->orderBy('id', 'DESC')
+            ->get()
+            ->getRowArray();
+
+        $sections = [];
+        if ($latestRun) {
+            $sections = $db->table('wbs_sections')
+                ->where('run_id', $latestRun['id'])
+                ->orderBy('sort_order', 'ASC')
+                ->get()
+                ->getResultArray();
+        }
+
+        foreach ($actions as &$act) {
+            $act['project_id'] = $projectId;
+            if (($act['action_type'] ?? '') === 'ADD_ITEM') {
+                $targetSecId = $act['target_section_id'] ?? null;
+                $targetCategory = trim($act['target_category'] ?? ($act['changes']['category'] ?? ''));
+
+                // Verify if existing target_section_id is valid for this project's sections
+                $matchedSec = null;
+                if ($targetSecId) {
+                    foreach ($sections as $s) {
+                        if ((int)$s['id'] === (int)$targetSecId) {
+                            $matchedSec = $s;
+                            break;
+                        }
+                    }
+                }
+
+                // If not matched by ID, try matching by category name
+                if (!$matchedSec && !empty($targetCategory) && !empty($sections)) {
+                    foreach ($sections as $s) {
+                        if (stripos($s['name'], $targetCategory) !== false || stripos($targetCategory, $s['name']) !== false) {
+                            $matchedSec = $s;
+                            break;
+                        }
+                    }
+                }
+
+                // If still not matched, fallback to first section if available
+                if (!$matchedSec && !empty($sections)) {
+                    $matchedSec = $sections[0];
+                }
+
+                if ($matchedSec) {
+                    $act['target_section_id'] = (int) $matchedSec['id'];
+                    $act['target_section_code'] = $matchedSec['code'];
+                    if (empty($act['target_category'])) {
+                        $act['target_category'] = $matchedSec['name'];
+                    }
+                }
+            }
+        }
+        unset($act);
+
+        return $actions;
     }
 }

@@ -314,7 +314,7 @@ Hasil Deteksi - <?= esc($project['title']) ?> | Estimator.id
     overflow: hidden;
   }
   .wbs-table-scroll-area {
-    max-height: 65vh;
+    max-height: 100vh;
     overflow-x: auto;
     overflow-y: auto;
     position: relative;

@@ -49,6 +49,7 @@ $routes->group('api/projects', function ($routes) {
     $routes->delete('(:segment)/chat-history', 'RabController::clearChatHistory/$1');
     $routes->patch('(:segment)/chat-history/(:num)/applied', 'RabController::markActionApplied/$1/$2');
     $routes->post('(:segment)/chat', 'RabController::chatProject/$1');
+    $routes->post('(:segment)/items', 'EstimationController::createItem/$1');
 });
 
 // Estimation Specific Runs & Items Endpoints
