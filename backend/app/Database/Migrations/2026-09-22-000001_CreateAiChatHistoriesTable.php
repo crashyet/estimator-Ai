@@ -21,8 +21,8 @@ class CreateAiChatHistoriesTable extends Migration
                 'unsigned'   => true,
             ],
             'sender' => [
-                'type'       => 'ENUM',
-                'constraint' => ['user', 'ai'],
+                'type'       => 'VARCHAR',
+                'constraint' => 20,
                 'default'    => 'user',
             ],
             'message' => [

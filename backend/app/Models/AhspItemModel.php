@@ -51,4 +51,4 @@ class AhspItemModel extends Model
 
         return 0.0;
     }
-}
+}
