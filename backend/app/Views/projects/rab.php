@@ -131,7 +131,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     color: #0f172a;
   }
 
-  /* Floating Fixed Side Panel Overlay (Overlaps Navbar, 440px Width) */
+  /* Full-Height AI Side Panel (Overlaps Navbar, 440px Width) */
   .ai-side-panel {
     position: fixed;
     top: 0;
@@ -146,7 +146,15 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: aiSidebarSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  @keyframes aiSidebarSlideIn {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
   }
   .ai-side-panel.d-none {
     display: none !important;
@@ -170,6 +178,143 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     padding: 14px 18px;
     border-bottom: 1px solid #e2e8f0;
     flex-shrink: 0;
+  }
+  .ai-panel-body-container {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ==========================================================================
+     Floating AI Trigger Button (Bottom-Right FAB - Matches Pill Scale)
+     ========================================================================== */
+  .rab-fab-ai {
+    position: fixed;
+    bottom: 22px;
+    right: 22px;
+    z-index: 1050;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 15px 7px 9px;
+    background: linear-gradient(135deg, #087f23 0%, #06691c 100%);
+    color: #ffffff;
+    border: 1.5px solid rgba(255, 255, 255, 0.25);
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    box-shadow: 0 4px 14px rgba(8, 127, 35, 0.32), 0 2px 5px rgba(0, 0, 0, 0.08);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    user-select: none;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .rab-fab-ai:hover {
+    background: linear-gradient(135deg, #099429 0%, #087f23 100%);
+    color: #ffffff;
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 6px 18px rgba(8, 127, 35, 0.4), 0 3px 7px rgba(0, 0, 0, 0.1);
+  }
+  .rab-fab-ai:active {
+    transform: translateY(0) scale(0.97);
+  }
+  .rab-fab-ai.is-open {
+    background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.25);
+  }
+  .rab-fab-ai.is-open:hover {
+    background: linear-gradient(135deg, #475569 0%, #334155 100%);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.32);
+  }
+  .rab-fab-ai-icon {
+    width: 23px;
+    height: 23px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.22);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11.5px;
+    color: #ffffff;
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+  }
+  .rab-fab-ai:hover .rab-fab-ai-icon {
+    transform: rotate(15deg) scale(1.1);
+  }
+  .rab-fab-ai:active .rab-fab-ai-icon {
+    transform: rotate(90deg);
+  }
+  .rab-fab-ai-text {
+    font-family: inherit;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .rab-fab-ai-badge {
+    font-size: 9px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: #ecfdf5;
+    color: #087f23;
+    line-height: 1;
+    letter-spacing: 0.3px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+    flex-shrink: 0;
+  }
+  .rab-fab-ai.is-open .rab-fab-ai-badge {
+    display: none;
+  }
+  /* Pulse Ring Effect around FAB */
+  .rab-fab-ai-pulse {
+    position: absolute;
+    top: -3px;
+    left: -3px;
+    right: -3px;
+    bottom: -3px;
+    border-radius: 999px;
+    border: 1.5px solid #087f23;
+    opacity: 0;
+    pointer-events: none;
+    animation: fabPulseRing 3s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite;
+  }
+  .rab-fab-ai.is-open .rab-fab-ai-pulse {
+    display: none;
+  }
+  @keyframes fabPulseRing {
+    0% {
+      transform: scale(0.96);
+      opacity: 0.6;
+    }
+    50% {
+      transform: scale(1.06);
+      opacity: 0;
+    }
+    100% {
+      transform: scale(1.06);
+      opacity: 0;
+    }
+  }
+
+  @media (max-width: 576px) {
+    .rab-fab-ai {
+      bottom: 14px;
+      right: 14px;
+      padding: 6px 10px 6px 6px;
+      gap: 6px;
+    }
+    .rab-fab-ai-text {
+      display: none;
+    }
+    .ai-side-panel {
+      width: 100vw;
+      max-width: 100vw;
+    }
   }
   .ai-nav-tabs {
     border-bottom: 1px solid #e2e8f0;
@@ -903,7 +1048,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
 
   /* Print Optimization */
   @media print {
-    .app-navbar, .rab-search-box, .no-print, .btn-item-icon, .btn-sec-action, .btn-toggle-sec, .ai-side-panel {
+    .app-navbar, .rab-search-box, .no-print, .btn-item-icon, .btn-sec-action, .btn-toggle-sec, .ai-side-panel, .rab-fab-ai {
       display: none !important;
     }
     .anggaran-card {
@@ -951,9 +1096,6 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
         </button>
         <button type="button" class="btn-pill-action" title="Impor volume pekerjaan">
           <i class="bi bi-upload"></i> IMPOR VOLUME
-        </button>
-        <button type="button" class="btn-pill-action" onclick="openAiAssistantPanel()" title="Tanya Asisten AI">
-          <i class="bi bi-stars"></i> AUDIT & KONSULTASI
         </button>
       </div>
 
@@ -1197,10 +1339,27 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     </div>
   </div>
 
+  <!-- Floating AI Audit & Konsultasi Trigger Button (Pojok Kanan Bawah) -->
+  <button 
+    type="button" 
+    id="btnFloatingAi" 
+    class="rab-fab-ai no-print" 
+    onclick="toggleAiAssistantPanel()" 
+    title="Audit & Konsultasi RAB"
+    aria-label="Audit dan Konsultasi RAB"
+  >
+    <span class="rab-fab-ai-pulse"></span>
+    <span class="rab-fab-ai-icon">
+      <i class="bi bi-stars"></i>
+    </span>
+    <span class="rab-fab-ai-text">Audit &amp; Konsultasi</span>
+    <span class="rab-fab-ai-badge">RAB</span>
+  </button>
+
   <!-- Backdrop Overlay -->
   <div class="ai-panel-backdrop d-none" id="aiSidePanelBackdrop" onclick="closeAiAssistantPanel()"></div>
 
-  <!-- Right Workspace: Push AI Side Panel -->
+  <!-- Right Workspace: Full-Height AI Side Panel -->
   <div class="ai-side-panel d-none" id="aiSidePanel">
       <!-- Panel Header with Close Button -->
       <div class="panel-header d-flex align-items-center justify-content-between">
@@ -1653,12 +1812,24 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     }, 120);
   }
 
+  // Toggle AI Assistant Panel
+  function toggleAiAssistantPanel() {
+    const sidePanel = document.getElementById('aiSidePanel');
+    if (!sidePanel || sidePanel.classList.contains('d-none')) {
+      openAiAssistantPanel();
+    } else {
+      closeAiAssistantPanel();
+    }
+  }
+
   // Open AI Assistant Side Panel
   function openAiAssistantPanel() {
     const sidePanel = document.getElementById('aiSidePanel');
     const backdrop = document.getElementById('aiSidePanelBackdrop');
+    const fabBtn = document.getElementById('btnFloatingAi');
     if (sidePanel) sidePanel.classList.remove('d-none');
     if (backdrop) backdrop.classList.remove('d-none');
+    if (fabBtn) fabBtn.classList.add('d-none');
 
     const chatTabEl = document.getElementById('aiTabChat-tab');
     if (chatTabEl) {
@@ -1673,8 +1844,10 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
   function openAiScanPanel() {
     const sidePanel = document.getElementById('aiSidePanel');
     const backdrop = document.getElementById('aiSidePanelBackdrop');
+    const fabBtn = document.getElementById('btnFloatingAi');
     if (sidePanel) sidePanel.classList.remove('d-none');
     if (backdrop) backdrop.classList.remove('d-none');
+    if (fabBtn) fabBtn.classList.add('d-none');
 
     const auditTabEl = document.getElementById('aiTabAudit-tab');
     if (auditTabEl) {
@@ -1691,8 +1864,10 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
   function closeAiAssistantPanel() {
     const sidePanel = document.getElementById('aiSidePanel');
     const backdrop = document.getElementById('aiSidePanelBackdrop');
+    const fabBtn = document.getElementById('btnFloatingAi');
     if (sidePanel) sidePanel.classList.add('d-none');
     if (backdrop) backdrop.classList.add('d-none');
+    if (fabBtn) fabBtn.classList.remove('d-none');
 
     sessionStorage.removeItem('activeAiTab');
     clearRabAnomalyHighlights();
@@ -1722,7 +1897,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     if (!sidePanel || sidePanel.classList.contains('d-none')) return;
     if (sidePanel.contains(e.target)) return;
 
-    const triggerBtns = document.querySelectorAll('.btn-pill-action, [onclick*="openAiAssistantPanel"], [onclick*="openAiScanPanel"]');
+    const triggerBtns = document.querySelectorAll('.btn-pill-action, [onclick*="openAiAssistantPanel"], [onclick*="openAiScanPanel"], [onclick*="toggleAiAssistantPanel"], #btnFloatingAi');
     for (let b of triggerBtns) {
       if (b.contains(e.target)) return;
     }

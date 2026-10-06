@@ -14,6 +14,7 @@
         "ext-intl": "*",
         "ext-mbstring": "*",
         "laminas/laminas-escaper": "^2.18",
+        "phpoffice/phpspreadsheet": "^5.10",
         "psr/log": "^3.0"
     },
     "require-dev": {
