@@ -6,7 +6,7 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
 
 <?= $this->section('styles') ?>
 <style>
-  /* Banner Header */
+  /* Banner header */
   .ahsp-banner {
     background-color: var(--brand-banner-bg);
     position: relative;
@@ -38,7 +38,7 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
     text-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
   }
 
-  /* Main Card Workspace */
+  /* Workspace card */
   .ahsp-card {
     background-color: #ffffff;
     border: 1px solid #e2e8f0;
@@ -47,8 +47,6 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
     padding: 24px 28px;
     margin: 24px auto 50px auto;
   }
-
-  /* Target Item Green Box */
   .ahsp-target-box {
     background-color: #009624;
     color: #ffffff;
@@ -57,34 +55,12 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
     margin-bottom: 24px;
     box-shadow: 0 2px 8px rgba(0, 150, 36, 0.15);
   }
-  .ahsp-target-title {
-    font-size: 17px;
-    font-weight: 800;
-    margin-bottom: 4px;
-    color: #ffffff;
-  }
-  .ahsp-target-meta {
-    font-size: 13px;
-    color: #dcfce7;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
+  .ahsp-target-title { font-size: 17px; font-weight: 800; margin-bottom: 4px; color: #ffffff; }
+  .ahsp-target-meta { font-size: 13px; color: #dcfce7; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
-  /* Table Design */
-  .ahsp-table-container {
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    overflow: hidden;
-    background-color: #ffffff;
-  }
-  .ahsp-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13.5px;
-    margin-bottom: 0;
-  }
+  /* Tabel AHSP */
+  .ahsp-table-container { border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background-color: #ffffff; }
+  .ahsp-table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-bottom: 0; }
   .ahsp-table thead th {
     background-color: #089613;
     color: #ffffff;
@@ -95,22 +71,12 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
     border: none;
     white-space: nowrap;
   }
-  .ahsp-table tbody tr {
-    transition: background-color 0.15s ease;
-  }
-  .ahsp-table tbody tr:nth-child(even) {
-    background-color: #fbfdfc;
-  }
-  .ahsp-table tbody tr:hover {
-    background-color: #f1faf2;
-  }
-  .ahsp-table tbody td {
-    padding: 11px 16px;
-    border-top: 1px solid #f1f5f9;
-    vertical-align: middle;
-  }
+  .ahsp-table tbody tr { transition: background-color 0.15s ease; }
+  .ahsp-table tbody tr:nth-child(even) { background-color: #fbfdfc; }
+  .ahsp-table tbody tr:hover { background-color: #f1faf2; }
+  .ahsp-table tbody td { padding: 11px 16px; border-top: 1px solid #f1f5f9; vertical-align: middle; }
 
-  /* Buttons */
+  /* Tombol aksi */
   .btn-select-ahsp {
     background-color: #009624;
     border: 1px solid #009624;
@@ -123,12 +89,7 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
     transition: all 0.15s ease;
     box-shadow: 0 1px 3px rgba(0, 150, 36, 0.2);
   }
-  .btn-select-ahsp:hover {
-    background-color: #007b1e;
-    border-color: #007b1e;
-    color: #ffffff;
-    transform: translateY(-1px);
-  }
+  .btn-select-ahsp:hover { background-color: #007b1e; border-color: #007b1e; color: #ffffff; transform: translateY(-1px); }
   .btn-select-outline {
     background-color: #ffffff;
     border: 1px solid #009624;
@@ -140,20 +101,10 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
     cursor: pointer;
     transition: all 0.15s ease;
   }
-  .btn-select-outline:hover {
-    background-color: #009624;
-    color: #ffffff;
-  }
+  .btn-select-outline:hover { background-color: #009624; color: #ffffff; }
 
-  /* Suggestion Info Box */
-  .ahsp-suggestion-box {
-    background-color: #f2faf3;
-    border: 1px solid #d3ead6;
-    border-radius: 12px;
-    padding: 24px 20px;
-    text-align: center;
-    margin: 28px 0;
-  }
+  /* Banner bantuan & tabel scroll */
+  .ahsp-suggestion-box { background-color: #f2faf3; border: 1px solid #d3ead6; border-radius: 12px; padding: 24px 20px; text-align: center; margin: 28px 0; }
   .info-icon-circle {
     width: 38px;
     height: 38px;
@@ -167,46 +118,25 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
     font-size: 18px;
     box-shadow: 0 2px 6px rgba(0, 150, 36, 0.2);
   }
-
-  /* Master Data Table Scroll Area */
-  .master-table-scroll {
-    max-height: 480px;
-    overflow-y: auto;
-    position: relative;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-  }
-  .master-table-scroll::-webkit-scrollbar {
-    width: 7px;
-  }
-  .master-table-scroll::-webkit-scrollbar-track {
-    background: #f8fafc;
-  }
-  .master-table-scroll::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 4px;
-  }
-  .master-table-scroll thead th {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-  }
+  .master-table-scroll { max-height: 480px; overflow-y: auto; position: relative; border: 1px solid #e2e8f0; border-radius: 8px; }
+  .master-table-scroll::-webkit-scrollbar { width: 7px; }
+  .master-table-scroll::-webkit-scrollbar-track { background: #f8fafc; }
+  .master-table-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  .master-table-scroll thead th { position: sticky; top: 0; z-index: 10; }
 </style>
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-
-<!-- Hero Banner with Green Pattern -->
+<!-- Banner Header -->
 <div class="ahsp-banner">
   <img src="<?= base_url('assets/img/proyek-bg13.png') ?>" alt="Banner Pemetaan AHSP" class="ahsp-banner-bg" onerror="this.style.display='none'">
   <h1 class="ahsp-banner-title">PEMETAAN ITEM PEKERJAAN AHSP</h1>
 </div>
 
-<!-- Main Container -->
 <main class="container-fluid px-3 px-md-5 my-3" style="max-width: 1360px;">
   <div class="ahsp-card">
 
-    <!-- Top Bar: Breadcrumb + Back Button -->
+    <!-- Top bar & breadcrumbs -->
     <div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3 pb-3 mb-3 border-bottom border-light-subtle">
       <div>
         <nav aria-label="breadcrumb" class="mb-1">
@@ -229,7 +159,7 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
     </div>
 
     <?php if ($targetItem): ?>
-      <!-- Target Item Green Summary Box -->
+      <!-- Box ringkasan item target -->
       <div class="ahsp-target-box">
         <h3 class="ahsp-target-title"><?= esc($targetItem['ahsp_name'] ?: $targetItem['item_name']) ?></h3>
         <div class="ahsp-target-meta">
@@ -239,7 +169,7 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
         </div>
       </div>
 
-      <!-- SECTION 1: REKOMENDASI ITEM PEKERJAAN -->
+      <!-- Bagian 1: Rekomendasi Item Pekerjaan -->
       <div class="mb-4">
         <div class="d-flex align-items-center justify-content-between pb-2 mb-2.5 border-bottom border-light-subtle">
           <h3 class="fw-bold text-dark text-uppercase d-flex align-items-center gap-2 mb-0" style="font-size: 13.5px; letter-spacing: 0.03em;">
@@ -296,7 +226,7 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
         <?php endif; ?>
       </div>
 
-      <!-- SECTION 2: SUGGESTION BANNER -->
+      <!-- Bagian 2: Banner penelusuran master data -->
       <div class="ahsp-suggestion-box">
         <div class="info-icon-circle">
           <i class="bi bi-info-lg"></i>
@@ -317,7 +247,7 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
         </button>
       </div>
 
-      <!-- SECTION 3: KOLEKSI DATA PEKERJAAN AHSP (COLLAPSIBLE) -->
+      <!-- Bagian 3: Koleksi Master Data AHSP (Collapsible) -->
       <div id="masterCollectionSection" class="d-none">
         <div class="d-flex align-items-center justify-content-between pb-2 mb-3 border-bottom border-light-subtle">
           <h3 class="fw-bold text-dark text-uppercase d-flex align-items-center gap-2 mb-0" style="font-size: 13.5px; letter-spacing: 0.03em;">
@@ -326,7 +256,7 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
           </h3>
         </div>
 
-        <!-- Search Bar -->
+        <!-- Filter pencarian master AHSP -->
         <div class="d-flex gap-2 mb-3">
           <div class="position-relative flex-grow-1">
             <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-secondary"></i>
@@ -372,7 +302,7 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
           </button>
         </div>
 
-        <!-- Master AHSP Table Container -->
+        <!-- Tabel data master AHSP -->
         <div class="master-table-scroll" id="masterScrollContainer" onscroll="handleMasterScroll(event)">
           <table class="ahsp-table">
             <thead>
@@ -392,7 +322,7 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
             </tbody>
           </table>
 
-          <!-- Bottom Status / Loading -->
+          <!-- Indikator loading & paginasi -->
           <div id="masterLoadingIndicator" class="py-3 text-center text-success small fw-bold bg-light border-top d-none">
             <div class="spinner-border spinner-border-sm me-2 text-success" role="status"></div>
             <span>Memuat data AHSP dari server database...</span>
@@ -425,15 +355,12 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
   </div>
 </main>
 
-<!-- ============================================================== -->
-<!-- CONFIRMATION MODAL                                             -->
-<!-- ============================================================== -->
+<!-- Modal Konfirmasi Pemetaan -->
 <div class="modal fade" id="ahspConfirmModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
     <div class="modal-content border-0 rounded-4 shadow-lg p-3">
       <div class="modal-body p-3">
         
-        <!-- Header with Book Icon -->
         <div class="d-flex align-items-center gap-3 mb-3">
           <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 42px; height: 42px; background-color: #f1faf2; border: 1px solid #cbeed0; color: #009624;">
             <i class="bi bi-book fs-5"></i>
@@ -444,7 +371,6 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
           </div>
         </div>
 
-        <!-- Target vs Selected Item Summary Box -->
         <div class="bg-light rounded-3 p-3 border mb-3" style="font-size: 12.5px;">
           <div class="mb-2 pb-2 border-bottom">
             <span class="text-muted small text-uppercase fw-bold d-block mb-1" style="font-size: 10.5px;">Target Pekerjaan RAB:</span>
@@ -454,16 +380,13 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
           </div>
           <div>
             <span class="text-success small text-uppercase fw-bold d-block mb-1" style="font-size: 10.5px;">Pekerjaan AHSP Dipilih:</span>
-            <p class="fw-bold text-dark mb-1 leading-snug" id="confirmModalSelectedName">
-              -
-            </p>
+            <p class="fw-bold text-dark mb-1 leading-snug" id="confirmModalSelectedName">-</p>
             <span class="text-muted small d-block">
               Satuan: <strong class="text-dark" id="confirmModalSelectedUnit">-</strong>
             </span>
           </div>
         </div>
 
-        <!-- Actions -->
         <div class="d-flex align-items-center justify-content-end gap-2 pt-1">
           <button type="button" class="btn btn-light border rounded-pill px-3 py-1.5 text-secondary fw-semibold" style="font-size: 12.5px;" data-bs-dismiss="modal">
             Batal
@@ -477,7 +400,6 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
     </div>
   </div>
 </div>
-
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
@@ -499,12 +421,10 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
 
   document.addEventListener('DOMContentLoaded', () => {
     const modalEl = document.getElementById('ahspConfirmModal');
-    if (modalEl) {
-      confirmModalInstance = new bootstrap.Modal(modalEl);
-    }
+    if (modalEl) confirmModalInstance = new bootstrap.Modal(modalEl);
   });
 
-  // Toggle Master AHSP Section
+  // Toggle tampilan koleksi master AHSP
   function toggleMasterCollection() {
     showMaster = !showMaster;
     const sec = document.getElementById('masterCollectionSection');
@@ -515,12 +435,8 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
       sec.classList.remove('d-none');
       textEl.textContent = 'Sembunyikan Koleksi Master Data AHSP';
       iconEl.className = 'bi bi-chevron-up';
-      if (masterItems.length === 0) {
-        fetchMasterAhsp(1, true);
-      }
-      setTimeout(() => {
-        sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100);
+      if (masterItems.length === 0) fetchMasterAhsp(1, true);
+      setTimeout(() => sec.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
     } else {
       sec.classList.add('d-none');
       textEl.textContent = 'Telusuri Koleksi Master Data AHSP';
@@ -528,7 +444,7 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
     }
   }
 
-  // Fetch Master AHSP Data
+  // Ambil data master AHSP dari server
   async function fetchMasterAhsp(page = 1, isReset = false) {
     if (isLoadingMaster) return;
     isLoadingMaster = true;
@@ -563,23 +479,14 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
 
       if (masterPage < masterTotalPages) {
         if (btnLoadMore) btnLoadMore.classList.remove('d-none');
-      } else if (masterItems.length > 0) {
-        if (allLoaded) {
-          allLoaded.classList.remove('d-none');
-          allLoaded.textContent = `✓ Seluruh data (${masterTotalCount.toLocaleString('id-ID')} item AHSP) telah dimuat`;
-        }
+      } else if (masterItems.length > 0 && allLoaded) {
+        allLoaded.classList.remove('d-none');
+        allLoaded.textContent = `✓ Seluruh data (${masterTotalCount.toLocaleString('id-ID')} item AHSP) telah dimuat`;
       }
-
     } catch (err) {
       console.error('Error fetching master AHSP data:', err);
       if (isReset && tbody) {
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="4" class="py-5 text-center text-danger small">
-              Gagal memuat data dari server database AHSP.
-            </td>
-          </tr>
-        `;
+        tbody.innerHTML = `<tr><td colspan="4" class="py-5 text-center text-danger small">Gagal memuat data dari server database AHSP.</td></tr>`;
       }
     } finally {
       isLoadingMaster = false;
@@ -587,6 +494,7 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
     }
   }
 
+  // Render baris data master AHSP
   function renderMasterRows(newItems, isReset) {
     const tbody = document.getElementById('masterAhspTableBody');
     if (!tbody) return;
@@ -597,8 +505,7 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
           <td colspan="4" class="py-5 text-center text-muted font-medium">
             ${masterSearchQuery ? `Tidak ada pekerjaan AHSP yang cocok dengan "${masterSearchQuery}".` : 'Database pekerjaan AHSP kosong.'}
           </td>
-        </tr>
-      `;
+        </tr>`;
       return;
     }
 
@@ -623,12 +530,12 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
           >
             Pilih
           </button>
-        </td>
-      `;
+        </td>`;
       tbody.appendChild(tr);
     });
   }
 
+  // Handler input pencarian
   function handleSearchInputChange(val) {
     const clearBtn = document.getElementById('clearMasterSearchBtn');
     if (clearBtn) clearBtn.classList.toggle('d-none', !val.trim());
@@ -637,7 +544,7 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
   function searchMasterAhsp() {
     const input = document.getElementById('masterSearchInput');
     masterSearchQuery = input ? input.value : '';
-    const resetBtn = document.getElementById('resetMasterSearchBtn');
+    const resetBtn = document.getElementById('btnResetMaster');
     if (resetBtn) resetBtn.classList.toggle('d-none', !masterSearchQuery.trim());
     fetchMasterAhsp(1, true);
   }
@@ -648,7 +555,7 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
     masterSearchQuery = '';
     const clearBtn = document.getElementById('clearMasterSearchBtn');
     if (clearBtn) clearBtn.classList.add('d-none');
-    const resetBtn = document.getElementById('resetMasterSearchBtn');
+    const resetBtn = document.getElementById('btnResetMaster');
     if (resetBtn) resetBtn.classList.add('d-none');
     fetchMasterAhsp(1, true);
   }
@@ -661,24 +568,20 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
 
   function handleMasterScroll(e) {
     const { scrollTop, scrollHeight, clientHeight } = e.target;
-    if (scrollHeight - scrollTop - clientHeight < 120) {
-      if (masterPage < masterTotalPages && !isLoadingMaster) {
-        fetchMasterAhsp(masterPage + 1, false);
-      }
+    if (scrollHeight - scrollTop - clientHeight < 120 && masterPage < masterTotalPages && !isLoadingMaster) {
+      fetchMasterAhsp(masterPage + 1, false);
     }
   }
 
-  // Confirmation Modal
+  // Tampilkan modal konfirmasi
   function openConfirmModal(candData) {
     selectedCandidate = candData;
     document.getElementById('confirmModalSelectedName').textContent = candData.name;
     document.getElementById('confirmModalSelectedUnit').textContent = candData.unit || '-';
-    if (confirmModalInstance) {
-      confirmModalInstance.show();
-    }
+    if (confirmModalInstance) confirmModalInstance.show();
   }
 
-  // Apply Pemetaan
+  // Terapkan hasil pemetaan AHSP ke API
   async function applyConfirmedAhsp() {
     if (!selectedCandidate || !TARGET_ITEM_ID) return;
 
@@ -703,16 +606,11 @@ Pemetaan Item Pekerjaan AHSP - <?= esc($project['title']) ?> | Estimator.id
         })
       });
 
-      const resJson = await response.json();
-
+      await response.json();
       if (confirmModalInstance) confirmModalInstance.hide();
-
       showToast('Pemetaan Berhasil!', `Item berhasil dipetakan ke "${selectedCandidate.name}" (${selectedCandidate.unit}).`, 'success');
 
-      setTimeout(() => {
-        window.location.href = RETURN_URL;
-      }, 700);
-
+      setTimeout(() => { window.location.href = RETURN_URL; }, 700);
     } catch (err) {
       console.error('Gagal menyimpan pemetaan AHSP:', err);
       showToast('Gagal', 'Terjadi kesalahan saat menyimpan pemetaan AHSP.', 'danger');

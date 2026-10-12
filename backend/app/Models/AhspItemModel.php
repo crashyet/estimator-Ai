@@ -13,23 +13,17 @@ class AhspItemModel extends Model
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
     protected $allowedFields    = [
-        'id',
-        'id_pekerjaan',
-        'nama_pekerjaan',
-        'satuan',
-        'harga_satuan',
-        'sumber',
+        'id', 'id_pekerjaan', 'nama_pekerjaan', 'satuan', 'harga_satuan', 'sumber'
     ];
 
     protected $useTimestamps = true;
     protected $createdField  = 'created_at';
     protected $updatedField  = 'updated_at';
 
-    /**
-     * Find harga_satuan by id_pekerjaan (ahsp_code) or nama_pekerjaan
-     */
+    // Ambil harga_satuan berdasarkan kode AHSP (id_pekerjaan) atau nama pekerjaan
     public function getHargaSatuanByCodeOrName(?string $code, ?string $name = null): float
     {
+        // 1. Prioritaskan pencarian berdasarkan kode AHSP yang valid
         $code = trim($code ?? '');
         if (!empty($code) && $code !== '-') {
             $row = $this->where('id_pekerjaan', $code)->first();
@@ -38,12 +32,12 @@ class AhspItemModel extends Model
             }
         }
 
+        // 2. Fallback pencarian persis atau kemiripan nama pekerjaan
         $name = trim($name ?? '');
         if (!empty($name)) {
-            $row = $this->where('nama_pekerjaan', $name)->first();
-            if (!$row) {
-                $row = $this->like('nama_pekerjaan', $name)->first();
-            }
+            $row = $this->where('nama_pekerjaan', $name)->first()
+                ?: $this->like('nama_pekerjaan', $name)->first();
+
             if ($row && isset($row['harga_satuan'])) {
                 return (float) $row['harga_satuan'];
             }

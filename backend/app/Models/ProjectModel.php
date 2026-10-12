@@ -13,27 +13,19 @@ class ProjectModel extends Model
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
     protected $allowedFields    = [
-        'id',
-        'uuid',
-        'title',
-        'client',
-        'location',
-        'contractor_fee',
-        'ppn',
-        'status',
-        'summary',
-        'image',
+        'id', 'uuid', 'title', 'client', 'location', 'contractor_fee', 'ppn', 'status', 'summary', 'image'
     ];
 
-    // Dates
+    // Konfigurasi waktu pembuatan & pembaruan data
     protected $useTimestamps = true;
     protected $dateFormat    = 'datetime';
     protected $createdField  = 'created_at';
     protected $updatedField  = 'updated_at';
 
-    // Callbacks
+    // Hook callback pembuatan UUID
     protected $beforeInsert = ['generateUuid'];
 
+    // Hook otomatis isi UUID v4 sebelum insert jika belum tersedia
     protected function generateUuid(array $data)
     {
         if (empty($data['data']['uuid'])) {
@@ -42,26 +34,22 @@ class ProjectModel extends Model
         return $data;
     }
 
+    // Generator UUID v4 acak standar RFC 4122
     public static function generateUuidV4(): string
     {
         $bytes    = random_bytes(16);
-        $bytes[6] = chr(ord($bytes[6]) & 0x0f | 0x40); // version 4
-        $bytes[8] = chr(ord($bytes[8]) & 0x3f | 0x80); // variant
+        $bytes[6] = chr(ord($bytes[6]) & 0x0f | 0x40);
+        $bytes[8] = chr(ord($bytes[8]) & 0x3f | 0x80);
         return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($bytes), 4));
     }
 
-    /**
-     * Find project by ID or UUID
-     */
+    // Cari data proyek berdasarkan ID numerik atau UUID
     public function findByIdOrUuid($idOrUuid)
     {
-        if (is_numeric($idOrUuid)) {
-            return $this->find($idOrUuid);
-        }
-        return $this->where('uuid', $idOrUuid)->first();
+        return is_numeric($idOrUuid) ? $this->find($idOrUuid) : $this->where('uuid', $idOrUuid)->first();
     }
 
-    // Validation
+    // Aturan validasi data proyek
     protected $validationRules = [
         'title'          => 'required|min_length[3]|max_length[255]',
         'client'         => 'permit_empty|max_length[255]',

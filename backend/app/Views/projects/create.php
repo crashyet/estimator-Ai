@@ -14,7 +14,7 @@
     --card-border: #e2e8f0;
   }
 
-  /* Hero Banner: PROYEK BARU */
+  /* Hero banner atas */
   .hero-banner {
     background-color: var(--brand-banner-bg);
     position: relative;
@@ -46,7 +46,7 @@
     position: relative;
   }
 
-  /* Main Workspace Card */
+  /* Kartu workspace formulir */
   .workspace-card {
     background-color: #ffffff;
     border: 1px solid var(--card-border);
@@ -74,7 +74,7 @@
     font-weight: 600;
   }
 
-  /* Project Photo Container */
+  /* Kontainer pratinjau foto proyek */
   .photo-preview-container {
     width: 100%;
     max-width: 320px;
@@ -127,7 +127,7 @@
     background-color: #dc3545;
   }
 
-  /* Add Document Button */
+  /* Tombol tambah dokumen */
   .btn-add-doc {
     background-color: var(--btn-doc-green);
     color: #ffffff;
@@ -151,7 +151,7 @@
     box-shadow: 0 2px 6px rgba(0,0,0,0.15);
   }
 
-  /* Documents Box */
+  /* Kotak daftar dokumen */
   .doc-box {
     width: 100%;
     max-width: 320px;
@@ -191,7 +191,7 @@
     font-size: 12px;
   }
 
-  /* Form Fields */
+  /* Label & input formulir */
   .form-field-label {
     font-size: 12px;
     font-weight: 600;
@@ -219,7 +219,7 @@
     box-shadow: 0 0 0 2px rgba(15, 168, 60, 0.18);
   }
 
-  /* Bottom Action Buttons */
+  /* Tombol aksi submit & batal */
   .btn-action-submit {
     background-color: var(--btn-submit-green);
     color: #ffffff;
@@ -268,97 +268,69 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<!-- Hero Banner: PROYEK BARU -->
+<!-- Hero banner atas -->
 <section class="hero-banner">
   <img src="<?= base_url('assets/img/proyek-bg13.png') ?>" alt="Banner Proyek Baru" class="hero-banner-bg" onerror="this.style.display='none'">
   <h1 class="hero-banner-title">PROYEK BARU</h1>
 </section>
 
-<!-- Main Form Container -->
+<!-- Konten formulir proyek baru -->
 <main class="container-xl py-4 px-3 px-md-4 flex-grow-1">
   <div class="workspace-card">
-    
-    <!-- Subtitle Header Bar: LENGKAPI PROFIL PROYEK -->
     <div class="workspace-header-bar">
-      <h2 class="workspace-header-title">
-        LENGKAPI PROFIL <span>PROYEK</span>
-      </h2>
+      <h2 class="workspace-header-title">LENGKAPI PROFIL <span>PROYEK</span></h2>
     </div>
 
-    <!-- Main Form Body -->
     <form id="createProjectForm" onsubmit="handleFormSubmit(event)" class="p-4 p-md-5">
       <div class="row g-4 g-lg-5">
         
-        <!-- LEFT COLUMN: Foto Proyek & Dokumen -->
+        <!-- Kolom kiri: Foto proyek & dokumen lampiran -->
         <div class="col-lg-5 col-xl-4 d-flex flex-column align-items-center gap-3">
-          
-          <!-- 1. Foto Proyek Container -->
+          <!-- Pratinjau foto proyek -->
           <div class="photo-preview-container">
-            <img id="projectPhotoPreview" 
-                 src="<?= base_url('assets/foto/proyek/no-foto.jpg') ?>" 
-                 alt="Foto Proyek" 
-                 onerror="this.src='<?= base_url('assets/foto/proyek/no-foto.jpg') ?>'">
-            
-            <!-- Floating Buttons: Trash (Reset) & Pencil (Upload) -->
+            <img id="projectPhotoPreview" src="<?= base_url('assets/foto/proyek/no-foto.jpg') ?>" alt="Foto Proyek" onerror="this.src='<?= base_url('assets/foto/proyek/no-foto.jpg') ?>'">
             <div class="photo-floating-actions">
-              <!-- Button Reset Foto -->
               <button type="button" class="btn-photo-action btn-photo-delete" title="Hapus / Reset Foto" onclick="handlePhotoReset()">
                 <i class="bi bi-trash3-fill" style="font-size: 13px;"></i>
               </button>
-              <!-- Button Upload Foto -->
               <button type="button" class="btn-photo-action" title="Ganti Foto Proyek" onclick="triggerPhotoUpload()">
                 <i class="bi bi-pencil-fill" style="font-size: 13px;"></i>
               </button>
             </div>
-
-            <!-- Hidden File Input for Photo -->
             <input type="file" id="photoFileInput" accept="image/*" class="d-none" onchange="handlePhotoSelected(event)">
           </div>
 
-          <!-- 2. Tombol TAMBAH DOKUMEN -->
+          <!-- Tombol tambah dokumen -->
           <div class="w-100 d-flex justify-content-center">
             <button type="button" class="btn-add-doc" onclick="triggerDocUpload()">
               <i class="bi bi-file-earmark-plus-fill fs-6"></i>
               <span>TAMBAH DOKUMEN</span>
             </button>
-            <!-- Hidden File Input for Documents -->
             <input type="file" id="docFileInput" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.dwg,.ifc,.rvt,image/*" class="d-none" onchange="handleDocsSelected(event)">
           </div>
 
-          <!-- 3. Box Daftar Dokumen -->
+          <!-- Daftar dokumen terunggah -->
           <div class="doc-box">
-            <div class="doc-box-header">
-              Daftar Dokumen
-            </div>
+            <div class="doc-box-header">Daftar Dokumen</div>
             <div class="doc-box-body" id="docListContainer">
-              <!-- Empty State -->
               <div id="docEmptyState" class="text-center py-2">
                 <img src="<?= base_url('assets/img/not-found.png') ?>" alt="Tidak ada dokumen" style="width: 80px; height: 80px; object-fit: contain; opacity: 0.85;" onerror="this.style.display='none'">
                 <div class="text-muted small mt-2 fw-medium" style="font-size: 12px;">Tidak ada dokumen</div>
               </div>
-              <!-- Document List Items (Dynamic) -->
               <div id="docItemsList" class="w-100 d-none"></div>
             </div>
           </div>
-
         </div>
 
-        <!-- RIGHT COLUMN: Form Inputs -->
+        <!-- Kolom kanan: Field metadata proyek -->
         <div class="col-lg-7 col-xl-8 d-flex flex-column gap-3">
-          
-          <!-- Field 1: Nama Proyek -->
           <div>
-            <label class="form-field-label" for="inputTitle">
-              Nama Proyek <span class="req">(wajib diisi)</span>
-            </label>
+            <label class="form-field-label" for="inputTitle">Nama Proyek <span class="req">(wajib diisi)</span></label>
             <input type="text" id="inputTitle" name="title" class="form-control custom-input" required autocomplete="off">
           </div>
 
-          <!-- Field 2: Lokasi Proyek -->
           <div>
-            <label class="form-field-label" for="inputLocation">
-              Lokasi Proyek <span class="req">(wajib diisi)</span>
-            </label>
+            <label class="form-field-label" for="inputLocation">Lokasi Proyek <span class="req">(wajib diisi)</span></label>
             <select id="inputLocation" name="location" class="form-select custom-input" required>
               <option value="">Pilih Lokasi Proyek</option>
               <?php foreach ($locations as $loc): ?>
@@ -367,56 +339,40 @@
             </select>
           </div>
 
-          <!-- Field 3: Pemilik Proyek -->
           <div>
-            <label class="form-field-label" for="inputClient">
-              Pemilik Proyek <span class="req">(wajib diisi)</span>
-            </label>
+            <label class="form-field-label" for="inputClient">Pemilik Proyek <span class="req">(wajib diisi)</span></label>
             <input type="text" id="inputClient" name="client" class="form-control custom-input" required autocomplete="off">
           </div>
 
-          <!-- Field 4: Jasa Kontraktor -->
           <div>
-            <label class="form-field-label" for="inputContractorFee">
-              Jasa Kontraktor <span class="req">(wajib diisi)</span>
-            </label>
+            <label class="form-field-label" for="inputContractorFee">Jasa Kontraktor <span class="req">(wajib diisi)</span></label>
             <div class="input-group">
               <input type="text" id="inputContractorFee" name="contractor_fee" class="form-control custom-input text-end" value="10.00" required>
               <span class="input-group-text bg-white border-start-0 text-muted small fw-medium">%</span>
             </div>
           </div>
 
-          <!-- Field 5: PPN -->
           <div>
-            <label class="form-field-label" for="inputPpn">
-              PPN <span class="req">(wajib diisi)</span>
-            </label>
+            <label class="form-field-label" for="inputPpn">PPN <span class="req">(wajib diisi)</span></label>
             <div class="input-group">
               <input type="text" id="inputPpn" name="ppn" class="form-control custom-input text-end" value="11.00" required>
               <span class="input-group-text bg-white border-start-0 text-muted small fw-medium">%</span>
             </div>
           </div>
 
-          <!-- Field 6: Keterangan Lain -->
           <div>
-            <label class="form-field-label" for="inputSummary">
-              Keterangan Lain
-            </label>
+            <label class="form-field-label" for="inputSummary">Keterangan Lain</label>
             <textarea id="inputSummary" name="summary" class="form-control custom-input" rows="4"></textarea>
           </div>
-
         </div>
       </div>
 
-      <!-- BOTTOM ACTION BUTTONS: Centered -->
+      <!-- Tombol aksi bawah: Simpan & Batal -->
       <div class="d-flex align-items-center justify-content-center gap-3 mt-5 pt-4 border-top">
-        <!-- Button 1: SIMPAN & LANJUTKAN -->
         <button type="submit" id="btnSubmitForm" class="btn-action-submit">
           <i class="bi bi-check2 fs-6"></i>
           <span>SIMPAN & LANJUTKAN</span>
         </button>
-
-        <!-- Button 2: BATAL -->
         <a href="<?= base_url('proyek') ?>" class="btn-action-cancel">
           <i class="bi bi-x fs-6"></i>
           <span>BATAL</span>
@@ -429,7 +385,7 @@
 
 <?= $this->section('scripts') ?>
 <script>
-  // 1. Photo Upload Handlers
+  // 1. Penanganan unggah dan reset foto proyek
   const defaultPhotoSrc = '<?= base_url('assets/foto/proyek/no-foto.jpg') ?>';
   let currentPhotoBase64 = null;
 
@@ -462,7 +418,7 @@
     showToast('Foto Direset', 'Foto proyek dikembalikan ke gambar default.', 'info');
   }
 
-  // 2. Documents Upload Handlers
+  // 2. Penanganan lampiran dokumen proyek
   let uploadedDocuments = [];
 
   function triggerDocUpload() {
@@ -523,16 +479,16 @@
     }
   }
 
-  // 3. Form Submit Handler (AJAX POST to /api/projects)
+  // 3. Pengiriman formulir proyek via AJAX POST /api/projects
   async function handleFormSubmit(event) {
     event.preventDefault();
 
-    const title = document.getElementById('inputTitle').value.trim();
+    const title    = document.getElementById('inputTitle').value.trim();
     const location = document.getElementById('inputLocation').value.trim();
-    const client = document.getElementById('inputClient').value.trim();
-    const feeRaw = document.getElementById('inputContractorFee').value.replace(',', '.');
-    const ppnRaw = document.getElementById('inputPpn').value.replace(',', '.');
-    const summary = document.getElementById('inputSummary').value.trim();
+    const client   = document.getElementById('inputClient').value.trim();
+    const feeRaw   = document.getElementById('inputContractorFee').value.replace(',', '.');
+    const ppnRaw   = document.getElementById('inputPpn').value.replace(',', '.');
+    const summary  = document.getElementById('inputSummary').value.trim();
 
     if (!title) {
       showToast('Validasi Gagal', 'Nama Proyek wajib diisi!', 'danger');
@@ -551,11 +507,10 @@
     }
 
     const contractorFee = parseFloat(feeRaw) || 10.0;
-    const ppn = parseFloat(ppnRaw) || 11.0;
-
-    const btn = document.getElementById('btnSubmitForm');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Menyimpan...';
+    const ppn           = parseFloat(ppnRaw) || 11.0;
+    const btn           = document.getElementById('btnSubmitForm');
+    btn.disabled        = true;
+    btn.innerHTML       = '<span class="spinner-border spinner-border-sm me-1"></span> Menyimpan...';
 
     const payload = {
       title: title,
@@ -571,9 +526,7 @@
     try {
       const response = await fetch('/api/projects', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 

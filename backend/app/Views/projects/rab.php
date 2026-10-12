@@ -6,9 +6,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
 
 <?= $this->section('styles') ?>
 <style>
-  /* ------------------------------------------------------------- */
-  /* HERO BANNER (IDENTIK 100% DENGAN ANGGARAN.PHP)                */
-  /* ------------------------------------------------------------- */
+  /* Banner header */
   .anggaran-banner {
     background-color: var(--brand-banner-bg);
     position: relative;
@@ -40,32 +38,21 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     text-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
   }
 
-  /* ------------------------------------------------------------- */
-  /* MAIN CARD WORKSPACE (IDENTIK DENGAN ANGGARAN.PHP)             */
-  /* ------------------------------------------------------------- */
+  /* Workspace card */
   .anggaran-card {
     background-color: #ffffff;
     border: 1px solid #e2e8f0;
     border-radius: 16px;
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
     padding: 24px 28px;
-    margin: 0px auto 50px auto;
+    margin: 0 auto 50px auto;
     position: relative;
     z-index: 5;
   }
 
-  /* Search Bar */
-  .rab-search-box {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .rab-search-label {
-    font-size: 13px;
-    font-weight: 500;
-    color: #475569;
-    white-space: nowrap;
-  }
+  /* Toolbar & filter pencarian */
+  .rab-search-box { display: flex; align-items: center; gap: 8px; }
+  .rab-search-label { font-size: 13px; font-weight: 500; color: #475569; white-space: nowrap; }
   .rab-search-input {
     padding: 6px 12px;
     font-size: 12px;
@@ -76,29 +63,10 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     color: #334155;
     transition: all 0.15s ease;
   }
-  .rab-search-input:focus {
-    outline: none;
-    border-color: #087f23;
-    box-shadow: 0 0 0 2px rgba(8, 127, 35, 0.12);
-  }
+  .rab-search-input:focus { outline: none; border-color: #087f23; box-shadow: 0 0 0 2px rgba(8, 127, 35, 0.12); }
 
-  /* Green Pill Action Toolbar */
-  .rab-toolbar-container {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-bottom: 16px;
-  }
-  .btn-pill-group {
-    display: inline-flex;
-    align-items: center;
-    background-color: #8ce628;
-    padding: 2px;
-    border-radius: 9999px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  }
+  .rab-toolbar-container { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .btn-pill-group { display: inline-flex; align-items: center; background-color: #8ce628; padding: 2px; border-radius: 9999px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); }
   .btn-pill-action {
     background-color: #8ce628;
     color: #1e293b;
@@ -117,21 +85,11 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     white-space: nowrap;
     text-decoration: none;
   }
-  .btn-pill-group .btn-pill-action:first-child {
-    border-top-left-radius: 9999px;
-    border-bottom-left-radius: 9999px;
-  }
-  .btn-pill-group .btn-pill-action:last-child {
-    border-top-right-radius: 9999px;
-    border-bottom-right-radius: 9999px;
-    border-right: none;
-  }
-  .btn-pill-action:hover {
-    background-color: #78cd20;
-    color: #0f172a;
-  }
+  .btn-pill-group .btn-pill-action:first-child { border-top-left-radius: 9999px; border-bottom-left-radius: 9999px; }
+  .btn-pill-group .btn-pill-action:last-child { border-top-right-radius: 9999px; border-bottom-right-radius: 9999px; border-right: none; }
+  .btn-pill-action:hover { background-color: #78cd20; color: #0f172a; }
 
-  /* Full-Height AI Side Panel (Overlaps Navbar, 440px Width) */
+  /* Sidebar AI Panel */
   .ai-side-panel {
     position: fixed;
     top: 0;
@@ -148,48 +106,14 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     overflow: hidden;
     animation: aiSidebarSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
-  @keyframes aiSidebarSlideIn {
-    from {
-      transform: translateX(100%);
-    }
-    to {
-      transform: translateX(0);
-    }
-  }
-  .ai-side-panel.d-none {
-    display: none !important;
-  }
-  .ai-panel-backdrop {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 1055;
-    background-color: transparent;
-    pointer-events: none;
-  }
-  .ai-panel-backdrop.d-none {
-    display: none !important;
-  }
-  .ai-side-panel .panel-header {
-    background-color: #ffffff;
-    color: #1e293b;
-    padding: 14px 18px;
-    border-bottom: 1px solid #e2e8f0;
-    flex-shrink: 0;
-  }
-  .ai-panel-body-container {
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-  }
+  @keyframes aiSidebarSlideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+  .ai-side-panel.d-none { display: none !important; }
+  .ai-panel-backdrop { position: fixed; inset: 0; z-index: 1055; background-color: transparent; pointer-events: none; }
+  .ai-panel-backdrop.d-none { display: none !important; }
+  .ai-side-panel .panel-header { background-color: #ffffff; color: #1e293b; padding: 14px 18px; border-bottom: 1px solid #e2e8f0; flex-shrink: 0; }
+  .ai-panel-body-container { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; background-color: #ffffff; }
 
-  /* ==========================================================================
-     Floating AI Trigger Button (Bottom-Right FAB - Matches Pill Scale)
-     ========================================================================== */
+  /* Floating Action Button (FAB) AI Trigger */
   .rab-fab-ai {
     position: fixed;
     bottom: 22px;
@@ -213,149 +137,34 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     text-decoration: none;
     white-space: nowrap;
   }
-  .rab-fab-ai:hover {
-    background: linear-gradient(135deg, #099429 0%, #087f23 100%);
-    color: #ffffff;
-    transform: translateY(-2px) scale(1.02);
-    box-shadow: 0 6px 18px rgba(8, 127, 35, 0.4), 0 3px 7px rgba(0, 0, 0, 0.1);
-  }
-  .rab-fab-ai:active {
-    transform: translateY(0) scale(0.97);
-  }
-  .rab-fab-ai.is-open {
-    background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
-    border-color: rgba(255, 255, 255, 0.2);
-    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.25);
-  }
-  .rab-fab-ai.is-open:hover {
-    background: linear-gradient(135deg, #475569 0%, #334155 100%);
-    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.32);
-  }
-  .rab-fab-ai-icon {
-    width: 23px;
-    height: 23px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.22);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11.5px;
-    color: #ffffff;
-    transition: transform 0.2s ease;
-    flex-shrink: 0;
-  }
-  .rab-fab-ai:hover .rab-fab-ai-icon {
-    transform: rotate(15deg) scale(1.1);
-  }
-  .rab-fab-ai:active .rab-fab-ai-icon {
-    transform: rotate(90deg);
-  }
-  .rab-fab-ai-text {
-    font-family: inherit;
-    font-weight: 700;
-    line-height: 1;
-  }
-  .rab-fab-ai-badge {
-    font-size: 9px;
-    font-weight: 800;
-    padding: 2px 6px;
-    border-radius: 999px;
-    background: #ecfdf5;
-    color: #087f23;
-    line-height: 1;
-    letter-spacing: 0.3px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-    flex-shrink: 0;
-  }
-  .rab-fab-ai.is-open .rab-fab-ai-badge {
-    display: none;
-  }
-  /* Pulse Ring Effect around FAB */
-  .rab-fab-ai-pulse {
-    position: absolute;
-    top: -3px;
-    left: -3px;
-    right: -3px;
-    bottom: -3px;
-    border-radius: 999px;
-    border: 1.5px solid #087f23;
-    opacity: 0;
-    pointer-events: none;
-    animation: fabPulseRing 3s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite;
-  }
-  .rab-fab-ai.is-open .rab-fab-ai-pulse {
-    display: none;
-  }
-  @keyframes fabPulseRing {
-    0% {
-      transform: scale(0.96);
-      opacity: 0.6;
-    }
-    50% {
-      transform: scale(1.06);
-      opacity: 0;
-    }
-    100% {
-      transform: scale(1.06);
-      opacity: 0;
-    }
-  }
+  .rab-fab-ai:hover { background: linear-gradient(135deg, #099429 0%, #087f23 100%); color: #ffffff; transform: translateY(-2px) scale(1.02); box-shadow: 0 6px 18px rgba(8, 127, 35, 0.4), 0 3px 7px rgba(0, 0, 0, 0.1); }
+  .rab-fab-ai:active { transform: translateY(0) scale(0.97); }
+  .rab-fab-ai.is-open { background: linear-gradient(135deg, #334155 0%, #1e293b 100%); border-color: rgba(255, 255, 255, 0.2); box-shadow: 0 4px 14px rgba(15, 23, 42, 0.25); }
+  .rab-fab-ai.is-open:hover { background: linear-gradient(135deg, #475569 0%, #334155 100%); box-shadow: 0 6px 16px rgba(15, 23, 42, 0.32); }
+  .rab-fab-ai-icon { width: 23px; height: 23px; border-radius: 50%; background: rgba(255, 255, 255, 0.22); display: inline-flex; align-items: center; justify-content: center; font-size: 11.5px; color: #ffffff; transition: transform 0.2s ease; flex-shrink: 0; }
+  .rab-fab-ai:hover .rab-fab-ai-icon { transform: rotate(15deg) scale(1.1); }
+  .rab-fab-ai:active .rab-fab-ai-icon { transform: rotate(90deg); }
+  .rab-fab-ai-text { font-family: inherit; font-weight: 700; line-height: 1; }
+  .rab-fab-ai-badge { font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 999px; background: #ecfdf5; color: #087f23; line-height: 1; letter-spacing: 0.3px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06); flex-shrink: 0; }
+  .rab-fab-ai.is-open .rab-fab-ai-badge { display: none; }
+  .rab-fab-ai-pulse { position: absolute; inset: -3px; border-radius: 999px; border: 1.5px solid #087f23; opacity: 0; pointer-events: none; animation: fabPulseRing 3s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite; }
+  .rab-fab-ai.is-open .rab-fab-ai-pulse { display: none; }
+  @keyframes fabPulseRing { 0% { transform: scale(0.96); opacity: 0.6; } 50%, 100% { transform: scale(1.06); opacity: 0; } }
 
   @media (max-width: 576px) {
-    .rab-fab-ai {
-      bottom: 14px;
-      right: 14px;
-      padding: 6px 10px 6px 6px;
-      gap: 6px;
-    }
-    .rab-fab-ai-text {
-      display: none;
-    }
-    .ai-side-panel {
-      width: 100vw;
-      max-width: 100vw;
-    }
-  }
-  .ai-nav-tabs {
-    border-bottom: 1px solid #e2e8f0;
-    background-color: #f8fafc;
-    padding: 0 16px;
-    flex-shrink: 0;
-  }
-  .ai-nav-tabs .nav-link {
-    border: none;
-    color: #64748b;
-    font-weight: 600;
-    font-size: 13px;
-    padding: 12px 16px;
-    border-bottom: 2px solid transparent;
-    transition: all 0.15s ease;
-  }
-  .ai-nav-tabs .nav-link.active {
-    color: #087f23;
-    border-bottom-color: #087f23;
-    background: #ffffff;
-    font-weight: 700;
+    .rab-fab-ai { bottom: 14px; right: 14px; padding: 6px 10px 6px 6px; gap: 6px; }
+    .rab-fab-ai-text { display: none; }
+    .ai-side-panel { width: 100vw; max-width: 100vw; }
   }
 
-  /* Audit Tab Cards & Dynamic States */
-  .audit-circle-card {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 14px 16px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  }
-  /* Interactive SVG Donut Slice Hover */
-  circle.donut-slice-item {
-    cursor: pointer;
-    transition: stroke-width 0.2s ease, filter 0.2s ease;
-  }
-  circle.donut-slice-item:hover {
-    stroke-width: 15px !important;
-    filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.25));
-  }
-  /* Dynamic Mouse-Following Tooltip */
+  .ai-nav-tabs { border-bottom: 1px solid #e2e8f0; background-color: #f8fafc; padding: 0 16px; flex-shrink: 0; }
+  .ai-nav-tabs .nav-link { border: none; color: #64748b; font-weight: 600; font-size: 13px; padding: 12px 16px; border-bottom: 2px solid transparent; transition: all 0.15s ease; }
+  .ai-nav-tabs .nav-link.active { color: #087f23; border-bottom-color: #087f23; background: #ffffff; font-weight: 700; }
+
+  /* Elemen audit AI */
+  .audit-circle-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 16px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04); }
+  circle.donut-slice-item { cursor: pointer; transition: stroke-width 0.2s ease, filter 0.2s ease; }
+  circle.donut-slice-item:hover { stroke-width: 15px !important; filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.25)); }
   .audit-mini-tooltip-floating {
     background: rgba(15, 23, 42, 0.88) !important;
     color: #ffffff !important;
@@ -368,27 +177,15 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     border: 1px solid rgba(255, 255, 255, 0.15) !important;
     white-space: nowrap !important;
   }
-  /* Anomaly Highlighted Rows on Main RAB Table */
-  .rab-row-item > td {
-    transition: background-color 0.25s ease, box-shadow 0.25s ease !important;
-  }
-  .rab-row-anomaly-critical > td {
-    background-color: #fee2e2 !important;
-  }
-  .rab-row-anomaly-warning > td {
-    background-color: #fef3c7 !important;
-  }
-  .rab-row-item.rab-row-anomaly-critical:hover > td {
-    background-color: #fecaca !important;
-  }
-  .rab-row-item.rab-row-anomaly-warning:hover > td {
-    background-color: #fde68a !important;
-  }
 
-  /* Active Hover & Highlight State Matching Static Status Colors (Like Gambar Kedua) */
-  .rab-row-item.rab-row-hover-active > td {
-    transition: background-color 0.25s ease, box-shadow 0.25s ease !important;
-  }
+  /* Highlight anomali baris RAB */
+  .rab-row-item > td { transition: background-color 0.25s ease, box-shadow 0.25s ease !important; }
+  .rab-row-anomaly-critical > td { background-color: #fee2e2 !important; }
+  .rab-row-anomaly-warning > td { background-color: #fef3c7 !important; }
+  .rab-row-item.rab-row-anomaly-critical:hover > td { background-color: #fecaca !important; }
+  .rab-row-item.rab-row-anomaly-warning:hover > td { background-color: #fde68a !important; }
+
+  .rab-row-item.rab-row-hover-active > td { transition: background-color 0.25s ease, box-shadow 0.25s ease !important; }
   .rab-row-item.rab-row-hover-active.rab-row-anomaly-critical > td,
   .rab-row-flash-red > td {
     background-color: #fecaca !important;
@@ -396,13 +193,9 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     animation: pulseRowRed 1.8s ease-in-out infinite;
   }
   .rab-row-item.rab-row-hover-active.rab-row-anomaly-critical > td:first-child,
-  .rab-row-flash-red > td:first-child {
-    box-shadow: inset 2px 0 0 #dc2626, inset 0 2px 0 #dc2626, inset 0 -2px 0 #dc2626 !important;
-  }
+  .rab-row-flash-red > td:first-child { box-shadow: inset 2px 0 0 #dc2626, inset 0 2px 0 #dc2626, inset 0 -2px 0 #dc2626 !important; }
   .rab-row-item.rab-row-hover-active.rab-row-anomaly-critical > td:last-child,
-  .rab-row-flash-red > td:last-child {
-    box-shadow: inset -2px 0 0 #dc2626, inset 0 2px 0 #dc2626, inset 0 -2px 0 #dc2626 !important;
-  }
+  .rab-row-flash-red > td:last-child { box-shadow: inset -2px 0 0 #dc2626, inset 0 2px 0 #dc2626, inset 0 -2px 0 #dc2626 !important; }
 
   .rab-row-item.rab-row-hover-active.rab-row-anomaly-warning > td,
   .rab-row-flash-amber > td {
@@ -411,13 +204,9 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     animation: pulseRowAmber 1.8s ease-in-out infinite;
   }
   .rab-row-item.rab-row-hover-active.rab-row-anomaly-warning > td:first-child,
-  .rab-row-flash-amber > td:first-child {
-    box-shadow: inset 2px 0 0 #d97706, inset 0 2px 0 #d97706, inset 0 -2px 0 #d97706 !important;
-  }
+  .rab-row-flash-amber > td:first-child { box-shadow: inset 2px 0 0 #d97706, inset 0 2px 0 #d97706, inset 0 -2px 0 #d97706 !important; }
   .rab-row-item.rab-row-hover-active.rab-row-anomaly-warning > td:last-child,
-  .rab-row-flash-amber > td:last-child {
-    box-shadow: inset -2px 0 0 #d97706, inset 0 2px 0 #d97706, inset 0 -2px 0 #d97706 !important;
-  }
+  .rab-row-flash-amber > td:last-child { box-shadow: inset -2px 0 0 #d97706, inset 0 2px 0 #d97706, inset 0 -2px 0 #d97706 !important; }
 
   .rab-row-item.rab-row-hover-active.rab-row-flash-green > td,
   .rab-row-flash-green > td {
@@ -426,28 +215,14 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     animation: pulseRowGreen 1.8s ease-in-out infinite;
   }
   .rab-row-item.rab-row-hover-active.rab-row-flash-green > td:first-child,
-  .rab-row-flash-green > td:first-child {
-    box-shadow: inset 2px 0 0 #16a34a, inset 0 2px 0 #16a34a, inset 0 -2px 0 #16a34a !important;
-  }
+  .rab-row-flash-green > td:first-child { box-shadow: inset 2px 0 0 #16a34a, inset 0 2px 0 #16a34a, inset 0 -2px 0 #16a34a !important; }
   .rab-row-item.rab-row-hover-active.rab-row-flash-green > td:last-child,
-  .rab-row-flash-green > td:last-child {
-    box-shadow: inset -2px 0 0 #16a34a, inset 0 2px 0 #16a34a, inset 0 -2px 0 #16a34a !important;
-  }
+  .rab-row-flash-green > td:last-child { box-shadow: inset -2px 0 0 #16a34a, inset 0 2px 0 #16a34a, inset 0 -2px 0 #16a34a !important; }
 
-  @keyframes pulseRowRed {
-    0%, 100% { background-color: #fecaca; }
-    50% { background-color: #fee2e2; }
-  }
-  @keyframes pulseRowAmber {
-    0%, 100% { background-color: #fef08a; }
-    50% { background-color: #fef9c3; }
-  }
-  @keyframes pulseRowGreen {
-    0%, 100% { background-color: #bbf7d0; }
-    50% { background-color: #dcfce7; }
-  }
+  @keyframes pulseRowRed { 0%, 100% { background-color: #fecaca; } 50% { background-color: #fee2e2; } }
+  @keyframes pulseRowAmber { 0%, 100% { background-color: #fef08a; } 50% { background-color: #fef9c3; } }
+  @keyframes pulseRowGreen { 0%, 100% { background-color: #bbf7d0; } 50% { background-color: #dcfce7; } }
 
-  /* Radar Pulse Loader Animation */
   .audit-radar-pulse {
     width: 68px;
     height: 68px;
@@ -479,130 +254,19 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     cursor: pointer;
     user-select: none;
   }
-  .audit-ribbon-card:hover {
-    border-color: #087f23;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(8, 127, 35, 0.12);
-  }
-  .audit-ribbon-card[data-category="critical"]:hover {
-    border-color: #dc2626 !important;
-    background-color: #fef2f2 !important;
-    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15) !important;
-  }
-  .audit-ribbon-card[data-category="warning"]:hover {
-    border-color: #d97706 !important;
-    background-color: #fffbeb !important;
-    box-shadow: 0 4px 12px rgba(217, 119, 6, 0.15) !important;
-  }
-  .audit-ribbon-card.audit-card-selected {
-    border-width: 2px !important;
-  }
-  .audit-ribbon-card[data-category="critical"].audit-card-selected {
-    border-color: #dc2626 !important;
-    background-color: #fef2f2 !important;
-    box-shadow: 0 4px 14px rgba(220, 38, 38, 0.18) !important;
-  }
-  .audit-ribbon-card[data-category="warning"].audit-card-selected {
-    border-color: #d97706 !important;
-    background-color: #fffbeb !important;
-    box-shadow: 0 4px 14px rgba(217, 119, 6, 0.18) !important;
-  }
-  .audit-card-header {
-    padding: 10px 12px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    cursor: pointer;
-    user-select: none;
-  }
-  .audit-ribbon-icon-box {
-    width: 36px;
-    height: 36px;
-    background-color: #087f23;
-    color: #ffffff;
-    border-radius: 8px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    flex-shrink: 0;
-    box-shadow: 0 2px 4px rgba(8, 127, 35, 0.18);
-  }
-  .card-critical .audit-ribbon-icon-box {
-    background-color: #dc2626;
-    box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);
-  }
-  .card-warning .audit-ribbon-icon-box {
-    background-color: #d97706;
-    box-shadow: 0 2px 4px rgba(217, 119, 6, 0.2);
-  }
-  .audit-card-title {
-    font-size: 13.5px;
-    font-weight: 700;
-    color: #1e293b;
-    margin: 0;
-  }
-  .audit-card-subtitle {
-    font-size: 11.5px;
-    color: #64748b;
-    margin-top: 1px;
-  }
-  .audit-card-body {
-    padding: 12px 14px;
-    border-top: 1px dashed #e2e8f0;
-    background-color: #ffffff;
-    font-size: 12px;
-    color: #334155;
-  }
-  .badge-critical {
-    background-color: #fee2e2;
-    color: #dc2626;
-    border: 1px solid #f87171;
-    font-size: 10.5px;
-    font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 9999px;
-  }
-  .badge-warning-custom {
-    background-color: #fef3c7;
-    color: #d97706;
-    border: 1px solid #fcd34d;
-    font-size: 10.5px;
-    font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 9999px;
-  }
-  .badge-success-custom {
-    background-color: #dcfce7;
-    color: #16a34a;
-    border: 1px solid #86efac;
-    font-size: 10.5px;
-    font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 9999px;
-  }
+  .audit-ribbon-card:hover { border-color: #087f23; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(8, 127, 35, 0.12); }
+  .audit-ribbon-card[data-category="critical"]:hover { border-color: #dc2626 !important; background-color: #fef2f2 !important; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15) !important; }
+  .audit-ribbon-card[data-category="warning"]:hover { border-color: #d97706 !important; background-color: #fffbeb !important; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.15) !important; }
+  .audit-ribbon-card.audit-card-selected { border-width: 2px !important; }
+  .audit-ribbon-card[data-category="critical"].audit-card-selected { border-color: #dc2626 !important; background-color: #fef2f2 !important; box-shadow: 0 4px 14px rgba(220, 38, 38, 0.18) !important; }
+  .audit-ribbon-card[data-category="warning"].audit-card-selected { border-color: #d97706 !important; background-color: #fffbeb !important; box-shadow: 0 4px 14px rgba(217, 119, 6, 0.18) !important; }
 
-  /* AI Light Chat Container */
-  .ai-panel-body-container {
-    flex-grow: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    background-color: #ffffff;
-  }
-  .ai-chat-container {
-    height: 100%;
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    background-color: #ffffff;
-    padding: 24px 20px 16px 20px;
-    color: #1e293b;
-  }
+  .badge-critical { background-color: #fee2e2; color: #dc2626; border: 1px solid #f87171; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 9999px; }
+  .badge-warning-custom { background-color: #fef3c7; color: #d97706; border: 1px solid #fcd34d; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 9999px; }
+  .badge-success-custom { background-color: #dcfce7; color: #16a34a; border: 1px solid #86efac; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 9999px; }
 
-  /* Vertical Action Chips */
+  /* Komponen konsultasi AI Chat & usulan perubahan */
+  .ai-chat-container { height: 100%; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; background-color: #ffffff; padding: 24px 20px 16px 20px; color: #1e293b; }
   .ai-chip-btn {
     background-color: #f8fafc;
     border: 1px solid #e2e8f0;
@@ -621,293 +285,56 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     max-width: 100%;
     text-align: left;
   }
-  .ai-chip-btn:hover {
-    background-color: #ecfdf5;
-    border-color: #86efac;
-    color: #065f46;
-  }
-  .ai-chip-icon {
-    font-size: 12px;
-    color: #087f23;
-    flex-shrink: 0;
-  }
+  .ai-chip-btn:hover { background-color: #ecfdf5; border-color: #86efac; color: #065f46; }
+  .ai-chip-icon { font-size: 12px; color: #087f23; flex-shrink: 0; }
 
-  /* Bottom Input Box */
-  .ai-input-card {
-    background-color: #1e1f22;
-    border: 1px solid #2e3035;
-    border-radius: 16px;
-    padding: 14px;
-  }
-  .ai-input-field {
-    background: transparent;
-    border: none;
-    color: #f1f5f9;
-    font-size: 13.5px;
-    width: 100%;
-    outline: none;
-    margin-bottom: 10px;
-  }
-  /* Usulan Perubahan Card (Separated Card) */
-  .ai-proposal-card {
-    border: 1.5px solid #cbd5e1;
-    background-color: #ffffff;
-    border-radius: 14px;
-    padding: 14px 16px;
-    margin-top: 8px;
-    margin-bottom: 12px;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-  }
-  .ai-proposal-card:hover {
-    border-color: #087f23 !important;
-    box-shadow: 0 4px 14px rgba(8, 127, 35, 0.12);
-  }
-  .ai-proposal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 10px;
-  }
-  .ai-proposal-title {
-    font-size: 13.5px;
-    font-weight: 700;
-    color: #1e293b;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .ai-proposal-cost-badge {
-    font-size: 12px;
-    font-weight: 700;
-    padding: 3px 10px;
-    border-radius: 6px;
-    white-space: nowrap;
-  }
-  .ai-proposal-cost-positive {
-    background-color: #fee2e2;
-    color: #dc2626;
-  }
-  .ai-proposal-cost-negative {
-    background-color: #dcfce7;
-    color: #15803d;
-  }
-  .ai-proposal-cost-neutral {
-    background-color: #f1f5f9;
-    color: #475569;
-  }
-  .ai-proposal-item {
-    background-color: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 10px 12px;
-    margin-bottom: 10px;
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    user-select: none;
-  }
-  .ai-proposal-item:hover {
-    background-color: #ffffff;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-  }
-  .ai-proposal-item.item-ubah:hover {
-    border-color: #f59e0b;
-    box-shadow: 0 4px 12px rgba(217, 119, 6, 0.12);
-  }
-  .ai-proposal-item.item-tambah:hover {
-    border-color: #10b981;
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.12);
-  }
-  .ai-proposal-item.item-hapus:hover {
-    border-color: #ef4444;
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.12);
-  }
-  .ai-proposal-item-badge {
-    font-size: 10px;
-    font-weight: 700;
-    padding: 2px 7px;
-    border-radius: 4px;
-    text-transform: uppercase;
-    display: inline-block;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-  .ai-badge-ubah {
-    background-color: #fef3c7;
-    color: #b45309;
-  }
-  .ai-badge-tambah {
-    background-color: #dcfce7;
-    color: #15803d;
-  }
-  .ai-badge-hapus {
-    background-color: #fee2e2;
-    color: #b91c1c;
-  }
-  .ai-proposal-item:hover .ai-badge-ubah {
-    background-color: #fde68a;
-  }
-  .ai-proposal-item:hover .ai-badge-tambah {
-    background-color: #bbf7d0;
-  }
-  .ai-proposal-item:hover .ai-badge-hapus {
-    background-color: #fecaca;
-  }
-  /* Individual Acc button & proposal item checkbox */
-  .ai-btn-acc-single {
-    background-color: #087f23;
-    border: 1px solid #087f23;
-    color: #ffffff;
-    font-size: 11px;
-    font-weight: 700;
-    padding: 3px 9px;
-    border-radius: 6px;
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    transition: all 0.15s ease;
-    cursor: pointer;
-  }
-  .ai-btn-acc-single:hover {
-    background-color: #06691c;
-    border-color: #06691c;
-    transform: scale(1.04);
-  }
-  .ai-item-checkbox {
-    width: 16px;
-    height: 16px;
-    cursor: pointer;
-    border-color: #94a3b8;
-    flex-shrink: 0;
-  }
-  .ai-item-checkbox:checked {
-    background-color: #087f23;
-    border-color: #087f23;
-  }
-  .ai-proposal-item.applied {
-    background-color: #f8fafc;
-    border-color: #cbd5e1;
-    opacity: 0.82;
-  }
-  .ai-proposal-actions-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 12px;
-  }
-  .ai-btn-apply {
-    background-color: #087f23;
-    border-color: #087f23;
-    color: #ffffff;
-    font-size: 13px;
-    font-weight: 700;
-    padding: 8px 16px;
-    border-radius: 9999px;
-    flex-grow: 1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    transition: all 0.2s ease;
-    border: 1px solid #087f23;
-  }
-  .ai-btn-apply:hover {
-    background-color: #06691c;
-    border-color: #06691c;
-    color: #ffffff;
-  }
-  .ai-btn-cancel {
-    background-color: transparent;
-    border: 1px solid #64748b;
-    color: #475569;
-    font-size: 13px;
-    font-weight: 600;
-    padding: 8px 18px;
-    border-radius: 9999px;
-    transition: all 0.15s ease;
-  }
-  .ai-btn-cancel:hover {
-    background-color: #f1f5f9;
-    color: #1e293b;
-    border-color: #475569;
-  }
+  .ai-proposal-card { border: 1.5px solid #cbd5e1; background-color: #ffffff; border-radius: 14px; padding: 14px 16px; margin-top: 8px; margin-bottom: 12px; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+  .ai-proposal-card:hover { border-color: #087f23 !important; box-shadow: 0 4px 14px rgba(8, 127, 35, 0.12); }
+  .ai-proposal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .ai-proposal-title { font-size: 13.5px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 6px; }
+  .ai-proposal-cost-badge { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 6px; white-space: nowrap; }
+  .ai-proposal-cost-positive { background-color: #fee2e2; color: #dc2626; }
+  .ai-proposal-cost-negative { background-color: #dcfce7; color: #15803d; }
+  .ai-proposal-cost-neutral { background-color: #f1f5f9; color: #475569; }
 
-  /* ------------------------------------------------------------- */
-  /* TABLE DESIGN (1:1 DENGAN SCREENSHOT REFERENSI)               */
-  /* ------------------------------------------------------------- */
-  .rab-table-wrapper {
-    border: 1px solid #e2e8f0;
-    border-radius: 4px;
-    overflow-x: auto;
-    overflow-y: auto;
-    max-height: 100vh;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
-  }
-  .rab-table-wrapper::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  .rab-table-wrapper::-webkit-scrollbar-track {
-    background: #f8fafc;
-  }
-  .rab-table-wrapper::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 4px;
-  }
+  .ai-proposal-item { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); position: relative; user-select: none; }
+  .ai-proposal-item:hover { background-color: #ffffff; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06); }
+  .ai-proposal-item.item-ubah:hover { border-color: #f59e0b; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.12); }
+  .ai-proposal-item.item-tambah:hover { border-color: #10b981; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.12); }
+  .ai-proposal-item.item-hapus:hover { border-color: #ef4444; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.12); }
 
-  .rab-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12.5px;
-    margin-bottom: 0;
-  }
+  .ai-proposal-item-badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; text-transform: uppercase; display: inline-block; cursor: pointer; transition: all 0.15s ease; }
+  .ai-badge-ubah { background-color: #fef3c7; color: #b45309; }
+  .ai-badge-tambah { background-color: #dcfce7; color: #15803d; }
+  .ai-badge-hapus { background-color: #fee2e2; color: #b91c1c; }
+  .ai-proposal-item:hover .ai-badge-ubah { background-color: #fde68a; }
+  .ai-proposal-item:hover .ai-badge-tambah { background-color: #bbf7d0; }
+  .ai-proposal-item:hover .ai-badge-hapus { background-color: #fecaca; }
 
-  /* Sticky Thead: Solid Dark Green */
-  .rab-table thead {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    background-color: #087f23;
-  }
-  .rab-table th {
-    background-color: #087f23 !important;
-    color: #ffffff !important;
-    font-size: 12px;
-    font-weight: 700;
-    padding: 10px 14px;
-    letter-spacing: 0.02em;
-    border: none;
-    white-space: nowrap;
-    user-select: none;
-  }
+  .ai-btn-acc-single { background-color: #087f23; border: 1px solid #087f23; color: #ffffff; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 6px; display: inline-flex; align-items: center; gap: 3px; transition: all 0.15s ease; cursor: pointer; }
+  .ai-btn-acc-single:hover { background-color: #06691c; border-color: #06691c; transform: scale(1.04); }
+  .ai-item-checkbox { width: 16px; height: 16px; cursor: pointer; border-color: #94a3b8; flex-shrink: 0; }
+  .ai-item-checkbox:checked { background-color: #087f23; border-color: #087f23; }
+  .ai-proposal-item.applied { background-color: #f8fafc; border-color: #cbd5e1; opacity: 0.82; }
+  .ai-proposal-actions-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+  .ai-btn-apply { background-color: #087f23; border: 1px solid #087f23; color: #ffffff; font-size: 13px; font-weight: 700; padding: 8px 16px; border-radius: 9999px; flex-grow: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s ease; }
+  .ai-btn-apply:hover { background-color: #06691c; border-color: #06691c; color: #ffffff; }
+  .ai-btn-cancel { background-color: transparent; border: 1px solid #64748b; color: #475569; font-size: 13px; font-weight: 600; padding: 8px 18px; border-radius: 9999px; transition: all 0.15s ease; }
+  .ai-btn-cancel:hover { background-color: #f1f5f9; color: #1e293b; border-color: #475569; }
 
-  .rab-table td {
-    padding: 10px 14px;
-    vertical-align: middle;
-    border-top: 1px solid #f1f5f9;
-    border-bottom: 1px solid #f1f5f9;
-  }
+  /* Desain tabel RAB */
+  .rab-table-wrapper { border: 1px solid #e2e8f0; border-radius: 4px; overflow-x: auto; overflow-y: auto; max-height: 100vh; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02); }
+  .rab-table-wrapper::-webkit-scrollbar { width: 8px; height: 8px; }
+  .rab-table-wrapper::-webkit-scrollbar-track { background: #f8fafc; }
+  .rab-table-wrapper::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  .rab-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-bottom: 0; }
+  .rab-table thead { position: sticky; top: 0; z-index: 10; background-color: #087f23; }
+  .rab-table th { background-color: #087f23 !important; color: #ffffff !important; font-size: 12px; font-weight: 700; padding: 10px 14px; letter-spacing: 0.02em; border: none; white-space: nowrap; user-select: none; }
+  .rab-table td { padding: 10px 14px; vertical-align: middle; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; }
 
-  /* Category Header Row */
-  .rab-sec-row {
-    background-color: #ffffff;
-    transition: background-color 0.15s ease;
-  }
-  .rab-sec-row:hover {
-    background-color: #f0f7ec;
-  }
-  .rab-sec-title {
-    font-weight: 700;
-    text-transform: uppercase;
-    font-size: 12.5px;
-    color: #1e293b;
-    letter-spacing: 0.03em;
-    cursor: pointer;
-    user-select: none;
-  }
-
-  /* Toggle Collapse Circle (Red) */
+  .rab-sec-row { background-color: #ffffff; transition: background-color 0.15s ease; }
+  .rab-sec-row:hover { background-color: #f0f7ec; }
+  .rab-sec-title { font-weight: 700; text-transform: uppercase; font-size: 12.5px; color: #1e293b; letter-spacing: 0.03em; cursor: pointer; user-select: none; }
   .btn-toggle-sec {
     width: 18px;
     height: 18px;
@@ -924,165 +351,51 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     transition: transform 0.1s ease, background-color 0.15s ease;
     box-shadow: 0 1px 2px rgba(211, 47, 47, 0.25);
   }
-  .btn-toggle-sec:hover {
-    background-color: #b71c1c;
-  }
-  .btn-toggle-sec:active {
-    transform: scale(0.95);
-  }
-  .minus-line {
-    width: 8px;
-    height: 2px;
-    background-color: #ffffff;
-    border-radius: 9999px;
-    display: block;
-  }
-  .plus-icon {
-    font-size: 12px;
-    font-weight: 700;
-    line-height: 1;
-    color: #ffffff;
-    display: block;
-  }
+  .btn-toggle-sec:hover { background-color: #b71c1c; }
+  .btn-toggle-sec:active { transform: scale(0.95); }
+  .minus-line { width: 8px; height: 2px; background-color: #ffffff; border-radius: 9999px; display: block; }
+  .plus-icon { font-size: 12px; font-weight: 700; line-height: 1; color: #ffffff; display: block; }
 
-  /* Category Action Buttons (+ and Trash in Green) */
-  .btn-sec-action {
-    width: 22px;
-    height: 22px;
-    border-radius: 4px;
-    background-color: #689f38;
-    color: #ffffff;
-    border: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: background-color 0.15s ease;
-  }
-  .btn-sec-action:hover {
-    background-color: #558b2f;
-  }
+  .btn-sec-action { width: 22px; height: 22px; border-radius: 4px; background-color: #689f38; color: #ffffff; border: none; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: background-color 0.15s ease; }
+  .btn-sec-action:hover { background-color: #558b2f; }
+  .rab-row-item { background-color: rgba(248, 250, 252, 0.55); transition: background-color 0.15s ease; }
+  .rab-row-item:hover { background-color: #f1f5f9; }
+  .rab-item-name { font-weight: 600; font-size: 12px; color: #1e293b; }
 
-  /* Item Rows */
-  .rab-row-item {
-    background-color: rgba(248, 250, 252, 0.55);
-    transition: background-color 0.15s ease;
-  }
-  .rab-row-item:hover {
-    background-color: #f1f5f9;
-  }
-  .rab-item-name {
-    font-weight: 600;
-    font-size: 12px;
-    color: #1e293b;
-  }
+  .btn-item-icon { background: none; border: none; padding: 3px 5px; border-radius: 4px; cursor: pointer; line-height: 1; display: inline-flex; align-items: center; justify-content: center; transition: all 0.15s ease; text-decoration: none; }
+  .btn-item-icon.edit-icon { color: #64748b; }
+  .btn-item-icon.edit-icon:hover { color: #1e293b; background-color: #e2e8f0; }
+  .btn-item-icon.book-icon { color: #047857; }
+  .btn-item-icon.book-icon:hover { color: #065f46; background-color: #ecfdf5; }
+  .btn-item-icon.trash-icon { color: #ef4444; }
+  .btn-item-icon.trash-icon:hover { color: #dc2626; background-color: #fee2e2; }
 
-  /* Item Action Icons (Edit, Book, Trash) */
-  .btn-item-icon {
-    background: none;
-    border: none;
-    padding: 3px 5px;
-    border-radius: 4px;
-    cursor: pointer;
-    line-height: 1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.15s ease;
-    text-decoration: none;
-  }
-  .btn-item-icon.edit-icon {
-    color: #64748b;
-  }
-  .btn-item-icon.edit-icon:hover {
-    color: #1e293b;
-    background-color: #e2e8f0;
-  }
-  .btn-item-icon.book-icon {
-    color: #047857;
-  }
-  .btn-item-icon.book-icon:hover {
-    color: #065f46;
-    background-color: #ecfdf5;
-  }
-  .btn-item-icon.trash-icon {
-    color: #ef4444;
-  }
-  .btn-item-icon.trash-icon:hover {
-    color: #dc2626;
-    background-color: #fee2e2;
-  }
+  .tab-num { font-variant-numeric: tabular-nums; }
+  .rab-table tfoot { position: sticky; bottom: -1px; z-index: 10; background-color: #087f23 !important; color: #ffffff !important; user-select: none; box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.05); }
+  .rab-table tfoot tr { background-color: #087f23 !important; border-top: 1px solid rgba(0, 110, 36, 0.35); }
+  .rab-table tfoot td { background-color: #087f23 !important; color: #ffffff !important; font-weight: 700; font-size: 12px; padding: 10px 14px; border: none; }
+  .rab-table tfoot tr.total-row td { font-weight: 800; font-size: 12.5px; padding: 11px 14px; }
 
-  /* Tabular Numerics */
-  .tab-num {
-    font-variant-numeric: tabular-nums;
-  }
-
-  /* Sticky Footer Solid Green */
-  .rab-table tfoot {
-    position: sticky;
-    bottom: -1px;
-    z-index: 10;
-    background-color: #087f23 !important;
-    color: #ffffff !important;
-    user-select: none;
-    box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.05);
-  }
-  .rab-table tfoot tr {
-    background-color: #087f23 !important;
-    border-top: 1px solid rgba(0, 110, 36, 0.35);
-  }
-  .rab-table tfoot td {
-    background-color: #087f23 !important;
-    color: #ffffff !important;
-    font-weight: 700;
-    font-size: 12px;
-    padding: 10px 14px;
-    border: none;
-  }
-  .rab-table tfoot tr.total-row td {
-    font-weight: 800;
-    font-size: 12.5px;
-    padding: 11px 14px;
-  }
-
-  /* Print Optimization */
   @media print {
-    .app-navbar, .rab-search-box, .no-print, .btn-item-icon, .btn-sec-action, .btn-toggle-sec, .ai-side-panel, .rab-fab-ai {
-      display: none !important;
-    }
-    .anggaran-card {
-      border: none !important;
-      box-shadow: none !important;
-      padding: 0 !important;
-      margin: 0 !important;
-    }
-    .rab-table-wrapper {
-      max-height: none !important;
-      border: 1px solid #000000 !important;
-    }
-    .rab-table th, .rab-table tfoot {
-      background-color: #087f23 !important;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
+    .app-navbar, .rab-search-box, .no-print, .btn-item-icon, .btn-sec-action, .btn-toggle-sec, .ai-side-panel, .rab-fab-ai { display: none !important; }
+    .anggaran-card { border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; }
+    .rab-table-wrapper { max-height: none !important; border: 1px solid #000000 !important; }
+    .rab-table th, .rab-table tfoot { background-color: #087f23 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
 </style>
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-
-<!-- Hero Banner -->
+<!-- Banner Header Proyek -->
 <div class="anggaran-banner">
   <img src="<?= base_url('assets/img/proyek-bg13.png') ?>" alt="Banner Estimator" class="anggaran-banner-bg" onerror="this.style.display='none'">
   <h1 class="anggaran-banner-title"><?= esc($project['title']) ?></h1>
 </div>
 
-<!-- Main Workspace Container -->
 <main class="container-fluid px-3 px-md-5 my-4" style="max-width: 1440px;">
   <div class="anggaran-card" id="rabMainCard">
 
-    <!-- Top Control Toolbar (Matching Screenshot Design 100%) -->
+    <!-- Toolbar Atas (Collapse & Filter Pencarian) -->
     <div class="rab-toolbar-container no-print">
       <div class="btn-pill-group">
         <button type="button" class="btn-pill-action" onclick="toggleAllCategoryCollapse()" title="Tutup / Buka semua kategori">
@@ -1111,10 +424,9 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
       </div>
     </div>
 
-    <!-- Table Container -->
+    <!-- Tabel RAB Utama -->
     <div class="rab-table-wrapper">
       <table class="rab-table" id="rabMainTable">
-        <!-- Thead: Solid Dark Green Header -->
         <thead>
           <tr>
             <th scope="col" class="text-center" style="width: 48px;">No.</th>
@@ -1128,7 +440,6 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
           </tr>
         </thead>
 
-        <!-- Tbody: Categories & Sub-items -->
         <tbody id="rabTableBody">
           <?php if (empty($sections)): ?>
             <tr>
@@ -1139,9 +450,8 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
             </tr>
           <?php else: ?>
             <?php foreach ($sections as $sIdx => $sec): ?>
-              <!-- Category / Section Header Row -->
+              <!-- Baris Kategori Seksi WBS -->
               <tr class="rab-sec-row" data-sec-id="<?= esc($sec['id']) ?>" data-sec-code="<?= esc($sec['code']) ?>" data-sec-name="<?= esc(strtolower($sec['name'] ?? '')) ?>">
-                <!-- Col 1: Red Minus/Plus Circle Toggle -->
                 <td class="text-center">
                   <button 
                     type="button" 
@@ -1153,32 +463,18 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
                     <span class="plus-icon d-none" id="plus-icon-<?= esc($sec['code']) ?>">+</span>
                   </button>
                 </td>
-
-                <!-- Col 2: Category Title -->
                 <td class="rab-sec-title" onclick="toggleCategoryCollapse('<?= esc($sec['code']) ?>')">
                   <?= esc($sec['name']) ?>
                 </td>
-
-                <!-- Col 3: Volume (Blank) -->
                 <td></td>
-
-                <!-- Col 4: Satuan (Blank) -->
                 <td></td>
-
-                <!-- Col 5: Harga Satuan (Blank) -->
                 <td></td>
-
-                <!-- Col 6: Harga (Section Subtotal) -->
                 <td class="text-end fw-medium text-dark tab-num" style="font-size: 12px;" id="sec-subtotal-<?= esc($sec['code']) ?>">
                   Rp <?= number_format($sec['subtotal'], 2, ',', '.') ?>
                 </td>
-
-                <!-- Col 7: % (Section Bobot) -->
                 <td class="text-end fw-medium text-dark tab-num" style="font-size: 12px;" id="sec-bobot-<?= esc($sec['code']) ?>">
                   <?= number_format($sec['bobot'], 2, ',', '.') ?> %
                 </td>
-
-                <!-- Col 8: Aksi (Green + and Trash buttons) -->
                 <td class="text-center">
                   <div class="d-inline-flex align-items-center justify-content-center gap-1">
                     <button 
@@ -1201,7 +497,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
                 </td>
               </tr>
 
-              <!-- Sub-item Rows in this Category -->
+              <!-- Baris Item dalam Kategori Seksi -->
               <?php foreach ($sec['items'] as $iIdx => $it): ?>
                 <?php 
                   $displayAhspCode = (!empty($it['ahsp_code']) && $it['ahsp_code'] !== '-') 
@@ -1220,49 +516,31 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
                   data-item-no="<?= esc(strtolower($it['no'] ?? '')) ?>"
                   data-item-unit="<?= esc(strtolower($it['unit'] ?? '')) ?>"
                 >
-                  <!-- Col 1: Item No. -->
                   <td class="text-center text-muted fw-semibold tab-num" style="font-size: 11.5px;">
                     <?= esc($it['no']) ?>
                   </td>
-
-                  <!-- Col 2: Uraian Pekerjaan -->
                   <td style="padding-left: 32px;">
                     <div class="d-flex align-items-center gap-1.5">
-                      <span class="rab-item-name">
-                        <?= esc($it['ahsp_name'] ?: $it['name']) ?>
-                      </span>
+                      <span class="rab-item-name"><?= esc($it['ahsp_name'] ?: $it['name']) ?></span>
                     </div>
                   </td>
-
-                  <!-- Col 3: Volume -->
                   <td class="text-center text-dark fw-medium tab-num" style="font-size: 12px; cursor: pointer;" title="Klik untuk mengubah volume & harga" onclick="openEditItemModal('<?= esc($it['id']) ?>', '<?= esc(addslashes($it['ahsp_name'] ?: $it['name'])) ?>', <?= (float)$it['volume'] ?>, '<?= esc(addslashes($it['unit'])) ?>', <?= (float)$it['unit_price'] ?>)">
                     <?= number_format($it['volume'], 2, ',', '.') ?>
                   </td>
-
-                  <!-- Col 4: Satuan -->
                   <td class="text-center text-muted" style="font-size: 12px;">
                     <?= esc($it['unit']) ?>
                   </td>
-
-                  <!-- Col 5: Harga Satuan -->
                   <td class="text-end text-dark fw-medium tab-num" style="font-size: 12px; cursor: pointer;" title="Klik untuk mengubah volume & harga" onclick="openEditItemModal('<?= esc($it['id']) ?>', '<?= esc(addslashes($it['ahsp_name'] ?: $it['name'])) ?>', <?= (float)$it['volume'] ?>, '<?= esc(addslashes($it['unit'])) ?>', <?= (float)$it['unit_price'] ?>)">
                     Rp <?= number_format($it['unit_price'], 2, ',', '.') ?>
                   </td>
-
-                  <!-- Col 6: Harga (Total) -->
                   <td class="text-end text-dark fw-medium tab-num" style="font-size: 12px;">
                     Rp <?= number_format($it['subtotal'], 2, ',', '.') ?>
                   </td>
-
-                  <!-- Col 7: % (Bobot) -->
                   <td class="text-end text-dark fw-medium tab-num" style="font-size: 12px;">
                     <?= number_format($it['bobot'], 2, ',', '.') ?> %
                   </td>
-
-                  <!-- Col 8: Aksi (Edit, Book/AHSP, Trash) -->
                   <td class="text-center">
                     <div class="d-inline-flex align-items-center justify-content-center gap-1">
-                      <!-- Ubah Item (Volume & Harga Satuan) -->
                       <button 
                         type="button" 
                         class="btn-item-icon edit-icon" 
@@ -1271,8 +549,6 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
                       >
                         <i class="bi bi-pencil-square" style="font-size: 13.5px;"></i>
                       </button>
-
-                      <!-- Hapus Item -->
                       <button 
                         type="button" 
                         class="btn-item-icon trash-icon" 
@@ -1289,7 +565,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
           <?php endif; ?>
         </tbody>
 
-        <!-- Tfoot: Solid Dark Green Totals -->
+        <!-- Footer Total RAB -->
         <?php 
           $jumlahHarga = $grandTotal ?? 0;
           $ppnRateVal = $ppnRate ?? 0;
@@ -1297,7 +573,6 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
           $totalHarga = $jumlahHarga + $ppnAmount;
         ?>
         <tfoot>
-          <!-- Row 1: JUMLAH HARGA -->
           <tr>
             <td colspan="5" class="text-end text-uppercase fw-bold text-white pe-3" style="letter-spacing: 0.04em; background-color: #087f23 !important;">
               JUMLAH HARGA
@@ -1311,7 +586,6 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
             <td style="background-color: #087f23 !important;"></td>
           </tr>
 
-          <!-- Row 2: PPN 0.00 % -->
           <tr>
             <td colspan="5" class="text-end text-uppercase fw-bold text-white pe-3" style="letter-spacing: 0.04em; background-color: #087f23 !important;">
               PPN <?= number_format($ppnRate, 2, '.', '') ?> %
@@ -1323,7 +597,6 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
             <td style="background-color: #087f23 !important;"></td>
           </tr>
 
-          <!-- Row 3: TOTAL HARGA -->
           <tr class="total-row">
             <td colspan="5" class="text-end text-uppercase fw-bolder text-white pe-3" style="letter-spacing: 0.04em; background-color: #087f23 !important;">
               TOTAL HARGA
@@ -1339,7 +612,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     </div>
   </div>
 
-  <!-- Floating AI Audit & Konsultasi Trigger Button (Pojok Kanan Bawah) -->
+  <!-- Tombol Melayang Asisten AI -->
   <button 
     type="button" 
     id="btnFloatingAi" 
@@ -1349,273 +622,221 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     aria-label="Audit dan Konsultasi RAB"
   >
     <span class="rab-fab-ai-pulse"></span>
-    <span class="rab-fab-ai-icon">
-      <i class="bi bi-stars"></i>
-    </span>
+    <span class="rab-fab-ai-icon"><i class="bi bi-stars"></i></span>
     <span class="rab-fab-ai-text">Audit &amp; Konsultasi</span>
     <span class="rab-fab-ai-badge">RAB</span>
   </button>
 
-  <!-- Backdrop Overlay -->
   <div class="ai-panel-backdrop d-none" id="aiSidePanelBackdrop" onclick="closeAiAssistantPanel()"></div>
 
-  <!-- Right Workspace: Full-Height AI Side Panel -->
+  <!-- Panel Samping Asisten AI -->
   <div class="ai-side-panel d-none" id="aiSidePanel">
-      <!-- Panel Header with Close Button -->
-      <div class="panel-header d-flex align-items-center justify-content-between">
-        <div class="d-flex align-items-center gap-2">
-          <div class="rounded-circle p-2 d-inline-flex align-items-center justify-content-center" style="width: 34px; height: 34px; background-color: #ecfdf5; color: #087f23;">
-            <i class="bi bi-stars fs-6"></i>
+    <div class="panel-header d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center gap-2">
+        <div class="rounded-circle p-2 d-inline-flex align-items-center justify-content-center" style="width: 34px; height: 34px; background-color: #ecfdf5; color: #087f23;">
+          <i class="bi bi-stars fs-6"></i>
+        </div>
+        <div>
+          <h6 class="fw-bold text-dark mb-0" style="font-size: 14px;">Asisten Estimator</h6>
+        </div>
+      </div>
+      <button type="button" class="btn-close" onclick="closeAiAssistantPanel()" aria-label="Close"></button>
+    </div>
+
+    <ul class="nav nav-tabs ai-nav-tabs" id="aiTab" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="aiTabAudit-tab" data-bs-toggle="tab" data-bs-target="#aiTabAudit" type="button" role="tab">
+          <i class="bi bi-shield-check me-1"></i> Audit RAB
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="aiTabChat-tab" data-bs-toggle="tab" data-bs-target="#aiTabChat" type="button" role="tab">
+          <i class="bi bi-chat-dots me-1"></i> Konsultasi RAB
+        </button>
+      </li>
+    </ul>
+
+    <div class="p-0 ai-panel-body-container">
+      <div class="tab-content h-100 d-flex flex-column" id="aiTabContent">
+        
+        <!-- Tab 1: Audit RAB -->
+        <div class="tab-pane fade show active p-3 h-100 overflow-y-auto" id="aiTabAudit" role="tabpanel">
+          <div id="auditStateInitial" class="d-flex flex-column justify-content-center h-100 pe-1" style="flex-grow: 1; min-height: 0;">
+            <div class="my-auto">
+              <div class="text-center mb-4">
+                <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-3 shadow-sm" style="width: 64px; height: 64px; background-color: #ecfdf5; color: #087f23; border: 1px solid #a7f3d0;">
+                  <i class="bi bi-shield-check fs-1"></i>
+                </div>
+                <h5 class="fw-bold text-dark mb-1" style="font-size: 20px;">Pemeriksaan Kelayakan</h5>
+                <p class="text-muted small px-2 mb-0" style="font-size: 12.5px; color: #64748b; line-height: 1.5;">
+                  Pindai otomatis seluruh baris item pekerjaan RAB untuk menemukan anomali volume 0, ketidaklengkapan item AHSP, dan ketidakwajaran harga.
+                </p>
+              </div>
+
+              <div class="input-group align-items-center mt-4" style="background-color: transparent; padding: 0;">
+                <button type="button" class="btn btn-success rounded-3 w-100 fw-bold py-2.5 shadow-sm d-flex align-items-center justify-content-center gap-2" style="background-color: #087f23; border-color: #087f23; font-size: 13.5px; height: 48px; border-radius: 12px !important;" onclick="startAiScanProcess()">
+                  <i class="bi bi-rocket-takeoff fs-6"></i>
+                  <span>Mulai Pindai Audit RAB</span>
+                </button>
+              </div>
+            </div>
           </div>
-          <div>
-            <h6 class="fw-bold text-dark mb-0" style="font-size: 14px;"> Asisten Estimator</h6>
+
+          <div id="auditStateLoading" class="d-none flex-column align-items-center justify-content-center h-100 py-5 text-center">
+            <div class="audit-radar-pulse mb-3"><i class="bi bi-search"></i></div>
+            <h6 class="fw-bold text-dark mb-1">Memindai Item RAB...</h6>
+            <p class="text-muted small mb-3" style="font-size: 12px;">Menganalisis baris pekerjaan & memverifikasi kelengkapan data...</p>
+            <div class="progress w-75 shadow-sm" style="height: 6px;">
+              <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 100%;"></div>
+            </div>
+          </div>
+
+          <div id="auditStateResult" class="d-none flex-column h-100">
+            <div id="auditDynamicTooltip" class="audit-mini-tooltip-floating d-none" style="position: fixed; z-index: 99999; pointer-events: none; transition: opacity 0.12s ease-out;">
+              <span id="auditDynamicTooltipText">1 item</span>
+            </div>
+
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <span class="fw-bold text-dark" style="font-size: 13.5px;">Ringkasan Hasil Audit</span>
+              <button type="button" class="btn btn-outline-success btn-sm rounded-pill px-3 py-1 fw-bold shadow-sm" style="font-size: 11px;" onclick="startAiScanProcess()">
+                <i class="bi bi-arrow-repeat me-1"></i> Pindai Ulang
+              </button>
+            </div>
+
+            <div class="audit-circle-card mb-3">
+              <div class="d-flex align-items-center gap-3">
+                <div style="position: relative; width: 68px; height: 68px; flex-shrink: 0;" id="auditCircleBadge">
+                  <svg width="68" height="68" viewBox="0 0 68 68" style="transform: rotate(-90deg); overflow: visible;">
+                    <circle id="donutSliceRed" class="donut-slice-item" cx="34" cy="34" r="26" fill="none" stroke="#dc2626" stroke-width="12" stroke-dasharray="8.17 163.36" stroke-dashoffset="0" onclick="scrollToRabItemByText('', 'critical')" data-tooltip-title="1 item"></circle>
+                    <circle id="donutSliceYellow" class="donut-slice-item" cx="34" cy="34" r="26" fill="none" stroke="#d97706" stroke-width="12" stroke-dasharray="8.17 163.36" stroke-dashoffset="-8.17" onclick="scrollToRabItemByText('', 'warning')" data-tooltip-title="1 item"></circle>
+                    <circle id="donutSliceGreen" class="donut-slice-item" cx="34" cy="34" r="26" fill="none" stroke="#087f23" stroke-width="12" stroke-dasharray="147.02 163.36" stroke-dashoffset="-16.34" onclick="scrollToRabItemByText('', 'normal')" data-tooltip-title="18 item"></circle>
+                  </svg>
+                  <div id="auditPercentText" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; color: #087f23; pointer-events: none;">
+                    90%
+                  </div>
+                </div>
+                <div>
+                  <h6 class="fw-bold text-dark mb-1" style="font-size: 13px;">Status Kelayakan Item</h6>
+                  <div class="d-flex flex-wrap gap-2 mt-2">
+                    <span class="badge-critical" id="badgeCountCritical" onclick="scrollToRabItemByText('', 'critical')" style="cursor: pointer;" title="Klik untuk meninjau item kritis">- Kritis</span>
+                    <span class="badge-warning-custom" id="badgeCountWarning" onclick="scrollToRabItemByText('', 'warning')" style="cursor: pointer;" title="Klik untuk meninjau item peringatan">- Peringatan</span>
+                    <span class="badge-success-custom" id="badgeCountNormal" onclick="scrollToRabItemByText('', 'normal')" style="cursor: pointer;" title="Klik untuk meninjau item normal">- Normal</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="p-2 mb-3 d-flex align-items-center gap-2" style="background-color: #fef9c3; border: 1px solid #fde047; border-radius: 10px; color: #854d0e;">
+              <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 20px; height: 20px; background-color: #d97706; color: #ffffff;">
+                <i class="bi bi-info-lg" style="font-size: 11px; font-weight: 800; line-height: 1; display: flex; align-items: center; justify-content: center;"></i>
+              </div>
+              <div style="font-weight: 500; color: #854d0e; font-size: 11.5px; line-height: 1.45;">
+                Klik pada <strong>kolom peringatan</strong> di bawah ini untuk langsung menuju baris item terkait di <strong>tabel RAB</strong>.
+              </div>
+            </div>
+
+            <div id="auditWarningList" class="mb-3"></div>
           </div>
         </div>
-        <button type="button" class="btn-close" onclick="closeAiAssistantPanel()" aria-label="Close"></button>
-      </div>
 
-      <!-- Nav Tabs -->
-      <ul class="nav nav-tabs ai-nav-tabs" id="aiTab" role="tablist">
-        <li class="nav-item" role="presentation">
-          <button class="nav-link active" id="aiTabAudit-tab" data-bs-toggle="tab" data-bs-target="#aiTabAudit" type="button" role="tab">
-            <i class="bi bi-shield-check me-1"></i> Audit RAB
-          </button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="aiTabChat-tab" data-bs-toggle="tab" data-bs-target="#aiTabChat" type="button" role="tab">
-            <i class="bi bi-chat-dots me-1"></i> Konsultasi RAB
-          </button>
-        </li>
-      </ul>
-
-      <!-- Panel Body Container -->
-      <div class="p-0 ai-panel-body-container">
-        <div class="tab-content h-100 d-flex flex-column" id="aiTabContent">
-          
-          <!-- TAB 1: RAB AUDIT -->
-          <div class="tab-pane fade show active p-3 h-100 overflow-y-auto" id="aiTabAudit" role="tabpanel">
+        <!-- Tab 2: Konsultasi RAB -->
+        <div class="tab-pane fade h-100" id="aiTabChat" role="tabpanel">
+          <div class="p-3 d-flex flex-column justify-content-between h-100" style="background-color: #ffffff; color: #1e293b; overflow: hidden;">
             
-            <!-- STATE 1: INITIAL STATE -->
-            <div id="auditStateInitial" class="d-flex flex-column justify-content-center h-100 pe-1" style="flex-grow: 1; min-height: 0;">
+            <div id="aiInitialCenterArea" class="d-flex flex-column justify-content-center h-100 pe-1" style="flex-grow: 1; min-height: 0;">
               <div class="my-auto">
-                <div class="text-center mb-4">
-                  <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-3 shadow-sm" style="width: 64px; height: 64px; background-color: #ecfdf5; color: #087f23; border: 1px solid #a7f3d0;">
-                    <i class="bi bi-shield-check fs-1"></i>
-                  </div>
-                  <h5 class="fw-bold text-dark mb-1" style="font-size: 20px;">Pemeriksaan Kelayakan</h5>
-                  <p class="text-muted small px-2 mb-0" style="font-size: 12.5px; color: #64748b; line-height: 1.5;">
-                    Pindai otomatis seluruh baris item pekerjaan RAB untuk menemukan anomali volume 0, ketidaklengkapan item AHSP, dan ketidakwajaran harga.
+                <div class="mb-3 text-start">
+                  <h5 class="fw-bold text-dark mb-1" style="font-size: 20px;">
+                    <i class="bi bi-stars text-success me-1.5" style="color: #087f23 !important;"></i>&nbsp; Ruang Konsultasi
+                  </h5>
+                  <p class="text-muted small mb-0" style="font-size: 12.5px; color: #64748b;">
+                    Tanyakan kelayakan RAB, estimasi biaya, atau minta rekomendasi item pekerjaan.
                   </p>
                 </div>
 
-                <div class="input-group align-items-center mt-4" style="background-color: transparent; padding: 0;">
-                  <button type="button" class="btn btn-success rounded-3 w-100 fw-bold py-2.5 shadow-sm d-flex align-items-center justify-content-center gap-2" style="background-color: #087f23; border-color: #087f23; font-size: 13.5px; height: 48px; border-radius: 12px !important;" onclick="startAiScanProcess()">
-                    <i class="bi bi-rocket-takeoff fs-6"></i>
-                    <span> Mulai Pindai Audit RAB</span>
+                <div class="mb-3 d-flex flex-column align-items-start">
+                  <span class="text-uppercase fw-bold d-block mb-1.5" style="font-size: 10px; color: #64748b; letter-spacing: 0.05em;">Pilihan Pertanyaan Cepat:</span>
+                  <button type="button" class="ai-chip-btn" onclick="sendAiPrompt('Analisis kelengkapan item pekerjaan RAB ini')">
+                    <i class="bi bi-card-checklist ai-chip-icon"></i>
+                    <span>Cek kelengkapan item pekerjaan RAB</span>
+                  </button>
+                  <button type="button" class="ai-chip-btn" onclick="sendAiPrompt('Evaluasi kewajaran volume & harga satuan')">
+                    <i class="bi bi-calculator ai-chip-icon"></i>
+                    <span>Evaluasi kewajaran volume & harga</span>
+                  </button>
+                  <button type="button" class="ai-chip-btn" onclick="sendAiPrompt('Apa kebutuhan pekerjaan untuk membuat garasi?')">
+                    <i class="bi bi-house-add ai-chip-icon"></i>
+                    <span>Rekomendasi kebutuhan garasi & struktur</span>
                   </button>
                 </div>
-              </div>
-            </div>
 
-            <!-- STATE 2: LOADING STATE -->
-            <div id="auditStateLoading" class="d-none flex-column align-items-center justify-content-center h-100 py-5 text-center">
-              <div class="audit-radar-pulse mb-3">
-                <i class="bi bi-search"></i>
-              </div>
-              <h6 class="fw-bold text-dark mb-1">Memindai Item RAB...</h6>
-              <p class="text-muted small mb-3" style="font-size: 12px;">Menganalisis baris pekerjaan & memverifikasi kelengkapan data...</p>
-              <div class="progress w-75 shadow-sm" style="height: 6px;">
-                <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 100%;"></div>
-              </div>
-            </div>
-
-            <!-- STATE 3: RESULT STATE -->
-            <div id="auditStateResult" class="d-none flex-column h-100">
-              
-              <!-- Dynamic Floating Mouse Tooltip -->
-              <div id="auditDynamicTooltip" class="audit-mini-tooltip-floating d-none" style="position: fixed; z-index: 99999; pointer-events: none; transition: opacity 0.12s ease-out;">
-                <span id="auditDynamicTooltipText">1 item</span>
-              </div>
-
-              <!-- Top Control Header -->
-              <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="fw-bold text-dark" style="font-size: 13.5px;">Ringkasan Hasil Audit</span>
-                <button type="button" class="btn btn-outline-success btn-sm rounded-pill px-3 py-1 fw-bold shadow-sm" style="font-size: 11px;" onclick="startAiScanProcess()">
-                  <i class="bi bi-arrow-repeat me-1"></i> Pindai Ulang
-                </button>
-              </div>
-
-              <!-- Top Dynamic Donut Progress & Summary Card -->
-              <div class="audit-circle-card mb-3">
-                <div class="d-flex align-items-center gap-3">
-                  <div style="position: relative; width: 68px; height: 68px; flex-shrink: 0;" id="auditCircleBadge">
-                    <svg width="68" height="68" viewBox="0 0 68 68" style="transform: rotate(-90deg); overflow: visible;">
-                      <!-- Red Slice -->
-                      <circle id="donutSliceRed" class="donut-slice-item" cx="34" cy="34" r="26" fill="none" stroke="#dc2626" stroke-width="12" 
-                              stroke-dasharray="8.17 163.36" stroke-dashoffset="0"
-                              onclick="scrollToRabItemByText('', 'critical')"
-                              data-tooltip-title="1 item"></circle>
-                      
-                      <!-- Yellow Slice -->
-                      <circle id="donutSliceYellow" class="donut-slice-item" cx="34" cy="34" r="26" fill="none" stroke="#d97706" stroke-width="12" 
-                              stroke-dasharray="8.17 163.36" stroke-dashoffset="-8.17"
-                              onclick="scrollToRabItemByText('', 'warning')"
-                              data-tooltip-title="1 item"></circle>
-
-                      <!-- Green Slice -->
-                      <circle id="donutSliceGreen" class="donut-slice-item" cx="34" cy="34" r="26" fill="none" stroke="#087f23" stroke-width="12" 
-                              stroke-dasharray="147.02 163.36" stroke-dashoffset="-16.34"
-                              onclick="scrollToRabItemByText('', 'normal')"
-                              data-tooltip-title="18 item"></circle>
-                    </svg>
-                    <div id="auditPercentText" style="position: absolute; top: 0; left: 0; width: 68px; height: 68px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; color: #087f23; pointer-events: none;">
-                      90%
-                    </div>
-                  </div>
-                  <div>
-                    <h6 class="fw-bold text-dark mb-1" style="font-size: 13px;">Status Kelayakan Item</h6>
-                    <div class="d-flex flex-wrap gap-2 mt-2">
-                      <span class="badge-critical" id="badgeCountCritical" onclick="scrollToRabItemByText('', 'critical')" style="cursor: pointer;" title="Klik untuk meninjau item kritis">- Kritis</span>
-                      <span class="badge-warning-custom" id="badgeCountWarning" onclick="scrollToRabItemByText('', 'warning')" style="cursor: pointer;" title="Klik untuk meninjau item peringatan">- Peringatan</span>
-                      <span class="badge-success-custom" id="badgeCountNormal" onclick="scrollToRabItemByText('', 'normal')" style="cursor: pointer;" title="Klik untuk meninjau item normal">- Normal</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Top Alert Banner -->
-              <div class="p-2 mb-3 d-flex align-items-center gap-2" style="background-color: #fef9c3; border: 1px solid #fde047; border-radius: 10px; color: #854d0e;">
-                <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 20px; height: 20px; background-color: #d97706; color: #ffffff;">
-                  <i class="bi bi-info-lg" style="font-size: 11px; font-weight: 800; line-height: 1; display: flex; align-items: center; justify-content: center;"></i>
-                </div>
-                <div style="font-weight: 500; color: #854d0e; font-size: 11.5px; line-height: 1.45;">
-                  Klik pada <strong>kolom peringatan</strong> di bawah ini untuk langsung menuju baris item terkait di <strong>tabel RAB</strong>.
-                </div>
-              </div>
-
-              <!-- Warning List Items -->
-              <div id="auditWarningList" class="mb-3">
-              </div>
-
-            </div>
-
-          </div>
-
-          <!-- TAB 2: RAB ASSISTANT -->
-          <div class="tab-pane fade h-100" id="aiTabChat" role="tabpanel">
-            <div class="p-3 d-flex flex-column justify-content-between h-100" style="background-color: #ffffff; color: #1e293b; overflow: hidden;">
-              
-              <!-- STATE A: INITIAL CENTER LANDING VIEW -->
-              <div id="aiInitialCenterArea" class="d-flex flex-column justify-content-center h-100 pe-1" style="flex-grow: 1; min-height: 0;">
-                <div class="my-auto">
-                  <div class="mb-3 text-start">
-                    <h5 class="fw-bold text-dark mb-1" style="font-size: 20px;">
-                      <i class="bi bi-stars text-success me-1.5" style="color: #087f23 !important;"></i>&nbsp Ruang Konsultasi
-                    </h5>
-                    <p class="text-muted small mb-0" style="font-size: 12.5px; color: #64748b;">
-                      Tanyakan kelayakan RAB, estimasi biaya, atau minta rekomendasi item pekerjaan.
-                    </p>
-                  </div>
-
-                  <!-- Action Chips -->
-                  <div class="mb-3 d-flex flex-column align-items-start">
-                    <span class="text-uppercase fw-bold d-block mb-1.5" style="font-size: 10px; color: #64748b; letter-spacing: 0.05em;">Pilihan Pertanyaan Cepat:</span>
-                    
-                    <button type="button" class="ai-chip-btn" onclick="sendAiPrompt('Analisis kelengkapan item pekerjaan RAB ini')">
-                      <i class="bi bi-card-checklist ai-chip-icon"></i>
-                      <span>Cek kelengkapan item pekerjaan RAB</span>
-                    </button>
-
-                    <button type="button" class="ai-chip-btn" onclick="sendAiPrompt('Evaluasi kewajaran volume & harga satuan')">
-                      <i class="bi bi-calculator ai-chip-icon"></i>
-                      <span>Evaluasi kewajaran volume & harga</span>
-                    </button>
-
-                    <button type="button" class="ai-chip-btn" onclick="sendAiPrompt('Apa kebutuhan pekerjaan untuk membuat garasi?')">
-                      <i class="bi bi-house-add ai-chip-icon"></i>
-                      <span>Rekomendasi kebutuhan garasi & struktur</span>
-                    </button>
-                  </div>
-
-                  <!-- Central Input Box Container -->
-                  <div class="input-group align-items-center" style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px; padding: 6px 8px;">
-                    <input 
-                      type="text" 
-                      id="aiChatInputCenter" 
-                      class="form-control bg-transparent text-dark border-0 shadow-none px-3" 
-                      placeholder="Ketik pertanyaan tentang RAB ini..." 
-                      style="color: #1e293b !important; font-size: 13.5px;"
-                      onkeypress="handleAiKeyPressCenter(event)"
-                    >
-                    <button 
-                      type="button" 
-                      class="btn p-0 d-flex align-items-center justify-content-center border-0 ms-1" 
-                      style="background-color: #087f23; color: #ffffff; width: 36px; height: 36px; border-radius: 8px; transition: background-color 0.2s ease;"
-                      onmouseover="this.style.backgroundColor='#06691c';"
-                      onmouseout="this.style.backgroundColor='#087f23';"
-                      onclick="sendAiChatMessageFromCenter()"
-                      title="Submit"
-                      data-bs-toggle="tooltip"
-                      data-bs-placement="top"
-                    >
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" class="text-white" style="transform: translateX(1px);">
-                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <!-- STATE B: ACTIVE CHAT HEADER BAR -->
-              <div id="aiActiveChatHeader" class="d-none align-items-center justify-content-between pb-2 mb-1 border-bottom border-light-subtle">
-                <span class="fw-bold text-dark d-flex align-items-center gap-1.5" style="font-size: 13px;">
-                  Riwayat Konsultasi
-                </span>
-                <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill py-0.5 px-2.5" style="font-size: 11px;" onclick="clearAiChatHistory()" title="Bersihkan riwayat percakapan">
-                  <i class="bi bi-trash me-1"></i> Bersihkan Chat
-                </button>
-              </div>
-
-              <!-- STATE B: ACTIVE CHAT LOG -->
-              <div id="aiChatHistoryLog" class="d-none pe-1 my-2" style="flex-grow: 1; overflow-y: auto; min-height: 0;">
-              </div>
-
-              <!-- STATE B: BOTTOM PINNED INPUT AREA -->
-              <div id="aiBottomInputContainer" class="d-none pt-2 border-top border-light-subtle" style="flex-shrink: 0;">
-                <div class="input-group align-items-center" style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 4px 6px;">
+                <div class="input-group align-items-center" style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px; padding: 6px 8px;">
                   <input 
                     type="text" 
-                    id="aiChatInput" 
+                    id="aiChatInputCenter" 
                     class="form-control bg-transparent text-dark border-0 shadow-none px-3" 
                     placeholder="Ketik pertanyaan tentang RAB ini..." 
-                    style="color: #1e293b !important; font-size: 13px;"
-                    onkeypress="handleAiKeyPress(event)"
+                    style="color: #1e293b !important; font-size: 13.5px;"
+                    onkeypress="handleAiKeyPressCenter(event)"
                   >
                   <button 
                     type="button" 
                     class="btn p-0 d-flex align-items-center justify-content-center border-0 ms-1" 
-                    style="background-color: #087f23; color: #ffffff; width: 34px; height: 34px; border-radius: 8px; transition: background-color 0.2s ease;"
+                    style="background-color: #087f23; color: #ffffff; width: 36px; height: 36px; border-radius: 8px; transition: background-color 0.2s ease;"
                     onmouseover="this.style.backgroundColor='#06691c';"
                     onmouseout="this.style.backgroundColor='#087f23';"
-                    onclick="sendAiChatMessage()"
+                    onclick="sendAiChatMessageFromCenter()"
                     title="Submit"
-                    data-bs-toggle="tooltip"
-                    data-bs-placement="top"
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" class="text-white" style="transform: translateX(1px);">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" class="text-white" style="transform: translateX(1px);">
                       <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
                     </svg>
                   </button>
                 </div>
               </div>
-
             </div>
-          </div>
 
+            <div id="aiActiveChatHeader" class="d-none align-items-center justify-content-between pb-2 mb-1 border-bottom border-light-subtle">
+              <span class="fw-bold text-dark d-flex align-items-center gap-1.5" style="font-size: 13px;">Riwayat Konsultasi</span>
+              <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill py-0.5 px-2.5" style="font-size: 11px;" onclick="clearAiChatHistory()" title="Bersihkan riwayat percakapan">
+                <i class="bi bi-trash me-1"></i> Bersihkan Chat
+              </button>
+            </div>
+
+            <div id="aiChatHistoryLog" class="d-none pe-1 my-2" style="flex-grow: 1; overflow-y: auto; min-height: 0;"></div>
+
+            <div id="aiBottomInputContainer" class="d-none pt-2 border-top border-light-subtle" style="flex-shrink: 0;">
+              <div class="input-group align-items-center" style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 4px 6px;">
+                <input 
+                  type="text" 
+                  id="aiChatInput" 
+                  class="form-control bg-transparent text-dark border-0 shadow-none px-3" 
+                  placeholder="Ketik pertanyaan tentang RAB ini..." 
+                  style="color: #1e293b !important; font-size: 13px;"
+                  onkeypress="handleAiKeyPress(event)"
+                >
+                <button 
+                  type="button" 
+                  class="btn p-0 d-flex align-items-center justify-content-center border-0 ms-1" 
+                  style="background-color: #087f23; color: #ffffff; width: 34px; height: 34px; border-radius: 8px; transition: background-color 0.2s ease;"
+                  onmouseover="this.style.backgroundColor='#06691c';"
+                  onmouseout="this.style.backgroundColor='#087f23';"
+                  onclick="sendAiChatMessage()"
+                  title="Submit"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" class="text-white" style="transform: translateX(1px);">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+          </div>
         </div>
+
       </div>
     </div>
-
+  </div>
 </main>
 
 <!-- Modal: Ubah Item -->
@@ -1623,9 +844,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
       <div class="modal-header bg-dark text-white py-2.5 px-3">
-        <h6 class="modal-title fs-6 fw-bold">
-          <i class="bi bi-pencil-square me-1"></i> Ubah Item Pekerjaan
-        </h6>
+        <h6 class="modal-title fs-6 fw-bold"><i class="bi bi-pencil-square me-1"></i> Ubah Item Pekerjaan</h6>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body p-3">
@@ -1647,9 +866,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
       </div>
       <div class="modal-footer bg-light p-2 justify-content-end">
         <button type="button" class="btn btn-secondary btn-sm rounded-pill" data-bs-dismiss="modal">Batal</button>
-        <button type="button" class="btn btn-success btn-sm rounded-pill px-3" id="btnSaveRabItem" onclick="saveRabItemEdit()" style="background-color: #087f23; border-color: #087f23;">
-          Simpan
-        </button>
+        <button type="button" class="btn btn-success btn-sm rounded-pill px-3" id="btnSaveRabItem" onclick="saveRabItemEdit()" style="background-color: #087f23; border-color: #087f23;">Simpan</button>
       </div>
     </div>
   </div>
@@ -1660,9 +877,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
       <div class="modal-header bg-success text-white py-2.5 px-3" style="background-color: #087f23 !important;">
-        <h6 class="modal-title fs-6 fw-bold">
-          <i class="bi bi-plus-circle me-1"></i> Tambah Pekerjaan
-        </h6>
+        <h6 class="modal-title fs-6 fw-bold"><i class="bi bi-plus-circle me-1"></i> Tambah Pekerjaan</h6>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body p-3">
@@ -1688,9 +903,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
       </div>
       <div class="modal-footer bg-light p-2 justify-content-end">
         <button type="button" class="btn btn-secondary btn-sm rounded-pill" data-bs-dismiss="modal">Batal</button>
-        <button type="button" class="btn btn-success btn-sm rounded-pill px-3" onclick="executeAddRabItem()" style="background-color: #087f23; border-color: #087f23;">
-          Tambah
-        </button>
+        <button type="button" class="btn btn-success btn-sm rounded-pill px-3" onclick="executeAddRabItem()" style="background-color: #087f23; border-color: #087f23;">Tambah</button>
       </div>
     </div>
   </div>
@@ -1716,7 +929,6 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     </div>
   </div>
 </div>
-
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
@@ -1725,6 +937,12 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
   let addModalInstance = null;
   let deleteModalInstance = null;
   const collapsedSections = {};
+  let activeProposedActionsMap = {};
+
+  const auditCategoryCycleState = {
+    lastCategory: null,
+    currentIndex: -1
+  };
 
   document.addEventListener('DOMContentLoaded', () => {
     editModalInstance = new bootstrap.Modal(document.getElementById('editRabItemModal'));
@@ -1752,67 +970,43 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     initBootstrapTooltips();
     loadChatHistoryFromBackend();
 
-    // Preserve Consultation tab if user previously opened it
-    const savedAiTab = sessionStorage.getItem('activeAiTab');
-    if (savedAiTab === 'chat') {
+    if (sessionStorage.getItem('activeAiTab') === 'chat') {
       openAiAssistantPanel();
     }
+
+    document.querySelectorAll('.donut-slice-item').forEach(bindDynamicTooltip);
   });
 
-  async function loadChatHistoryFromBackend() {
-    try {
-      const projectId = `<?= esc($project['id']) ?>`;
-      const res = await fetch(`<?= base_url("api/projects") ?>/${projectId}/chat-history`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.messages && data.messages.length > 0) {
-          activateChatMode();
-          const log = document.getElementById('aiChatHistoryLog');
-          if (log) log.innerHTML = '';
-          data.messages.forEach(m => {
-            if (m.sender === 'user') {
-              appendChatMessage('user', m.message);
-            } else {
-              let htmlReply = formatAiMarkdown(m.message);
-              appendChatMessage('ai', htmlReply);
-              // Hide proposed actions card if already applied
-              if (m.actions && m.actions.length > 0 && !m.is_applied) {
-                appendProposedActionsCard(m.actions, m.cost_impact, m.id, m.is_applied);
-              }
-            }
-          });
-          if (log) log.scrollTop = log.scrollHeight;
-        }
-      }
-    } catch (e) {
-      console.warn('Load chat history connection:', e);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeAiAssistantPanel();
+  });
+
+  document.addEventListener('mousedown', (e) => {
+    const sidePanel = document.getElementById('aiSidePanel');
+    if (!sidePanel || sidePanel.classList.contains('d-none')) return;
+    if (sidePanel.contains(e.target)) return;
+
+    const triggerBtns = document.querySelectorAll('.btn-pill-action, [onclick*="openAiAssistantPanel"], [onclick*="openAiScanPanel"], [onclick*="toggleAiAssistantPanel"], #btnFloatingAi');
+    for (let b of triggerBtns) {
+      if (b.contains(e.target)) return;
     }
-  }
+    closeAiAssistantPanel();
+  });
 
-  // Helper: Initialize Bootstrap Tooltips
   function initBootstrapTooltips() {
-    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-    tooltipTriggerList.forEach(el => {
-      new bootstrap.Tooltip(el);
-    });
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
   }
 
-  // Helper: Auto Focus Chat Input Field
   function focusAiChatInput() {
     setTimeout(() => {
       const centerArea = document.getElementById('aiInitialCenterArea');
-      const isCenterVisible = centerArea && !centerArea.classList.contains('d-none');
-      const inputToFocus = isCenterVisible 
-        ? document.getElementById('aiChatInputCenter')
-        : document.getElementById('aiChatInput');
-      
-      if (inputToFocus) {
-        inputToFocus.focus();
-      }
+      const isCenter = centerArea && !centerArea.classList.contains('d-none');
+      const input = isCenter ? document.getElementById('aiChatInputCenter') : document.getElementById('aiChatInput');
+      if (input) input.focus();
     }, 120);
   }
 
-  // Toggle AI Assistant Panel
+  // Buka dan tutup panel AI
   function toggleAiAssistantPanel() {
     const sidePanel = document.getElementById('aiSidePanel');
     if (!sidePanel || sidePanel.classList.contains('d-none')) {
@@ -1822,7 +1016,6 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     }
   }
 
-  // Open AI Assistant Side Panel
   function openAiAssistantPanel() {
     const sidePanel = document.getElementById('aiSidePanel');
     const backdrop = document.getElementById('aiSidePanelBackdrop');
@@ -1832,10 +1025,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     if (fabBtn) fabBtn.classList.add('d-none');
 
     const chatTabEl = document.getElementById('aiTabChat-tab');
-    if (chatTabEl) {
-      const tab = new bootstrap.Tab(chatTabEl);
-      tab.show();
-    }
+    if (chatTabEl) new bootstrap.Tab(chatTabEl).show();
     sessionStorage.setItem('activeAiTab', 'chat');
     focusAiChatInput();
     clearRabAnomalyHighlights();
@@ -1850,10 +1040,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     if (fabBtn) fabBtn.classList.add('d-none');
 
     const auditTabEl = document.getElementById('aiTabAudit-tab');
-    if (auditTabEl) {
-      const tab = new bootstrap.Tab(auditTabEl);
-      tab.show();
-    }
+    if (auditTabEl) new bootstrap.Tab(auditTabEl).show();
 
     const resultState = document.getElementById('auditStateResult');
     if (resultState && !resultState.classList.contains('d-none')) {
@@ -1868,44 +1055,19 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     if (sidePanel) sidePanel.classList.add('d-none');
     if (backdrop) backdrop.classList.add('d-none');
     if (fabBtn) fabBtn.classList.remove('d-none');
-
     sessionStorage.removeItem('activeAiTab');
     clearRabAnomalyHighlights();
   }
 
   function clearRabAnomalyHighlights() {
-    const itemRows = document.querySelectorAll('#rabTableBody tr.rab-row-item');
-    itemRows.forEach(row => {
+    document.querySelectorAll('#rabTableBody tr.rab-row-item').forEach(row => {
       if (row._highlightTimer) clearTimeout(row._highlightTimer);
       row.classList.remove('rab-row-anomaly-critical', 'rab-row-anomaly-warning', 'rab-row-flash-red', 'rab-row-flash-amber', 'rab-row-flash-green', 'rab-row-hover-active');
     });
     document.querySelectorAll('.audit-ribbon-card').forEach(c => c.classList.remove('audit-card-selected'));
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.donut-slice-item').forEach(bindDynamicTooltip);
-  });
-
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      closeAiAssistantPanel();
-    }
-  });
-
-  document.addEventListener('mousedown', (e) => {
-    const sidePanel = document.getElementById('aiSidePanel');
-    if (!sidePanel || sidePanel.classList.contains('d-none')) return;
-    if (sidePanel.contains(e.target)) return;
-
-    const triggerBtns = document.querySelectorAll('.btn-pill-action, [onclick*="openAiAssistantPanel"], [onclick*="openAiScanPanel"], [onclick*="toggleAiAssistantPanel"], #btnFloatingAi');
-    for (let b of triggerBtns) {
-      if (b.contains(e.target)) return;
-    }
-
-    closeAiAssistantPanel();
-  });
-
-  // --- Extract Active RAB Data from DOM Table ---
+  // Ambil data RAB dari tabel DOM
   function collectRABData() {
     const items = [];
     let itemId = 0;
@@ -1942,14 +1104,13 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
         volume: parseFloat(volumeText) || 0,
         unit: unit,
         unit_price: parseFloat(priceText) || 0,
-        total_price: parseFloat(totalText) || 0,
+        total_price: parseFloat(totalText) || 0
       });
     });
-
     return items;
   }
 
-  // --- RAB Audit Workflow & Table Highlighting Interactivity ---
+  // Logika audit RAB AI
   async function startAiScanProcess() {
     const initialState = document.getElementById('auditStateInitial');
     const loadingState = document.getElementById('auditStateLoading');
@@ -1978,7 +1139,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     }
   }
 
-  // --- Dynamic Floating Mouse Tooltip Logic ---
+  // Tooltip SVG donat
   function showDynamicTooltip(text, x, y) {
     const tooltip = document.getElementById('auditDynamicTooltip');
     const textEl = document.getElementById('auditDynamicTooltipText');
@@ -1998,49 +1159,26 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
 
   function hideDynamicTooltip() {
     const tooltip = document.getElementById('auditDynamicTooltip');
-    if (!tooltip) return;
-    tooltip.classList.add('d-none');
+    if (tooltip) tooltip.classList.add('d-none');
   }
 
   function bindDynamicTooltip(element) {
     if (!element || element.dataset.tooltipBound) return;
     element.dataset.tooltipBound = "true";
-
-    element.addEventListener('mouseenter', (e) => {
-      const title = element.getAttribute('data-tooltip-title') || '1 item';
-      showDynamicTooltip(title, e.clientX, e.clientY);
-    });
-    element.addEventListener('mousemove', (e) => {
-      moveDynamicTooltip(e.clientX, e.clientY);
-    });
-    element.addEventListener('mouseleave', () => {
-      hideDynamicTooltip();
-    });
-    element.addEventListener('click', (e) => {
-      const title = element.getAttribute('data-tooltip-title') || '1 item';
-      showDynamicTooltip(title, e.clientX, e.clientY);
-    });
-  }
-
-  function escapeJsString(str) {
-    return (str || '')
-      .replace(/\\/g, '\\\\')
-      .replace(/'/g, "\\'")
-      .replace(/"/g, '&quot;')
-      .replace(/[\r\n\t]+/g, ' ')
-      .trim();
+    element.addEventListener('mouseenter', (e) => showDynamicTooltip(element.getAttribute('data-tooltip-title') || '1 item', e.clientX, e.clientY));
+    element.addEventListener('mousemove', (e) => moveDynamicTooltip(e.clientX, e.clientY));
+    element.addEventListener('mouseleave', hideDynamicTooltip);
+    element.addEventListener('click', (e) => showDynamicTooltip(element.getAttribute('data-tooltip-title') || '1 item', e.clientX, e.clientY));
   }
 
   function getAuditToastIconSvg(type, size = 16) {
     if (type === 'critical' || type === 'error') {
-      // Error Toast Sample (lingkaran merah dengan silang putih)
       return `<svg width="${size}" height="${size}" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink: 0; vertical-align: -1px;">
         <circle cx="10" cy="10" r="10" fill="#dc2626"/>
         <path d="M6.5 6.5L13.5 13.5M13.5 6.5L6.5 13.5" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>
       </svg>`;
     }
     if (type === 'info-yellow' || type === 'info' || type === 'warning-circle') {
-      // Info Toast Sample - Versi Kuning (lingkaran kuning dengan tanda seru putih)
       return `<svg width="${size}" height="${size}" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink: 0; vertical-align: -1px;">
         <circle cx="10" cy="10" r="10" fill="#d97706"/>
         <path d="M10 5.25V11" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>
@@ -2048,23 +1186,19 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
       </svg>`;
     }
     if (type === 'warning-triangle' || type === 'warning' || type === 'missing-scope') {
-      // Warning Toast Sample - Versi Segitiga Kuning (segitiga kuning dengan tanda seru putih)
       return `<svg width="${size}" height="${size}" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink: 0; vertical-align: -1px;">
         <path d="M8.28 3.52c.76-1.34 2.68-1.34 3.44 0l6.38 11.23c.75 1.32-.21 2.97-1.72 2.97H3.62c-1.51 0-2.47-1.65-1.72-2.97L8.28 3.52z" fill="#d97706"/>
         <path d="M10 8V11.5" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
         <circle cx="10" cy="14.5" r="1.1" fill="#ffffff"/>
       </svg>`;
     }
-    if (type === 'message' || type === 'suggestion' || type === 'chat') {
-      // Message / suggestion icon (subtle & compact)
-      return `<svg width="${size}" height="${size}" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="flex-shrink: 0; margin-top: 2px; color: #94a3b8;">
-        <path d="M14 1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4.414A2 2 0 0 0 3 11.586l-2 2V2a1 1 0 0 1 1-1zM2 0a2 2 0 0 0-2 2v12.793a.5.5 0 0 0 .854.353l2.853-2.853A1 1 0 0 1 4.414 12H14a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z"/>
-        <path d="M3 3.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5M3 6a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9A.5.5 0 0 1 3 6m0 2.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5"/>
-      </svg>`;
-    }
-    return '';
+    return `<svg width="${size}" height="${size}" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="flex-shrink: 0; margin-top: 2px; color: #94a3b8;">
+      <path d="M14 1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4.414A2 2 0 0 0 3 11.586l-2 2V2a1 1 0 0 1 1-1zM2 0a2 2 0 0 0-2 2v12.793a.5.5 0 0 0 .854.353l2.853-2.853A1 1 0 0 1 4.414 12H14a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z"/>
+      <path d="M3 3.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5M3 6a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9A.5.5 0 0 1 3 6m0 2.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5"/>
+    </svg>`;
   }
 
+  // Render hasil audit dari endpoint API
   async function renderAuditResults() {
     const items = collectRABData();
     const itemRows = document.querySelectorAll('#rabTableBody tr.rab-row-item');
@@ -2074,7 +1208,6 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
 
     const warningListContainer = document.getElementById('auditWarningList');
     let warningCardsHTML = '';
-
     itemRows.forEach(r => r.classList.remove('rab-row-anomaly-critical', 'rab-row-anomaly-warning'));
 
     const projectId = `<?= esc($project['id']) ?>`;
@@ -2094,7 +1227,6 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     let auditData = null;
     let auditErrorMsg = null;
 
-    // 1. Call real AI RAB Audit endpoint
     try {
       const res = await fetch(`<?= base_url("api/v2/ai/rab-audit") ?>`, {
         method: 'POST',
@@ -2117,19 +1249,14 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
         warningListContainer.innerHTML = `
           <div class="alert alert-danger d-flex align-items-center gap-2 p-3 rounded-3" style="font-size: 12.5px;">
             <i class="bi bi-exclamation-triangle-fill flex-shrink-0" style="font-size: 18px;"></i>
-            <div>
-              <strong>Gagal Menjalankan Audit AI:</strong><br>
-              ${escapeHtml(auditErrorMsg || 'Layanan AI Auditor tidak dapat dihubungi.')}
-            </div>
-          </div>
-        `;
+            <div><strong>Gagal Menjalankan Audit AI:</strong><br>${escapeHtml(auditErrorMsg || 'Layanan AI Auditor tidak dapat dihubungi.')}</div>
+          </div>`;
       }
       const percentOverlay = document.getElementById('auditPercentText');
       if (percentOverlay) percentOverlay.textContent = '-';
       return;
     }
 
-    // 2. Render real anomalies from API
     if (auditData.anomalies && auditData.anomalies.length > 0) {
       auditData.anomalies.forEach(an => {
         const isCrit = an.severity === 'CRITICAL';
@@ -2141,19 +1268,13 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
           return rId === an.item_id;
         });
 
-        if (targetRow) {
-          targetRow.classList.add(isCrit ? 'rab-row-anomaly-critical' : 'rab-row-anomaly-warning');
-        }
+        if (targetRow) targetRow.classList.add(isCrit ? 'rab-row-anomaly-critical' : 'rab-row-anomaly-warning');
 
         const rawName = (targetRow ? (targetRow.querySelector('.rab-item-name')?.textContent || '') : '') || (matchedItem ? (matchedItem.description || '') : '');
         const cleanItemName = rawName.replace(/[\r\n\t]+/g, ' ').trim() || 'Item Pekerjaan';
-
-        const sevIconSvg = isCrit
-          ? getAuditToastIconSvg('critical', 16)
-          : getAuditToastIconSvg('info-yellow', 16);
+        const sevIconSvg = isCrit ? getAuditToastIconSvg('critical', 16) : getAuditToastIconSvg('info-yellow', 16);
         const msgIconSvg = getAuditToastIconSvg('message', 12);
 
-        // Format pesan: tebalkan nama item pekerjaan tanpa tanda petik
         let formattedMessage = escapeHtml(an.message || '');
         formattedMessage = formattedMessage.replace(/(?:&quot;|")([^"&]+)(?:&quot;|")/g, '<strong>$1</strong>');
 
@@ -2177,12 +1298,10 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
               ${msgIconSvg}
               <span>${escapeHtml(an.recommendation)}</span>
             </div>` : ''}
-          </div>
-        `;
+          </div>`;
       });
     }
 
-    // 3. Render missing scopes from API if any
     if (auditData.missing_scopes && auditData.missing_scopes.length > 0) {
       auditData.missing_scopes.forEach(ms => {
         warningCount++;
@@ -2203,25 +1322,19 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
             <div style="font-size: 12.5px; line-height: 1.5; color: #475569; margin-bottom: 8px;">
               <strong>${escapeHtml(ms.missing_item || '')}</strong>: ${escapeHtml(ms.reason || '')}
             </div>
-          </div>
-        `;
+          </div>`;
       });
     }
 
     if (warningListContainer) {
-      if (warningCardsHTML) {
-        warningListContainer.innerHTML = `
-          <div class="fw-medium text-secondary mb-2" style="font-size: 13.5px; color: #475569;">Detail Anomali</div>
-          ${warningCardsHTML}
-        `;
-      } else {
-        warningListContainer.innerHTML = `
-          <div class="p-3 text-center text-muted small bg-light rounded-3">
-            <i class="bi bi-check-circle-fill text-success fs-5 d-block mb-1"></i>
-            Seluruh item pekerjaan RAB telah memenuhi kriteria audit.
-          </div>
-        `;
-      }
+      warningListContainer.innerHTML = warningCardsHTML ? `
+        <div class="fw-medium text-secondary mb-2" style="font-size: 13.5px; color: #475569;">Detail Anomali</div>
+        ${warningCardsHTML}
+      ` : `
+        <div class="p-3 text-center text-muted small bg-light rounded-3">
+          <i class="bi bi-check-circle-fill text-success fs-5 d-block mb-1"></i>
+          Seluruh item pekerjaan RAB telah memenuhi kriteria audit.
+        </div>`;
     }
 
     let flaggedCount = criticalCount + warningCount;
@@ -2229,12 +1342,9 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     let normalPercent = totalItems > 0 ? Math.round((normalCount / totalItems) * 100) : 100;
 
     const percentOverlay = document.getElementById('auditPercentText');
-    if (percentOverlay) {
-      percentOverlay.textContent = `${normalPercent}%`;
-    }
+    if (percentOverlay) percentOverlay.textContent = `${normalPercent}%`;
 
     const C = 2 * Math.PI * 26;
-
     const sliceRed = document.getElementById('donutSliceRed');
     const sliceYellow = document.getElementById('donutSliceYellow');
     const sliceGreen = document.getElementById('donutSliceGreen');
@@ -2264,24 +1374,12 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     const badgeCrit = document.getElementById('badgeCountCritical');
     const badgeWarn = document.getElementById('badgeCountWarning');
     const badgeNorm = document.getElementById('badgeCountNormal');
-
-    if (badgeCrit) {
-      badgeCrit.textContent = `${criticalCount} Kritis`;
-    }
-    if (badgeWarn) {
-      badgeWarn.textContent = `${warningCount} Peringatan`;
-    }
-    if (badgeNorm) {
-      badgeNorm.textContent = `${normalCount} Normal`;
-    }
+    if (badgeCrit) badgeCrit.textContent = `${criticalCount} Kritis`;
+    if (badgeWarn) badgeWarn.textContent = `${warningCount} Peringatan`;
+    if (badgeNorm) badgeNorm.textContent = `${normalCount} Normal`;
 
     [sliceRed, sliceYellow, sliceGreen].forEach(bindDynamicTooltip);
   }
-
-  const auditCategoryCycleState = {
-    lastCategory: null,
-    currentIndex: -1
-  };
 
   function ensureRabSectionExpanded(secCode) {
     if (!secCode) return;
@@ -2303,7 +1401,6 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
 
     document.querySelectorAll('.audit-ribbon-card').forEach(c => c.classList.remove('audit-card-selected'));
     el.classList.add('audit-card-selected');
-
     scrollToRabItemByText(itemName, category, itemId);
   }
 
@@ -2313,16 +1410,13 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
 
     document.querySelectorAll('.audit-ribbon-card').forEach(c => c.classList.remove('audit-card-selected'));
     el.classList.add('audit-card-selected');
-
     if (!catName) return;
 
     const secRows = document.querySelectorAll('#rabTableBody tr.rab-sec-row');
     let targetSecRow = null;
     secRows.forEach(sr => {
       const name = (sr.getAttribute('data-sec-name') || sr.querySelector('.rab-sec-title')?.textContent || '').toLowerCase().trim();
-      if (name.includes(catName) || catName.includes(name)) {
-        targetSecRow = sr;
-      }
+      if (name.includes(catName) || catName.includes(name)) targetSecRow = sr;
     });
 
     if (targetSecRow) {
@@ -2336,36 +1430,29 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     }
   }
 
+  // Scroll dan sorot baris item RAB berdasarkan kategori / anomali
   function scrollToRabItemByText(queryText, category, itemId = null) {
     const q = (queryText || '').toLowerCase().trim();
     const allRows = Array.from(document.querySelectorAll('#rabTableBody tr.rab-row-item'));
 
-    // Bersihkan highlight dan timer animasi yang sedang berjalan
     allRows.forEach(r => {
       if (r._highlightTimer) clearTimeout(r._highlightTimer);
       r.classList.remove('rab-row-flash-red', 'rab-row-flash-amber', 'rab-row-flash-green', 'rab-row-hover-active');
     });
 
-    // 1. Navigasi Spesifik Item (dari klik kartu Detail Anomali atau pencarian teks)
     if (itemId || q) {
-      let targetRow = null;
-      if (itemId) {
-        targetRow = document.querySelector(`#rabTableBody tr.rab-row-item[data-item-id="${itemId}"]`);
-      }
+      let targetRow = itemId ? document.querySelector(`#rabTableBody tr.rab-row-item[data-item-id="${itemId}"]`) : null;
       if (!targetRow && q) {
         allRows.forEach(r => {
           const nameSpan = r.querySelector('.rab-item-name');
           const rowName = (nameSpan ? nameSpan.textContent : (r.getAttribute('data-item-name') || '')).toLowerCase().trim();
-          if (rowName.includes(q) || q.includes(rowName)) {
-            targetRow = r;
-          }
+          if (rowName.includes(q) || q.includes(rowName)) targetRow = r;
         });
       }
 
       if (targetRow) {
         const secCode = targetRow.getAttribute('data-sec-code');
         ensureRabSectionExpanded(secCode);
-
         targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
         const isCrit = category === 'critical' || targetRow.classList.contains('rab-row-anomaly-critical');
@@ -2378,16 +1465,12 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
           targetRow.classList.remove(flashClass, 'rab-row-hover-active');
         }, 2500);
 
-        // Sinkronisasi status siklus (cycle) agar jika user mengklik badge kategori berikutnya, siklus berlanjut mulus
         const rowCategory = isCrit ? 'critical' : (isWarn ? 'warning' : 'normal');
-        let groupRows = [];
-        if (rowCategory === 'critical') {
-          groupRows = Array.from(document.querySelectorAll('#rabTableBody tr.rab-row-item.rab-row-anomaly-critical'));
-        } else if (rowCategory === 'warning') {
-          groupRows = Array.from(document.querySelectorAll('#rabTableBody tr.rab-row-item.rab-row-anomaly-warning'));
-        } else {
-          groupRows = allRows.filter(r => !r.classList.contains('rab-row-anomaly-critical') && !r.classList.contains('rab-row-anomaly-warning'));
-        }
+        let groupRows = (rowCategory === 'critical') 
+          ? Array.from(document.querySelectorAll('#rabTableBody tr.rab-row-item.rab-row-anomaly-critical'))
+          : ((rowCategory === 'warning') 
+              ? Array.from(document.querySelectorAll('#rabTableBody tr.rab-row-item.rab-row-anomaly-warning'))
+              : allRows.filter(r => !r.classList.contains('rab-row-anomaly-critical') && !r.classList.contains('rab-row-anomaly-warning')));
 
         const idx = groupRows.indexOf(targetRow);
         auditCategoryCycleState.lastCategory = rowCategory;
@@ -2396,27 +1479,16 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
       return;
     }
 
-    // 2. Navigasi Agregat Kategori (dari klik Badge atau Donut Slice: 'critical', 'warning', 'normal')
     if (category) {
-      let matchingRows = [];
-      if (category === 'critical') {
-        matchingRows = Array.from(document.querySelectorAll('#rabTableBody tr.rab-row-item.rab-row-anomaly-critical'));
-      } else if (category === 'warning') {
-        matchingRows = Array.from(document.querySelectorAll('#rabTableBody tr.rab-row-item.rab-row-anomaly-warning'));
-      } else if (category === 'normal') {
-        matchingRows = allRows.filter(r => 
-          !r.classList.contains('rab-row-anomaly-critical') && !r.classList.contains('rab-row-anomaly-warning')
-        );
-      }
+      let matchingRows = (category === 'critical')
+        ? Array.from(document.querySelectorAll('#rabTableBody tr.rab-row-item.rab-row-anomaly-critical'))
+        : ((category === 'warning')
+            ? Array.from(document.querySelectorAll('#rabTableBody tr.rab-row-item.rab-row-anomaly-warning'))
+            : allRows.filter(r => !r.classList.contains('rab-row-anomaly-critical') && !r.classList.contains('rab-row-anomaly-warning')));
 
       if (matchingRows.length === 0) return;
+      matchingRows.forEach(r => ensureRabSectionExpanded(r.getAttribute('data-sec-code')));
 
-      // Expand seluruh accordion section tempat item-item ini berada
-      matchingRows.forEach(r => {
-        ensureRabSectionExpanded(r.getAttribute('data-sec-code'));
-      });
-
-      // Opsi B: Cycle index (bergantian ke item berikutnya setiap kali diklik)
       if (auditCategoryCycleState.lastCategory === category) {
         auditCategoryCycleState.currentIndex = (auditCategoryCycleState.currentIndex + 1) % matchingRows.length;
       } else {
@@ -2425,24 +1497,16 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
       }
 
       const activeRow = matchingRows[auditCategoryCycleState.currentIndex];
-
-      // Scroll viewport ke baris yang sedang aktif
       activeRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-      // Highlight/Flash SEMUA baris dalam kategori (konsisten seperti warna hijau)
       const flashClass = category === 'critical' ? 'rab-row-flash-red' : (category === 'warning' ? 'rab-row-flash-amber' : 'rab-row-flash-green');
       matchingRows.forEach(r => {
         void r.offsetWidth;
         r.classList.add(flashClass);
-        r._highlightTimer = setTimeout(() => {
-          r.classList.remove(flashClass, 'rab-row-hover-active');
-        }, 2500);
+        r._highlightTimer = setTimeout(() => r.classList.remove(flashClass, 'rab-row-hover-active'), 2500);
       });
 
-      // Berikan fokus aktif khusus pada baris target saat ini
       activeRow.classList.add('rab-row-hover-active');
-
-      // Sinkronisasi pemilihan kartu pada daftar Detail Anomali di sidebar
       const activeItemId = activeRow.getAttribute('data-item-id');
       if (activeItemId) {
         const matchedCard = document.querySelector(`.audit-ribbon-card[data-item-id="${activeItemId}"]`);
@@ -2454,17 +1518,6 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
       } else {
         document.querySelectorAll('.audit-ribbon-card').forEach(c => c.classList.remove('audit-card-selected'));
       }
-
-      // Update tooltip/title badge sebagai indikator posisi siklus
-      const badgeIdMap = {
-        critical: 'badgeCountCritical',
-        warning: 'badgeCountWarning',
-        normal: 'badgeCountNormal'
-      };
-      const badgeEl = document.getElementById(badgeIdMap[category]);
-      if (badgeEl && matchingRows.length > 1) {
-        badgeEl.setAttribute('title', `Item ${auditCategoryCycleState.currentIndex + 1} dari ${matchingRows.length} (Klik lagi untuk item berikutnya)`);
-      }
     }
   }
 
@@ -2473,19 +1526,11 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     let targetRow = null;
     const targetItemId = act.target_item_id || act.item_id || (act.changes && act.changes.item_id);
 
-    // 1. Direct match by item ID (most accurate)
     if (targetItemId) {
       targetRow = document.querySelector(`#rabTableBody tr.rab-row-item[data-item-id="${targetItemId}"]`);
     }
 
-    // 2. Direct match by item name
-    const nameCandidates = [
-      act.old_values?.item_name,
-      act.changes?.item_name,
-      act.item_name,
-      act.target_item_name
-    ].filter(Boolean);
-
+    const nameCandidates = [act.old_values?.item_name, act.changes?.item_name, act.item_name, act.target_item_name].filter(Boolean);
     if (!targetRow && nameCandidates.length > 0) {
       for (const cand of nameCandidates) {
         const cLower = String(cand).toLowerCase().trim();
@@ -2494,9 +1539,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
           const rowName = (nameSpan ? nameSpan.textContent : (r.getAttribute('data-item-name') || '')).toLowerCase().trim();
           const rawName = (r.getAttribute('data-raw-name') || '').toLowerCase().trim();
           const ahspName = (r.getAttribute('data-ahsp-name') || '').toLowerCase().trim();
-          if (rowName.includes(cLower) || cLower.includes(rowName) ||
-              (rawName && (rawName.includes(cLower) || cLower.includes(rawName))) ||
-              (ahspName && (ahspName.includes(cLower) || cLower.includes(ahspName)))) {
+          if (rowName.includes(cLower) || cLower.includes(rowName) || (rawName && (rawName.includes(cLower) || cLower.includes(rawName))) || (ahspName && (ahspName.includes(cLower) || cLower.includes(ahspName)))) {
             targetRow = r;
             break;
           }
@@ -2505,44 +1548,22 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
       }
     }
 
-    // 3. Match from description text
     if (!targetRow && act.description) {
       const descLower = String(act.description).toLowerCase();
       for (const r of rows) {
         const nameSpan = r.querySelector('.rab-item-name');
         const rowName = (nameSpan ? nameSpan.textContent : (r.getAttribute('data-item-name') || '')).toLowerCase().trim();
         const rawName = (r.getAttribute('data-raw-name') || '').toLowerCase().trim();
-        if ((rowName && rowName.length >= 4 && descLower.includes(rowName)) ||
-            (rawName && rawName.length >= 4 && descLower.includes(rawName))) {
+        if ((rowName && rowName.length >= 4 && descLower.includes(rowName)) || (rawName && rawName.length >= 4 && descLower.includes(rawName))) {
           targetRow = r;
           break;
         }
       }
-
-      if (!targetRow) {
-        const stopWords = ['mengubah', 'menjadi', 'untuk', 'dengan', 'harga', 'biaya', 'volume', 'satuan', 'pekerjaan', 'dari', 'pada', 'yang', 'dan', 'atau', 'tebal'];
-        const words = descLower.replace(/[^\w\s]/g, ' ').split(/\s+/).filter(w => w.length >= 4 && !stopWords.includes(w));
-        let bestScore = 0;
-        for (const r of rows) {
-          const nameSpan = r.querySelector('.rab-item-name');
-          const rowName = (nameSpan ? nameSpan.textContent : (r.getAttribute('data-item-name') || '')).toLowerCase();
-          const rawName = (r.getAttribute('data-raw-name') || '').toLowerCase();
-          let score = 0;
-          words.forEach(w => {
-            if (rowName.includes(w)) score += 2;
-            if (rawName.includes(w)) score += 2;
-          });
-          if (score > bestScore && score >= 2) {
-            bestScore = score;
-            targetRow = r;
-          }
-        }
-      }
     }
-
     return targetRow;
   }
 
+  // Terapkan aksi perubahan AI Co-pilot ke database & DOM tabel
   async function applySingleActionToTableAndDb(act) {
     if (act.action_type === 'UPDATE_ITEM' && act.target_item_id) {
       const updatePayload = {};
@@ -2560,10 +1581,8 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify(updatePayload)
       });
-
       if (!res.ok) throw new Error('Gagal update item');
 
-      // Update table cells directly in DOM
       const tableRow = document.querySelector(`#rabTableBody tr[data-item-id="${act.target_item_id}"]`);
       if (tableRow) {
         const nameEl = tableRow.querySelector('.rab-item-name');
@@ -2571,36 +1590,22 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
           nameEl.textContent = updatePayload.item_name;
           tableRow.dataset.itemName = updatePayload.item_name.toLowerCase();
         }
-        if (updatePayload.ahsp_name) {
-          tableRow.dataset.ahspName = updatePayload.ahsp_name.toLowerCase();
-        }
-        if (updatePayload.ahsp_code) {
-          tableRow.dataset.ahspCode = updatePayload.ahsp_code.toLowerCase();
-        }
-        if (updatePayload.unit) {
-          tableRow.dataset.itemUnit = updatePayload.unit.toLowerCase();
-        }
-        
+        if (updatePayload.ahsp_name) tableRow.dataset.ahspName = updatePayload.ahsp_name.toLowerCase();
+        if (updatePayload.ahsp_code) tableRow.dataset.ahspCode = updatePayload.ahsp_code.toLowerCase();
+        if (updatePayload.unit) tableRow.dataset.itemUnit = updatePayload.unit.toLowerCase();
+
         const cells = tableRow.querySelectorAll('td');
         if (cells.length >= 7) {
-          if (typeof updatePayload.volume !== 'undefined') {
-            cells[2].textContent = updatePayload.volume.toLocaleString('id-ID', { minimumFractionDigits: 2 });
-          }
+          if (typeof updatePayload.volume !== 'undefined') cells[2].textContent = updatePayload.volume.toLocaleString('id-ID', { minimumFractionDigits: 2 });
           if (updatePayload.unit) cells[3].textContent = updatePayload.unit;
-          if (typeof updatePayload.unit_price !== 'undefined') {
-            cells[4].textContent = 'Rp ' + updatePayload.unit_price.toLocaleString('id-ID', { minimumFractionDigits: 2 });
-          }
-          const currentVol = typeof updatePayload.volume !== 'undefined' 
-            ? updatePayload.volume 
-            : (parseFloat(cells[2].textContent.replace(/\./g, '').replace(',', '.')) || 0);
-          const currentPrice = typeof updatePayload.unit_price !== 'undefined'
-            ? updatePayload.unit_price
-            : (parseFloat(cells[4].textContent.replace(/Rp|\s|\./g, '').replace(',', '.')) || 0);
+          if (typeof updatePayload.unit_price !== 'undefined') cells[4].textContent = 'Rp ' + updatePayload.unit_price.toLocaleString('id-ID', { minimumFractionDigits: 2 });
+
+          const currentVol = typeof updatePayload.volume !== 'undefined' ? updatePayload.volume : (parseFloat(cells[2].textContent.replace(/\./g, '').replace(',', '.')) || 0);
+          const currentPrice = typeof updatePayload.unit_price !== 'undefined' ? updatePayload.unit_price : (parseFloat(cells[4].textContent.replace(/Rp|\s|\./g, '').replace(',', '.')) || 0);
           const newTotal = currentVol * currentPrice;
           cells[5].textContent = 'Rp ' + newTotal.toLocaleString('id-ID', { minimumFractionDigits: 2 });
         }
 
-        // Flash highlight on the updated row
         tableRow.classList.remove('rab-row-flash-green');
         void tableRow.offsetWidth;
         tableRow.classList.add('rab-row-flash-green');
@@ -2640,40 +1645,18 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
       const resJson = await res.json();
       const newItem = resJson.data || {};
 
-      // If empty project placeholder row exists, remove it
       const emptyRow = document.querySelector('#rabTableBody tr td.text-muted');
-      if (emptyRow && emptyRow.closest('tr')) {
-        emptyRow.closest('tr').remove();
-      }
+      if (emptyRow && emptyRow.closest('tr')) emptyRow.closest('tr').remove();
 
-      // Find target section row in DOM
       let targetSecId = newItem.section_id || act.target_section_id;
-      let secRow = null;
-      if (targetSecId) {
-        secRow = document.querySelector(`#rabTableBody tr.rab-sec-row[data-sec-id="${targetSecId}"]`);
-      }
-      if (!secRow && newItem.section_code) {
-        secRow = document.querySelector(`#rabTableBody tr.rab-sec-row[data-sec-code="${newItem.section_code}"]`);
-      }
-      if (!secRow && (targetCategory || newItem.section_name)) {
-        const searchCat = (targetCategory || newItem.section_name).toLowerCase();
-        for (const sr of document.querySelectorAll('#rabTableBody tr.rab-sec-row')) {
-          const sName = (sr.dataset.secName || '').toLowerCase();
-          if (sName.includes(searchCat) || searchCat.includes(sName)) {
-            secRow = sr;
-            break;
-          }
-        }
-      }
-      if (!secRow) {
-        secRow = document.querySelector('#rabTableBody tr.rab-sec-row');
-      }
+      let secRow = targetSecId ? document.querySelector(`#rabTableBody tr.rab-sec-row[data-sec-id="${targetSecId}"]`) : null;
+      if (!secRow && newItem.section_code) secRow = document.querySelector(`#rabTableBody tr.rab-sec-row[data-sec-code="${newItem.section_code}"]`);
+      if (!secRow) secRow = document.querySelector('#rabTableBody tr.rab-sec-row');
 
       if (secRow) {
         const secCode = secRow.dataset.secCode || newItem.section_code || '1';
         const secName = secRow.dataset.secName || newItem.section_name || '';
 
-        // Build new table row matching the exact 1:1 view structure
         const newRow = document.createElement('tr');
         newRow.className = `rab-row-item sec-items-${secCode} rab-row-flash-green`;
         newRow.setAttribute('data-sec-code', secCode);
@@ -2681,11 +1664,10 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
         newRow.setAttribute('data-item-id', newItem.id);
         const displayName = newItem.item_name || newItem.name || itemName;
         const displayAhspName = newItem.ahsp_name || displayName;
-        const displayAhspCode = newItem.ahsp_code || '-';
         newRow.setAttribute('data-item-name', displayAhspName);
         newRow.setAttribute('data-raw-name', displayName.toLowerCase());
         newRow.setAttribute('data-ahsp-name', displayAhspName.toLowerCase());
-        newRow.setAttribute('data-ahsp-code', displayAhspCode.toLowerCase());
+        newRow.setAttribute('data-ahsp-code', (newItem.ahsp_code || '-').toLowerCase());
         newRow.setAttribute('data-item-no', String(newItem.item_no || ''));
         newRow.setAttribute('data-item-unit', String(newItem.unit || 'm2').toLowerCase());
 
@@ -2696,52 +1678,30 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
         const finalItemNo = newItem.item_no || (document.querySelectorAll(`#rabTableBody tr.sec-items-${secCode}`).length + 1);
 
         newRow.innerHTML = `
-          <td class="text-center text-muted fw-semibold tab-num" style="font-size: 11.5px;">
-            ${finalItemNo}
-          </td>
-          <td style="padding-left: 32px;">
-            <div class="d-flex align-items-center gap-1.5">
-              <span class="rab-item-name">${escapeHtml(displayName)}</span>
-            </div>
-          </td>
+          <td class="text-center text-muted fw-semibold tab-num" style="font-size: 11.5px;">${finalItemNo}</td>
+          <td style="padding-left: 32px;"><div class="d-flex align-items-center gap-1.5"><span class="rab-item-name">${escapeHtml(displayName)}</span></div></td>
           <td class="text-center text-dark fw-medium tab-num" style="font-size: 12px; cursor: pointer;" title="Klik untuk mengubah volume & harga" onclick="openEditItemModal('${newItem.id}', '${escapeHtml(displayAhspName)}', ${finalVol}, '${escapeHtml(finalUnit)}', ${finalPrice})">
             ${finalVol.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </td>
-          <td class="text-center text-muted" style="font-size: 12px;">
-            ${escapeHtml(finalUnit)}
-          </td>
+          <td class="text-center text-muted" style="font-size: 12px;">${escapeHtml(finalUnit)}</td>
           <td class="text-end text-dark fw-medium tab-num" style="font-size: 12px; cursor: pointer;" title="Klik untuk mengubah volume & harga" onclick="openEditItemModal('${newItem.id}', '${escapeHtml(displayAhspName)}', ${finalVol}, '${escapeHtml(finalUnit)}', ${finalPrice})">
             Rp ${finalPrice.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </td>
           <td class="text-end text-dark fw-medium tab-num" style="font-size: 12px;">
             Rp ${finalSubtotal.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </td>
-          <td class="text-end text-dark fw-medium tab-num" style="font-size: 12px;">
-            0.00 %
-          </td>
+          <td class="text-end text-dark fw-medium tab-num" style="font-size: 12px;">0.00 %</td>
           <td class="text-center">
             <div class="d-inline-flex align-items-center justify-content-center gap-1">
-              <button 
-                type="button" 
-                class="btn-item-icon edit-icon" 
-                onclick="openEditItemModal('${newItem.id}', '${escapeHtml(displayAhspName)}', ${finalVol}, '${escapeHtml(finalUnit)}', ${finalPrice})" 
-                title="Ubah Item"
-              >
+              <button type="button" class="btn-item-icon edit-icon" onclick="openEditItemModal('${newItem.id}', '${escapeHtml(displayAhspName)}', ${finalVol}, '${escapeHtml(finalUnit)}', ${finalPrice})" title="Ubah Item">
                 <i class="bi bi-pencil-square" style="font-size: 13.5px;"></i>
               </button>
-              <button 
-                type="button" 
-                class="btn-item-icon trash-icon" 
-                onclick="confirmDeleteItem('${newItem.id}', '${escapeHtml(displayName)}')" 
-                title="Hapus Item"
-              >
+              <button type="button" class="btn-item-icon trash-icon" onclick="confirmDeleteItem('${newItem.id}', '${escapeHtml(displayName)}')" title="Hapus Item">
                 <i class="bi bi-trash" style="font-size: 13.5px;"></i>
               </button>
             </div>
-          </td>
-        `;
+          </td>`;
 
-        // Insert after last existing item in this section or after section row
         const existingSecItems = document.querySelectorAll(`#rabTableBody tr.sec-items-${secCode}`);
         if (existingSecItems.length > 0) {
           existingSecItems[existingSecItems.length - 1].insertAdjacentElement('afterend', newRow);
@@ -2749,25 +1709,13 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
           secRow.insertAdjacentElement('afterend', newRow);
         }
 
-        // Expand section if collapsed
-        if (typeof collapsedSections !== 'undefined' && collapsedSections[secCode]) {
-          toggleCategoryCollapse(secCode);
-        }
-
-        // Scroll to new row and flash highlight
-        setTimeout(() => {
-          newRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 100);
-        setTimeout(() => {
-          newRow.classList.remove('rab-row-flash-green');
-        }, 3000);
+        if (collapsedSections[secCode]) toggleCategoryCollapse(secCode);
+        setTimeout(() => newRow.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+        setTimeout(() => newRow.classList.remove('rab-row-flash-green'), 3000);
       }
-
       return true;
     } else if (act.action_type === 'DELETE_ITEM' && act.target_item_id) {
-      const res = await fetch(`<?= base_url("api/estimation-items") ?>/${act.target_item_id}`, {
-        method: 'DELETE'
-      });
+      const res = await fetch(`<?= base_url("api/estimation-items") ?>/${act.target_item_id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Gagal hapus item');
       const tableRow = document.querySelector(`#rabTableBody tr[data-item-id="${act.target_item_id}"]`);
       if (tableRow) {
@@ -2778,58 +1726,57 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     }
   }
 
+  // Hitung ulang total RAB, bobot %, subtotal per seksi, PPN, dan grand total
   function recalculateRabTotals() {
-    let grandTotal = 0;
+    let grandDirect = 0;
     const secTotals = {};
 
-    // Calculate item totals and group by section
-    document.querySelectorAll('#rabTableBody tr.rab-row-item').forEach(r => {
+    const itemRows = document.querySelectorAll('#rabTableBody tr.rab-row-item');
+    itemRows.forEach(r => {
+      if (r.style.textDecoration === 'line-through') return;
       const cells = r.querySelectorAll('td');
       if (cells.length < 7) return;
+
       const vol = parseFloat((cells[2]?.textContent || '0').replace(/\./g, '').replace(',', '.')) || 0;
       const price = parseFloat((cells[4]?.textContent || '0').replace(/Rp|\s|\./g, '').replace(',', '.')) || 0;
       const subtotal = vol * price;
       cells[5].textContent = 'Rp ' + subtotal.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
       const secCode = r.dataset.secCode;
-      if (secCode) {
-        secTotals[secCode] = (secTotals[secCode] || 0) + subtotal;
-      }
-      grandTotal += subtotal;
+      if (secCode) secTotals[secCode] = (secTotals[secCode] || 0) + subtotal;
+      grandDirect += subtotal;
     });
 
-    // Update section subtotals and bobot
     for (const [secCode, secTotal] of Object.entries(secTotals)) {
       const subEl = document.getElementById('sec-subtotal-' + secCode);
       if (subEl) subEl.textContent = 'Rp ' + secTotal.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const bobotEl = document.getElementById('sec-bobot-' + secCode);
       if (bobotEl) {
-        const bVal = grandTotal > 0 ? (secTotal / grandTotal) * 100 : 0;
+        const bVal = grandDirect > 0 ? (secTotal / grandDirect) * 100 : 0;
         bobotEl.textContent = bVal.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' %';
       }
     }
 
-    // Update individual item bobot percentages
-    document.querySelectorAll('#rabTableBody tr.rab-row-item').forEach(r => {
+    itemRows.forEach(r => {
+      if (r.style.textDecoration === 'line-through') return;
       const cells = r.querySelectorAll('td');
       if (cells.length >= 7) {
         const subtotal = parseFloat((cells[5]?.textContent || '0').replace(/Rp|\s|\./g, '').replace(',', '.')) || 0;
-        const bVal = grandTotal > 0 ? (subtotal / grandTotal) * 100 : 0;
+        const bVal = grandDirect > 0 ? (subtotal / grandDirect) * 100 : 0;
         cells[6].textContent = bVal.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' %';
       }
     });
 
-    // Update tfoot totals
-    const ppnRate = <?= (float)($ppnRate ?? 0) ?>;
-    const ppnAmount = grandTotal * (ppnRate / 100);
-    const totalHarga = grandTotal + ppnAmount;
+    const ppnRate = <?= (float) ($ppnRate ?? 0) ?>;
+    const ppnAmount = grandDirect * (ppnRate / 100);
+    const grandTotal = grandDirect + ppnAmount;
 
     const jumlahEl = document.getElementById('tfootJumlahHarga');
-    if (jumlahEl) jumlahEl.textContent = 'Rp ' + grandTotal.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (jumlahEl) jumlahEl.textContent = 'Rp ' + grandDirect.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const ppnEl = document.getElementById('tfootPpnAmount');
     if (ppnEl) ppnEl.textContent = 'Rp ' + ppnAmount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const totalEl = document.getElementById('tfootTotalHarga');
-    if (totalEl) totalEl.textContent = 'Rp ' + totalHarga.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (totalEl) totalEl.textContent = 'Rp ' + grandTotal.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
   async function persistProposalActionsState(historyId, actions) {
@@ -2840,13 +1787,10 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
       await fetch(`<?= base_url("api/projects") ?>/${projectId}/chat-history/${historyId}/applied`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({
-          actions: actions,
-          is_applied: allApplied ? 1 : 0
-        })
+        body: JSON.stringify({ actions: actions, is_applied: allApplied ? 1 : 0 })
       });
     } catch (err) {
-      console.warn('Failed to persist proposal actions state:', err);
+      console.warn('Gagal menyimpan state proposal actions:', err);
     }
   }
 
@@ -2870,24 +1814,18 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
       btnRow.innerHTML = `
         <button type="button" class="btn btn-success w-100 rounded-pill fw-bold py-2 shadow-sm" disabled style="background-color: #087f23; border-color: #087f23; font-size: 13px;">
           <i class="bi bi-check-circle-fill me-1.5"></i> Seluruh Perubahan Telah Diterapkan
-        </button>
-      `;
+        </button>`;
       return;
     }
 
-    const label = selected.length === unapplied.length 
-      ? `Terapkan Semua (${selected.length})` 
-      : (selected.length > 0 ? `Terapkan Terpilih (${selected.length})` : 'Pilih Item');
+    const label = selected.length === unapplied.length ? `Terapkan Semua (${selected.length})` : (selected.length > 0 ? `Terapkan Terpilih (${selected.length})` : 'Pilih Item');
     const disabled = selected.length === 0 ? 'disabled style="opacity: 0.6; cursor: not-allowed;"' : '';
 
     btnRow.innerHTML = `
       <button type="button" class="ai-btn-apply" id="btn_apply_${cardId}" onclick="executeApplyProposedActions('${cardId}')" ${disabled}>
-        <i class="bi bi-check-lg" style="font-size: 15px;"></i>
-        <span>${label}</span>
+        <i class="bi bi-check-lg" style="font-size: 15px;"></i><span>${label}</span>
       </button>
-      <button type="button" class="ai-btn-cancel" onclick="cancelProposedActions('${cardId}')">
-        Batal
-      </button>
+      <button type="button" class="ai-btn-cancel" onclick="cancelProposedActions('${cardId}')">Batal</button>
     `;
   }
 
@@ -2898,13 +1836,9 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     const unapplied = cardData.actions.filter(a => !a.is_applied);
     const selected = unapplied.filter(a => a.selected !== false);
 
-    // Update title count
     const titleCountEl = document.querySelector(`#${cardId} .ai-proposal-title span:last-child`);
-    if (titleCountEl) {
-      titleCountEl.textContent = `Usulan Perubahan (${unapplied.length})`;
-    }
+    if (titleCountEl) titleCountEl.textContent = `Usulan Perubahan (${unapplied.length})`;
 
-    // Update cost badge in header for selected unapplied items
     const headerCostBadge = document.querySelector(`#${cardId} .ai-proposal-cost-badge`);
     if (headerCostBadge) {
       const activeTotal = selected.reduce((acc, a) => acc + (parseFloat(a.cost_delta) || 0), 0);
@@ -2913,7 +1847,6 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
       headerCostBadge.className = `ai-proposal-cost-badge ${activeTotal > 0 ? 'ai-proposal-cost-positive' : (activeTotal < 0 ? 'ai-proposal-cost-negative' : 'ai-proposal-cost-neutral')}`;
     }
 
-    // Update each item visual state
     cardData.actions.forEach((act, idx) => {
       const itemEl = document.getElementById(`prop_item_${cardId}_${idx}`);
       if (itemEl && act.is_applied) {
@@ -2930,7 +1863,6 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
 
   async function executeApplySingleAction(cardId, actIndex, event) {
     if (event) event.stopPropagation();
-
     const cardData = activeProposedActionsMap[cardId];
     if (!cardData || !cardData.actions || !cardData.actions[actIndex]) return;
     const act = cardData.actions[actIndex];
@@ -2949,11 +1881,8 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
       act.selected = false;
       showToast('Sukses', `Perubahan item "${act.changes?.item_name || act.description || 'Pekerjaan'}" berhasil diterapkan!`, 'success');
       recalculateRabTotals();
-
-      // Persist state to database
       await persistProposalActionsState(cardData.historyId, cardData.actions);
 
-      // Check if all actions in card are now applied
       const unapplied = cardData.actions.filter(a => !a.is_applied);
       if (unapplied.length === 0) {
         const wrapper = document.getElementById('wrapper_' + cardId) || (document.getElementById(cardId) ? document.getElementById(cardId).closest('.ai-proposal-container') || document.getElementById(cardId).closest('.d-flex.mb-3') : null);
@@ -2985,41 +1914,23 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     const rows = document.querySelectorAll('#rabTableBody tr.rab-row-item');
     if (!rows || rows.length === 0) return;
 
-    // Reset previous flash highlights
     rows.forEach(r => {
       if (r._highlightTimer) clearTimeout(r._highlightTimer);
       r.classList.remove('rab-row-flash-red', 'rab-row-flash-amber', 'rab-row-flash-green');
     });
 
     const targetRow = findRowForAction(act, rows);
-
-    // If target row was found, navigate & highlight like in audit rab
     if (targetRow) {
-      // 1. Expand parent category section if it's collapsed (same mechanism as audit rab)
       const secCode = targetRow.getAttribute('data-sec-code');
-      if (secCode) {
-        const minusLine = document.getElementById('minus-line-' + secCode);
-        const plusIcon = document.getElementById('plus-icon-' + secCode);
-        const hiddenItems = document.querySelectorAll('.sec-items-' + secCode + '.d-none');
-        if (hiddenItems.length > 0) {
-          hiddenItems.forEach(el => el.classList.remove('d-none'));
-          if (minusLine) minusLine.classList.remove('d-none');
-          if (plusIcon) plusIcon.classList.add('d-none');
-        }
-      }
-
-      // 2. Smoothly scroll into view centered
+      ensureRabSectionExpanded(secCode);
       targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-      // 3. Highlight / flash effect (same as audit rab: amber for ubah/warning)
       const isDelete = act.action_type === 'DELETE_ITEM';
       const isAdd = act.action_type === 'ADD_ITEM';
       const flashClass = isDelete ? 'rab-row-flash-red' : (isAdd ? 'rab-row-flash-green' : 'rab-row-flash-amber');
       
       targetRow.classList.add(flashClass);
-      targetRow._highlightTimer = setTimeout(() => {
-        targetRow.classList.remove(flashClass);
-      }, 1500);
+      targetRow._highlightTimer = setTimeout(() => targetRow.classList.remove(flashClass), 1500);
     } else if (act.action_type === 'ADD_ITEM' && act.target_section_id) {
       const secRow = document.querySelector(`#rabTableBody tr.rab-sec-row[data-sec-id="${act.target_section_id}"]`);
       if (secRow) {
@@ -3030,6 +1941,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     }
   }
 
+  // Aktifkan tampilan mode chat
   function activateChatMode() {
     const centerArea = document.getElementById('aiInitialCenterArea');
     const headerBar = document.getElementById('aiActiveChatHeader');
@@ -3064,13 +1976,39 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     if (bottomInput) bottomInput.classList.add('d-none');
   }
 
+  async function loadChatHistoryFromBackend() {
+    try {
+      const projectId = `<?= esc($project['id']) ?>`;
+      const res = await fetch(`<?= base_url("api/projects") ?>/${projectId}/chat-history`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.messages && data.messages.length > 0) {
+          activateChatMode();
+          const log = document.getElementById('aiChatHistoryLog');
+          if (log) log.innerHTML = '';
+          data.messages.forEach(m => {
+            if (m.sender === 'user') {
+              appendChatMessage('user', m.message);
+            } else {
+              appendChatMessage('ai', formatAiMarkdown(m.message));
+              if (m.actions && m.actions.length > 0 && !m.is_applied) {
+                appendProposedActionsCard(m.actions, m.cost_impact, m.id, m.is_applied);
+              }
+            }
+          });
+          if (log) log.scrollTop = log.scrollHeight;
+        }
+      }
+    } catch (e) {
+      console.warn('Load chat history connection:', e);
+    }
+  }
+
   async function clearAiChatHistory() {
     if (!confirm('Apakah Anda yakin ingin membersihkan riwayat percakapan konsultasi ini?')) return;
     try {
       const projectId = `<?= esc($project['id']) ?>`;
-      const res = await fetch(`<?= base_url("api/projects") ?>/${projectId}/chat-history`, {
-        method: 'DELETE'
-      });
+      const res = await fetch(`<?= base_url("api/projects") ?>/${projectId}/chat-history`, { method: 'DELETE' });
       if (res.ok) {
         deactivateChatMode();
         showToast('Sukses', 'Riwayat konsultasi AI telah dibersihkan.', 'success');
@@ -3084,7 +2022,6 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     activateChatMode();
     appendChatMessage('user', text);
 
-    // Show loading indicator
     const stream = document.getElementById('aiChatHistoryLog');
     const loadingMsg = document.createElement('div');
     loadingMsg.className = 'd-flex mb-3 justify-content-start';
@@ -3123,38 +2060,30 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
       history: []
     };
 
-    // Remove loading indicator helper
     const removeLoading = () => {
       const el = document.getElementById('aiChatLoadingMsg');
       if (el) el.remove();
     };
 
-    // 1. Send request to AI RAB Agent (api/v2/ai/rab-agent)
     try {
       const res = await fetch(`<?= base_url("api/v2/ai/rab-agent") ?>`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify(payload)
       });
-
       removeLoading();
       const json = await res.json().catch(() => ({}));
 
       if (res.ok) {
         const reply = json.reply_message || json.reply;
         if (reply) {
-          let htmlReply = formatAiMarkdown(reply);
-          appendChatMessage('ai', htmlReply);
-
-          // Render separated Usulan Perubahan card if actions exist
+          appendChatMessage('ai', formatAiMarkdown(reply));
           if (json.actions && json.actions.length > 0) {
             appendProposedActionsCard(json.actions, json.cost_impact, json.history_id, 0);
           }
           return;
         }
       }
-
-      // If server returned an error, show the exact error message
       const errMsg = json.message || `HTTP ${res.status}: Gagal memproses permintaan ke AI Co-Pilot.`;
       appendChatMessage('ai', `<div class="text-danger py-1"><i class="bi bi-exclamation-triangle-fill me-1"></i> <strong>Kendala AI Co-Pilot:</strong> ${escapeHtml(errMsg)}</div>`);
     } catch (e) {
@@ -3164,7 +2093,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     }
   }
 
-  async function sendAiChatMessageFromCenter() {
+  function sendAiChatMessageFromCenter() {
     const input = document.getElementById('aiChatInputCenter');
     const text = (input ? input.value : '').trim();
     if (!text) return;
@@ -3172,7 +2101,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     sendAiPrompt(text);
   }
 
-  async function sendAiChatMessage() {
+  function sendAiChatMessage() {
     const input = document.getElementById('aiChatInput');
     const text = (input ? input.value : '').trim();
     if (!text) return;
@@ -3194,13 +2123,12 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
 
     const msgDiv = document.createElement('div');
     msgDiv.className = `d-flex mb-3 ${sender === 'user' ? 'justify-content-end' : 'justify-content-start'}`;
-    
+
     if (sender === 'user') {
       msgDiv.innerHTML = `
         <div class="px-3 py-2 rounded-3 text-white shadow-sm" style="background-color: #087f23; max-width: 85%; font-size: 13px;">
           ${escapeHtml(text)}
-        </div>
-      `;
+        </div>`;
     } else {
       msgDiv.innerHTML = `
         <div class="d-flex gap-2" style="max-width: 90%;">
@@ -3210,38 +2138,26 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
           <div class="px-3 py-2.5 rounded-3 shadow-sm" style="background-color: #f8fafc; border: 1px solid #e2e8f0; font-size: 12.5px; line-height: 1.5; color: #1e293b;">
             ${text}
           </div>
-        </div>
-      `;
+        </div>`;
     }
 
     log.appendChild(msgDiv);
     log.scrollTop = log.scrollHeight;
   }
 
-  // Active proposed actions map for user confirmation
-  let activeProposedActionsMap = {};
-
-  // Render Separated Usulan Perubahan Card
   function appendProposedActionsCard(actions, costImpact, historyId = null, isApplied = 0) {
     if (isApplied) return;
     const log = document.getElementById('aiChatHistoryLog');
     if (!log || !actions || actions.length === 0) return;
 
-    // Check if all actions are already applied
     const unappliedAtStart = actions.filter(a => !a.is_applied);
     if (unappliedAtStart.length === 0) return;
 
     const cardId = 'aiPropCard_' + (historyId ? historyId : Date.now());
-    activeProposedActionsMap[cardId] = {
-      actions: actions,
-      historyId: historyId
-    };
+    activeProposedActionsMap[cardId] = { actions: actions, historyId: historyId };
 
-    // Initialize selection state: only unapplied items are selected by default
     actions.forEach(act => {
-      if (typeof act.selected === 'undefined') {
-        act.selected = !act.is_applied;
-      }
+      if (typeof act.selected === 'undefined') act.selected = !act.is_applied;
     });
 
     const activeToSum = actions.filter(a => !a.is_applied && a.selected !== false);
@@ -3253,39 +2169,21 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     const absImpactFormatted = 'Rp ' + Math.abs(Math.round(totalImpact)).toLocaleString('id-ID');
     const badgeText = `${sign} ${absImpactFormatted}`;
 
-    let badgeClass = 'ai-proposal-cost-neutral';
-    if (totalImpact > 0) {
-      badgeClass = 'ai-proposal-cost-positive';
-    } else if (totalImpact < 0) {
-      badgeClass = 'ai-proposal-cost-negative';
-    }
-
+    let badgeClass = totalImpact > 0 ? 'ai-proposal-cost-positive' : (totalImpact < 0 ? 'ai-proposal-cost-negative' : 'ai-proposal-cost-neutral');
     let itemsHtml = '';
+
     actions.forEach((act, idx) => {
-      let badgeLabel = 'UBAH';
-      let badgeCss = 'ai-badge-ubah';
-      let itemModifierClass = 'item-ubah';
-      if (act.action_type === 'ADD_ITEM') {
-        badgeLabel = '+ TAMBAH';
-        badgeCss = 'ai-badge-tambah';
-        itemModifierClass = 'item-tambah';
-      } else if (act.action_type === 'DELETE_ITEM') {
-        badgeLabel = '- HAPUS';
-        badgeCss = 'ai-badge-hapus';
-        itemModifierClass = 'item-hapus';
-      }
+      let badgeLabel = act.action_type === 'ADD_ITEM' ? '+ TAMBAH' : (act.action_type === 'DELETE_ITEM' ? '- HAPUS' : 'UBAH');
+      let badgeCss = act.action_type === 'ADD_ITEM' ? 'ai-badge-tambah' : (act.action_type === 'DELETE_ITEM' ? 'ai-badge-hapus' : 'ai-badge-ubah');
+      let itemModifierClass = act.action_type === 'ADD_ITEM' ? 'item-tambah' : (act.action_type === 'DELETE_ITEM' ? 'item-hapus' : 'item-ubah');
 
       const itemDelta = parseFloat(act.cost_delta) || 0;
       const itemSign = itemDelta > 0 ? '+' : (itemDelta < 0 ? '-' : '');
-      const itemDeltaFormatted = itemDelta !== 0 
-        ? `${itemSign} Rp ${Math.abs(Math.round(itemDelta)).toLocaleString('id-ID')}` 
-        : '';
+      const itemDeltaFormatted = itemDelta !== 0 ? `${itemSign} Rp ${Math.abs(Math.round(itemDelta)).toLocaleString('id-ID')}` : '';
       const deltaColor = itemDelta > 0 ? '#dc2626' : (itemDelta < 0 ? '#15803d' : '#64748b');
 
       let subtext = '';
-      if (act.changes && act.changes.unit_price) {
-        subtext += `Harga Baru: Rp ${Math.round(act.changes.unit_price).toLocaleString('id-ID')} / ${act.changes.unit || 'm2'}`;
-      }
+      if (act.changes && act.changes.unit_price) subtext += `Harga Baru: Rp ${Math.round(act.changes.unit_price).toLocaleString('id-ID')} / ${act.changes.unit || 'm2'}`;
       if (act.changes && act.changes.volume && act.changes.volume !== act.old_values?.volume) {
         subtext += (subtext ? ' &bull; ' : '') + `Volume: ${act.changes.volume} ${act.changes.unit || ''}`;
       }
@@ -3306,49 +2204,29 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
                        onchange="toggleProposalItemCheck('${cardId}', ${idx}, this.checked)"
                        title="Pilih item ini"
                 >
-              ` : `
-                <i class="bi bi-check-circle-fill text-success" style="font-size: 14px;"></i>
-              `}
+              ` : '<i class="bi bi-check-circle-fill text-success" style="font-size: 14px;"></i>'}
               <span class="ai-proposal-item-badge ${badgeCss}">${badgeLabel}</span>
             </div>
             <div class="d-flex align-items-center gap-2">
               <span style="font-size: 12px; font-weight: 700; color: ${deltaColor};">${itemDeltaFormatted}</span>
               ${!act.is_applied ? `
-                <button type="button" 
-                        class="ai-btn-acc-single" 
-                        onclick="executeApplySingleAction('${cardId}', ${idx}, event)"
-                        title="Terapkan hanya item ini ke tabel RAB">
+                <button type="button" class="ai-btn-acc-single" onclick="executeApplySingleAction('${cardId}', ${idx}, event)" title="Terapkan hanya item ini ke tabel RAB">
                   <i class="bi bi-check2"></i> Acc
                 </button>
-              ` : `
-                <span class="badge bg-success-subtle text-success border border-success-subtle py-1 px-2" style="font-size: 10px; font-weight: 600;">✓ Diterapkan</span>
-              `}
+              ` : '<span class="badge bg-success-subtle text-success border border-success-subtle py-1 px-2" style="font-size: 10px; font-weight: 600;">✓ Diterapkan</span>'}
             </div>
           </div>
           <div style="font-size: 12.5px; font-weight: 600; color: #1e293b; line-height: 1.45;">
             ${escapeHtml(act.description || act.changes?.item_name || 'Penyesuaian spesifikasi pekerjaan')}
           </div>
           ${subtext ? `<div style="font-size: 11px; color: #64748b; margin-top: 3px;">${subtext}</div>` : ''}
-        </div>
-      `;
+        </div>`;
     });
 
     const unappliedCount = unappliedAtStart.length;
     const selectedCount = activeToSum.length;
-    const label = selectedCount === unappliedCount 
-      ? `Terapkan Semua (${selectedCount})` 
-      : (selectedCount > 0 ? `Terapkan Terpilih (${selectedCount})` : 'Pilih Item');
+    const label = selectedCount === unappliedCount ? `Terapkan Semua (${selectedCount})` : (selectedCount > 0 ? `Terapkan Terpilih (${selectedCount})` : 'Pilih Item');
     const disabled = selectedCount === 0 ? 'disabled style="opacity: 0.6; cursor: not-allowed;"' : '';
-
-    const buttonsHtml = `
-      <button type="button" class="ai-btn-apply" id="btn_apply_${cardId}" onclick="executeApplyProposedActions('${cardId}')" ${disabled}>
-        <i class="bi bi-check-lg" style="font-size: 15px;"></i>
-        <span>${label}</span>
-      </button>
-      <button type="button" class="ai-btn-cancel" onclick="cancelProposedActions('${cardId}')">
-        Batal
-      </button>
-    `;
 
     const cardDiv = document.createElement('div');
     cardDiv.className = 'd-flex mb-3 justify-content-start ai-proposal-container';
@@ -3362,91 +2240,26 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
               <span>📝</span>
               <span style="color: #087f23;">Usulan Perubahan (${unappliedCount})</span>
             </div>
-            <div class="ai-proposal-cost-badge ${badgeClass}">
-              ${badgeText}
-            </div>
+            <div class="ai-proposal-cost-badge ${badgeClass}">${badgeText}</div>
           </div>
-          
-          <div class="ai-proposal-body">
-            ${itemsHtml}
-          </div>
-
+          <div class="ai-proposal-body">${itemsHtml}</div>
           <div class="ai-proposal-actions-row" id="buttons_${cardId}">
-            ${buttonsHtml}
+            <button type="button" class="ai-btn-apply" id="btn_apply_${cardId}" onclick="executeApplyProposedActions('${cardId}')" ${disabled}>
+              <i class="bi bi-check-lg" style="font-size: 15px;"></i><span>${label}</span>
+            </button>
+            <button type="button" class="ai-btn-cancel" onclick="cancelProposedActions('${cardId}')">Batal</button>
           </div>
         </div>
-      </div>
-    `;
+      </div>`;
 
     log.appendChild(cardDiv);
     log.scrollTop = log.scrollHeight;
   }
 
-  // Recalculate RAB table totals in DOM without page reload
-  function recalculateRabTotals() {
-    let grandDirect = 0;
-
-    const secRows = document.querySelectorAll('#rabTableBody tr.rab-sec-row');
-    secRows.forEach(secRow => {
-      const secCode = secRow.getAttribute('data-sec-code');
-      const itemRows = document.querySelectorAll(`#rabTableBody tr.rab-row-item.sec-items-${secCode}`);
-      let secTotal = 0;
-
-      itemRows.forEach(row => {
-        if (row.style.textDecoration === 'line-through') return;
-        const cells = row.querySelectorAll('td');
-        if (cells.length >= 6) {
-          const rawPrice = cells[5].textContent.replace(/Rp|\s|\./g, '').replace(',', '.');
-          const rowPrice = parseFloat(rawPrice) || 0;
-          secTotal += rowPrice;
-        }
-      });
-
-      grandDirect += secTotal;
-      const subtotalEl = document.getElementById(`sec-subtotal-${secCode}`);
-      if (subtotalEl) {
-        subtotalEl.textContent = 'Rp ' + secTotal.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      }
-    });
-
-    // Update section weights (bobot %)
-    secRows.forEach(secRow => {
-      const secCode = secRow.getAttribute('data-sec-code');
-      const subtotalEl = document.getElementById(`sec-subtotal-${secCode}`);
-      const bobotEl = document.getElementById(`sec-bobot-${secCode}`);
-      if (subtotalEl && bobotEl && grandDirect > 0) {
-        const secTotal = parseFloat(subtotalEl.textContent.replace(/Rp|\s|\./g, '').replace(',', '.')) || 0;
-        const bobot = (secTotal / grandDirect) * 100;
-        bobotEl.textContent = bobot.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' %';
-      }
-    });
-
-    const ppnRate = <?= (float) ($ppnRate ?? 0) ?>;
-    const ppnAmount = grandDirect * (ppnRate / 100);
-    const grandTotal = grandDirect + ppnAmount;
-
-    const tfootJumlah = document.getElementById('tfootJumlahHarga');
-    if (tfootJumlah) {
-      tfootJumlah.textContent = 'Rp ' + grandDirect.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
-
-    const tfootPpn = document.getElementById('tfootPpnAmount');
-    if (tfootPpn) {
-      tfootPpn.textContent = 'Rp ' + ppnAmount.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
-
-    const tfootTotal = document.getElementById('tfootTotalHarga');
-    if (tfootTotal) {
-      tfootTotal.textContent = 'Rp ' + grandTotal.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
-  }
-
-  // Execute Applying Proposed Changes into Database and Update Table
   async function executeApplyProposedActions(cardId) {
     const cardData = activeProposedActionsMap[cardId];
     if (!cardData || !cardData.actions) return;
 
-    // Apply only items that are unapplied AND selected
     const toApply = cardData.actions.filter(a => !a.is_applied && a.selected !== false);
     if (toApply.length === 0) {
       showToast('Perhatian', 'Pilih minimal satu item perubahan untuk diterapkan.', 'warning');
@@ -3459,13 +2272,10 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
         <button type="button" class="ai-btn-apply w-100" disabled style="opacity: 0.85; cursor: not-allowed;">
           <span class="spinner-border spinner-border-sm me-2" style="width: 13px; height: 13px;"></span>
           Menerapkan ${toApply.length} item ke tabel RAB...
-        </button>
-      `;
+        </button>`;
     }
 
     let successCount = 0;
-    let failCount = 0;
-
     for (const act of toApply) {
       try {
         await applySingleActionToTableAndDb(act);
@@ -3474,20 +2284,16 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
         successCount++;
       } catch (err) {
         console.error('Error applying action:', err);
-        failCount++;
       }
     }
 
     recalculateRabTotals();
-
-    // Persist state to database
     await persistProposalActionsState(cardData.historyId, cardData.actions);
 
     const remainingUnapplied = cardData.actions.filter(a => !a.is_applied);
     if (remainingUnapplied.length === 0) {
       showToast('Sukses', `${successCount} perubahan berhasil diterapkan ke tabel RAB!`, 'success');
-
-      const wrapper = document.getElementById('wrapper_' + cardId) || (document.getElementById(cardId) ? document.getElementById(cardId).closest('.ai-proposal-container') || document.getElementById(cardId).closest('.d-flex.mb-3') : null);
+      const wrapper = document.getElementById('wrapper_' + cardId);
       if (wrapper) {
         wrapper.style.transition = 'all 0.35s ease';
         wrapper.style.opacity = '0';
@@ -3504,16 +2310,10 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
   function cancelProposedActions(cardId) {
     const btnRow = document.getElementById('buttons_' + cardId);
     if (btnRow) {
-      btnRow.innerHTML = `
-        <div class="w-100 text-center py-1 text-muted" style="font-size: 12px; font-style: italic;">
-          <i class="bi bi-x-circle me-1"></i> Usulan perubahan dibatalkan
-        </div>
-      `;
+      btnRow.innerHTML = `<div class="w-100 text-center py-1 text-muted" style="font-size: 12px; font-style: italic;"><i class="bi bi-x-circle me-1"></i> Usulan perubahan dibatalkan</div>`;
     }
     const card = document.getElementById(cardId);
-    if (card) {
-      card.style.opacity = '0.65';
-    }
+    if (card) card.style.opacity = '0.65';
   }
 
   function formatAiMarkdown(text) {
@@ -3530,9 +2330,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     return (str || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
 
-
-
-  // Toggle Category Collapse/Expand
+  // Toggle buka/tutup kategori seksi
   function toggleCategoryCollapse(secCode) {
     const isCurrentlyCollapsed = collapsedSections[secCode] === true;
     collapsedSections[secCode] = !isCurrentlyCollapsed;
@@ -3555,12 +2353,10 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
   function toggleAllCategoryCollapse() {
     const secRows = document.querySelectorAll('.rab-sec-row');
     if (secRows.length === 0) return;
-    
-    // Check if any section is currently expanded
+
     let anyExpanded = false;
     secRows.forEach(s => {
-      const code = s.dataset.secCode;
-      if (!collapsedSections[code]) anyExpanded = true;
+      if (!collapsedSections[s.dataset.secCode]) anyExpanded = true;
     });
 
     secRows.forEach(s => {
@@ -3582,7 +2378,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     });
   }
 
-  // Live Search Filter
+  // Filter pencarian langsung pada tabel RAB
   function handleRabSearch(val) {
     const rawVal = (val || '').trim();
     const rows = document.querySelectorAll('.rab-row-item');
@@ -3593,11 +2389,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
       if (existingNoResult) existingNoResult.remove();
       rows.forEach(r => {
         const code = r.dataset.secCode;
-        if (!collapsedSections[code]) {
-          r.classList.remove('d-none');
-        } else {
-          r.classList.add('d-none');
-        }
+        r.classList.toggle('d-none', !!collapsedSections[code]);
       });
       secRows.forEach(s => {
         s.classList.remove('d-none');
@@ -3605,25 +2397,18 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
         const minusLine = document.getElementById(`minus-line-${code}`);
         const plusIcon = document.getElementById(`plus-icon-${code}`);
         if (minusLine && plusIcon) {
-          if (collapsedSections[code]) {
-            minusLine.classList.add('d-none');
-            plusIcon.classList.remove('d-none');
-          } else {
-            minusLine.classList.remove('d-none');
-            plusIcon.classList.add('d-none');
-          }
+          minusLine.classList.toggle('d-none', !!collapsedSections[code]);
+          plusIcon.classList.toggle('d-none', !collapsedSections[code]);
         }
       });
       return;
     }
 
-    // Split keywords by space and remove empty elements
     const keywords = rawVal.toLowerCase().split(/\s+/).filter(Boolean);
     const matchingSecs = new Set();
     let totalMatchedItems = 0;
 
     rows.forEach(r => {
-      // Collect all possible text representations of this row
       const name = (r.dataset.itemName || '').toLowerCase();
       const rawName = (r.dataset.rawName || '').toLowerCase();
       const ahspName = (r.dataset.ahspName || '').toLowerCase();
@@ -3637,16 +2422,12 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
       const normalized = combined.replace(/[-_/\\().,]/g, ' ');
       const compacted = combined.replace(/[^a-z0-9]/g, '');
 
-      // Every typed keyword token must be found in this row
       const isMatch = keywords.every(kw => {
         const kwClean = kw.replace(/[-_/\\().,]/g, '');
-        return combined.includes(kw) || 
-               normalized.includes(kw) || 
-               (kwClean && compacted.includes(kwClean));
+        return combined.includes(kw) || normalized.includes(kw) || (kwClean && compacted.includes(kwClean));
       });
 
       const secCode = r.dataset.secCode || '';
-
       if (isMatch) {
         r.classList.remove('d-none');
         matchingSecs.add(secCode);
@@ -3663,15 +2444,12 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
 
       if (matchingSecs.has(code) || secDirectMatch) {
         s.classList.remove('d-none');
-        // If category title matched directly, also reveal all its sub-items
         if (secDirectMatch) {
-          const subRows = document.querySelectorAll(`.sec-items-${code}`);
-          subRows.forEach(sub => {
+          document.querySelectorAll(`.sec-items-${code}`).forEach(sub => {
             sub.classList.remove('d-none');
             totalMatchedItems++;
           });
         }
-        // Expand the category toggle icon while showing search results
         const minusLine = document.getElementById(`minus-line-${code}`);
         const plusIcon = document.getElementById(`plus-icon-${code}`);
         if (minusLine && plusIcon) {
@@ -3683,7 +2461,6 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
       }
     });
 
-    // Empty state message when nothing matches
     const tbody = document.getElementById('rabTableBody');
     if (totalMatchedItems === 0 && tbody) {
       if (!document.getElementById('rabSearchNoResult')) {
@@ -3693,8 +2470,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
           <td colspan="8" class="text-center py-4 text-muted">
             <i class="bi bi-search fs-3 d-block mb-2 text-secondary opacity-50"></i>
             Tidak ada item pekerjaan yang cocok dengan pencarian "<strong>${escapeHtml(rawVal)}</strong>".
-          </td>
-        `;
+          </td>`;
         tbody.appendChild(tr);
       } else {
         document.getElementById('rabSearchNoResult').querySelector('strong').textContent = rawVal;
@@ -3705,7 +2481,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     }
   }
 
-  // Open Edit Item Modal
+  // Modal ubah item pekerjaan
   function openEditItemModal(id, name, volume, unit, price) {
     document.getElementById('editRabItemId').value = id;
     document.getElementById('editRabItemName').textContent = name;
@@ -3754,7 +2530,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     }
   }
 
-  // Open Add Item Modal
+  // Modal tambah item pekerjaan baru
   function openAddRabItemModal(secId, secCode) {
     document.getElementById('addRabSectionId').value = secId;
     document.getElementById('addRabItemNameInput').value = '';
@@ -3802,7 +2578,7 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     }
   }
 
-  // Confirm Delete Item / Section
+  // Konfirmasi hapus item & seksi
   function confirmDeleteItem(id, name) {
     document.getElementById('deleteRabTargetId').value = id;
     document.getElementById('deleteRabTargetType').value = 'item';
@@ -3824,12 +2600,11 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     const type = document.getElementById('deleteRabTargetType').value;
 
     try {
-      const endpoint = type === 'item' 
+      const endpoint = (type === 'item') 
         ? `<?= base_url('api/estimation-items') ?>/${id}`
         : `<?= base_url('api/wbs-sections') ?>/${id}`;
 
       const res = await fetch(endpoint, { method: 'DELETE' });
-
       if (res.ok) {
         showToast('Terhapus', 'Data berhasil dihapus dari RAB.', 'warning');
         setTimeout(() => location.reload(), 500);
@@ -3843,5 +2618,4 @@ Aplikasi RAB Online - <?= esc($project['title']) ?> | Estimator.id
     }
   }
 </script>
-
 <?= $this->endSection() ?>

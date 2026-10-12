@@ -7,22 +7,26 @@ use App\Models\EstimationRunModel;
 use App\Models\WbsSectionModel;
 use App\Models\EstimationItemModel;
 use App\Models\ItemAhspCandidateModel;
+use App\Models\ProjectPromptModel;
 use CodeIgniter\RESTful\ResourceController;
+use Config\Database;
 
 class EstimationController extends ResourceController
 {
     protected $format = 'json';
 
-    /**
-     * POST /api/projects/(:segment)/save-estimation
-     * Saves complete AI Estimation result (Runs, Sections, Items, AHSP Candidates)
-     * Accepts Project ID or UUID
-     */
+    // Cari item estimasi berdasarkan ID numerik, UUID, atau item_uid
+    protected function findItem($itemIdOrUuid)
+    {
+        $itemModel = new EstimationItemModel();
+        return $itemModel->findByIdOrUuid($itemIdOrUuid) ?: $itemModel->where('item_uid', $itemIdOrUuid)->first();
+    }
+
+    // POST /api/projects/(:segment)/save-estimation: Simpan hasil estimasi AI lengkap (Runs, Sections, Items, AHSP)
     public function saveEstimation($projectUuidOrId = null)
     {
         $projectModel = new ProjectModel();
-        $project = $projectModel->findByIdOrUuid($projectUuidOrId);
-
+        $project      = $projectModel->findByIdOrUuid($projectUuidOrId);
         if (!$project) {
             return $this->failNotFound('Proyek tidak ditemukan.');
         }
@@ -32,40 +36,36 @@ class EstimationController extends ResourceController
             return $this->fail('Payload JSON tidak valid.', 400);
         }
 
-        $db = \Config\Database::connect();
+        $db = Database::connect();
         $db->transStart();
 
         try {
-            // Normalize sections from various payload structures:
+            // Normalisasi data sections dari beragam variasi struktur payload AI
             $rawSections = $json['sections'] 
                 ?? ($json['wbs_sections'] 
                 ?? ($json['raw_llm_response']['wbs_sections'] 
                 ?? ($json['raw_llm_response']['sections'] ?? null)));
 
             $sections = [];
-
             if (!empty($rawSections) && is_array($rawSections)) {
                 foreach ($rawSections as $sIdx => $sec) {
-                    $secHeader = $sec['section'] ?? $sec;
-                    $secItems  = $sec['items'] ?? [];
+                    $secHeader  = $sec['section'] ?? $sec;
                     $sections[] = [
                         'id'    => $secHeader['id'] ?? ('sec-' . ($secHeader['code'] ?? ($sIdx + 1))),
                         'code'  => $secHeader['code'] ?? chr(65 + $sIdx),
                         'name'  => $secHeader['name'] ?? 'PEKERJAAN',
-                        'items' => $secItems,
+                        'items' => $sec['items'] ?? [],
                     ];
                 }
             } elseif (!empty($json['items']) && is_array($json['items'])) {
-                // Flat items array (e.g. to_frontend_format)
+                // Struktur flat items (misal format frontend): kelompokkan ke section
                 $currentSec = null;
                 foreach ($json['items'] as $row) {
                     $isSection = (isset($row['type']) && $row['type'] === 'section')
                         || (!isset($row['volume']) && !empty($row['name']) && !empty($row['code']) && strlen($row['code']) <= 2);
 
                     if ($isSection) {
-                        if ($currentSec !== null) {
-                            $sections[] = $currentSec;
-                        }
+                        if ($currentSec !== null) $sections[] = $currentSec;
                         $currentSec = [
                             'id'    => $row['id'] ?? ('sec-' . ($row['code'] ?? (count($sections) + 1))),
                             'code'  => $row['code'] ?? chr(65 + count($sections)),
@@ -74,53 +74,42 @@ class EstimationController extends ResourceController
                         ];
                     } else {
                         if ($currentSec === null) {
-                            $currentSec = [
-                                'id'    => 'sec-A',
-                                'code'  => 'A',
-                                'name'  => 'PEKERJAAN UTAMA',
-                                'items' => [],
-                            ];
+                            $currentSec = ['id' => 'sec-A', 'code' => 'A', 'name' => 'PEKERJAAN UTAMA', 'items' => []];
                         }
                         $currentSec['items'][] = $row;
                     }
                 }
-                if ($currentSec !== null) {
-                    $sections[] = $currentSec;
-                }
+                if ($currentSec !== null) $sections[] = $currentSec;
             }
 
-            // Summary metrics calculation & fallback
+            // Hitung metrik ringkasan pemetaan AHSP
             $totalCount = 0;
-            $mHigh = 0;
-            $mMedium = 0;
-            $mUnmapped = 0;
+            $mHigh = 0; $mMedium = 0; $mUnmapped = 0;
             foreach ($sections as $s) {
                 foreach ($s['items'] as $it) {
                     $totalCount++;
                     $status = $it['ahsp_status'] ?? ($it['ahsp_mapping']['ahsp_status'] ?? ($it['final_mapping']['ahsp_status'] ?? 'unmapped'));
-                    if ($status === 'mapped_high') $mHigh++;
-                    elseif ($status === 'mapped_medium') $mMedium++;
-                    else $mUnmapped++;
+                    if ($status === 'mapped_high')        $mHigh++;
+                    elseif ($status === 'mapped_medium')  $mMedium++;
+                    else                                  $mUnmapped++;
                 }
             }
 
-            $summaryMetrics = $json['summary_metrics'] 
+            $metrics = $json['summary_metrics'] 
                 ?? ($json['raw_llm_response']['summary_metrics'] 
                 ?? ($json['metadata']['summary_metrics'] ?? []));
 
-            $totalItems   = (int) ($summaryMetrics['total_items'] ?? $totalCount);
-            $mappedHigh   = (int) ($summaryMetrics['mapped_high'] ?? $mHigh);
-            $mappedMedium = (int) ($summaryMetrics['mapped_medium'] ?? $mMedium);
-            $unmapped     = (int) ($summaryMetrics['unmapped'] ?? $mUnmapped);
-            $highRatio    = isset($summaryMetrics['high_ratio']) 
-                ? (float) $summaryMetrics['high_ratio'] 
-                : ($totalItems > 0 ? round($mappedHigh / $totalItems, 4) : 0);
-
-            $engineStats  = $json['engine_stats'] ?? ($json['metadata']['engine_stats'] ?? null);
+            $totalItems      = (int) ($metrics['total_items'] ?? $totalCount);
+            $mappedHigh      = (int) ($metrics['mapped_high'] ?? $mHigh);
+            $mappedMedium    = (int) ($metrics['mapped_medium'] ?? $mMedium);
+            $unmapped        = (int) ($metrics['unmapped'] ?? $mUnmapped);
+            $highRatio       = isset($metrics['high_ratio']) ? (float) $metrics['high_ratio'] : ($totalItems > 0 ? round($mappedHigh / $totalItems, 4) : 0);
+            $engineStats     = $json['engine_stats'] ?? ($json['metadata']['engine_stats'] ?? null);
             $detectionMethod = $json['detection_method'] ?? 'file';
-            $promptText      = $json['prompt_text'] ?? null;
 
-            $runData = [
+            // Simpan data run estimasi baru
+            $runModel = new EstimationRunModel();
+            $runId    = $runModel->insert([
                 'project_id'       => (int) $project['id'],
                 'run_timestamp'    => date('Y-m-d H:i:s'),
                 'total_items'      => $totalItems,
@@ -131,53 +120,43 @@ class EstimationController extends ResourceController
                 'engine_stats'     => $engineStats ? json_encode($engineStats) : null,
                 'detection_method' => $detectionMethod,
                 'created_at'       => date('Y-m-d H:i:s'),
-            ];
+            ]);
+            $runUuid  = $runModel->find($runId)['uuid'];
 
-            $runModel = new EstimationRunModel();
-            $runId    = $runModel->insert($runData); // returns inserted integer id
-            $run      = $runModel->find($runId);
-            $runUuid  = $run['uuid'];
-
-            // If method is prompt and prompt_text exists, save to project_prompts table
-            if ($detectionMethod === 'prompt' && !empty($promptText)) {
-                $promptModel = new \App\Models\ProjectPromptModel();
-                $promptModel->insert([
+            // Simpan riwayat prompt jika metode estimasi berbasis teks prompt
+            if ($detectionMethod === 'prompt' && !empty($json['prompt_text'])) {
+                (new ProjectPromptModel())->insert([
                     'run_id'      => (int) $runId,
-                    'prompt_text' => $promptText,
+                    'prompt_text' => $json['prompt_text'],
                 ]);
             }
 
-            // 2. Insert WBS Sections & Items
+            // Simpan hierarki WBS Sections, Items, dan Kandidat AHSP
             $wbsSectionModel     = new WbsSectionModel();
             $estimationItemModel = new EstimationItemModel();
             $candidateModel      = new ItemAhspCandidateModel();
+            $sortOrder           = 1;
 
-            $sortOrder = 1;
             foreach ($sections as $sec) {
-                $sectionData = [
+                $sectionId = $wbsSectionModel->insert([
                     'run_id'          => (int) $runId,
                     'section_id_code' => $sec['id'] ?? ('sec-' . ($sec['code'] ?? $sortOrder)),
                     'code'            => $sec['code'] ?? chr(64 + $sortOrder),
                     'name'            => $sec['name'] ?? '',
                     'sort_order'      => $sortOrder++,
-                ];
-                $sectionId   = $wbsSectionModel->insert($sectionData); // returns inserted integer id
-                $section     = $wbsSectionModel->find($sectionId);
-                $sectionUuid = $section['uuid'];
+                ]);
 
-                // Insert Items
-                $items = $sec['items'] ?? [];
-                foreach ($items as $iIdx => $item) {
-                    $itemAhsp = $item['ahsp_mapping'] ?? ($item['final_mapping'] ?? []);
-
+                foreach (($sec['items'] ?? []) as $iIdx => $item) {
+                    $itemAhsp   = $item['ahsp_mapping'] ?? ($item['final_mapping'] ?? []);
                     $ahspCode   = $item['ahsp_code'] ?? ($itemAhsp['ahsp_code'] ?? null);
                     $ahspName   = $item['ahsp_name'] ?? ($itemAhsp['ahsp_name'] ?? null);
                     $ahspUnit   = $item['ahsp_unit'] ?? ($itemAhsp['ahsp_unit'] ?? ($item['unit'] ?? null));
                     $ahspScore  = isset($item['ahsp_score']) ? (float) $item['ahsp_score'] : (isset($itemAhsp['ahsp_score']) ? (float) $itemAhsp['ahsp_score'] : null);
                     $ahspStatus = $item['ahsp_status'] ?? ($itemAhsp['ahsp_status'] ?? 'unmapped');
 
-                    $rawAhspCode = trim($ahspCode ?? '');
-                    if (empty($rawAhspCode) || $rawAhspCode === '-' || $ahspStatus === 'unmapped') {
+                    // Auto generate kode AHSP cadangan jika belum terpetakan
+                    $rawCode = trim($ahspCode ?? '');
+                    if (empty($rawCode) || $rawCode === '-' || $ahspStatus === 'unmapped') {
                         $ahspCode = generate_ahsp_code(
                             $item['name'] ?? '',
                             $sec['name'] ?? '',
@@ -188,7 +167,7 @@ class EstimationController extends ResourceController
                         );
                     }
 
-                    $itemData = [
+                    $itemId = $estimationItemModel->insert([
                         'section_id'         => (int) $sectionId,
                         'item_uid'           => $item['id'] ?? null,
                         'item_no'            => (int) ($item['no'] ?? ($iIdx + 1)),
@@ -205,22 +184,14 @@ class EstimationController extends ResourceController
                         'ahsp_status'        => $ahspStatus,
                         'unit_price'         => (float) ($item['unit_price'] ?? 0),
                         'pipeline_debug_log' => isset($item['pipeline_debug_log']) ? json_encode($item['pipeline_debug_log']) : null,
-                    ];
+                    ]);
 
-                    $itemId   = $estimationItemModel->insert($itemData); // returns inserted integer id
-                    $dbItem   = $estimationItemModel->find($itemId);
-                    $itemUuid = $dbItem['uuid'];
-
-                    // Insert Candidates if available
-                    $candidates = $item['ahsp_candidates'] 
-                        ?? ($itemAhsp['candidates'] 
-                        ?? ($itemAhsp['ahsp_candidates'] 
-                        ?? ($item['candidates'] ?? [])));
-
+                    // Simpan daftar kandidat AHSP jika tersedia
+                    $candidates = $item['ahsp_candidates'] ?? ($itemAhsp['candidates'] ?? ($itemAhsp['ahsp_candidates'] ?? ($item['candidates'] ?? [])));
                     if (!empty($candidates) && is_array($candidates)) {
                         $rank = 1;
                         foreach ($candidates as $cand) {
-                            $candData = [
+                            $candidateModel->insert([
                                 'item_id'        => (int) $itemId,
                                 'rank'           => (int) ($cand['rank'] ?? $rank++),
                                 'id_pekerjaan'   => $cand['id_pekerjaan'] ?? ($cand['code'] ?? ''),
@@ -229,26 +200,22 @@ class EstimationController extends ResourceController
                                 'score'          => (float) ($cand['score'] ?? 0),
                                 'base_score'     => isset($cand['base_score']) ? (float) $cand['base_score'] : null,
                                 'reranker'       => $cand['reranker'] ?? null,
-                            ];
-                            $candidateModel->insert($candData);
+                            ]);
                         }
                     }
                 }
             }
 
-            // Always reset project status to 'Tahap Estimasi' on new/re-detection run so user can review the results
+            // Reset status proyek ke 'Tahap Estimasi' agar user dapat meninjau hasil
             $projectSummary = $json['project_summary'] 
                 ?? ($json['raw_llm_response']['project_summary'] 
                 ?? ($json['metadata']['project_summary'] ?? null));
 
-            $projectUpdateFields = ['status' => 'Tahap Estimasi'];
-            if (!empty($projectSummary)) {
-                $projectUpdateFields['summary'] = $projectSummary;
-            }
-            $projectModel->update($project['id'], $projectUpdateFields);
+            $updateData = ['status' => 'Tahap Estimasi'];
+            if (!empty($projectSummary)) $updateData['summary'] = $projectSummary;
+            $projectModel->update($project['id'], $updateData);
 
             $db->transComplete();
-
             if ($db->transStatus() === false) {
                 return $this->fail('Gagal menyimpan estimasi ke database.', 500);
             }
@@ -264,7 +231,6 @@ class EstimationController extends ResourceController
                     'run_uuid'     => $runUuid,
                 ],
             ]);
-
         } catch (\Exception $e) {
             $db->transRollback();
             return $this->fail([
@@ -274,23 +240,15 @@ class EstimationController extends ResourceController
         }
     }
 
-    /**
-     * GET /api/projects/(:segment)/latest-estimation
-     * Get the latest estimation run reconstructed in standard WBS JSON format
-     * Accepts Project ID or UUID
-     */
+    // GET /api/projects/(:segment)/latest-estimation: Ambil estimasi terakhir dalam format WBS JSON
     public function getLatestEstimation($projectUuidOrId = null)
     {
-        $projectModel = new ProjectModel();
-        $project = $projectModel->findByIdOrUuid($projectUuidOrId);
-
+        $project = (new ProjectModel())->findByIdOrUuid($projectUuidOrId);
         if (!$project) {
             return $this->failNotFound('Proyek tidak ditemukan.');
         }
 
-        $db = \Config\Database::connect();
-
-        $latestRun = $db->table('estimation_runs')
+        $latestRun = Database::connect()->table('estimation_runs')
             ->where('project_id', $project['id'])
             ->orderBy('run_timestamp', 'DESC')
             ->get()
@@ -308,20 +266,13 @@ class EstimationController extends ResourceController
         return $this->formatRunData($latestRun['id']);
     }
 
-    /**
-     * GET /api/estimation-runs/(:segment)
-     * Get specific estimation run by ID or UUID
-     */
+    // GET /api/estimation-runs/(:segment): Ambil detail run estimasi spesifik berdasarkan ID atau UUID
     public function getEstimationRun($runIdOrUuid = null)
     {
         return $this->formatRunData($runIdOrUuid);
     }
 
-    /**
-     * POST /api/estimation-items
-     * POST /api/projects/(:segment)/items
-     * Create a new estimation item in a section
-     */
+    // POST /api/estimation-items & POST /api/projects/(:segment)/items: Tambah item estimasi baru ke section
     public function createItem($projectUuidOrId = null)
     {
         $json = $this->request->getJSON(true) ?: $this->request->getPost();
@@ -329,26 +280,19 @@ class EstimationController extends ResourceController
             return $this->fail('Payload JSON tidak valid.', 400);
         }
 
-        $db = \Config\Database::connect();
+        $db        = Database::connect();
         $itemModel = new EstimationItemModel();
-        $projectModel = new \App\Models\ProjectModel();
-
         $projectId = $json['project_id'] ?? $projectUuidOrId ?? null;
-        $project = null;
-        if ($projectId) {
-            $project = $projectModel->findByIdOrUuid($projectId);
-        }
-
+        $project   = $projectId ? (new ProjectModel())->findByIdOrUuid($projectId) : null;
         $sectionId = $json['section_id'] ?? null;
-        $category = trim($json['target_category'] ?? $json['category'] ?? $json['section_name'] ?? '');
+        $category  = trim($json['target_category'] ?? $json['category'] ?? $json['section_name'] ?? '');
 
-        // 1. Verify section if provided
-        $secRow = null;
-        if (!empty($sectionId) && is_numeric($sectionId)) {
-            $secRow = $db->table('wbs_sections')->where('id', (int) $sectionId)->get()->getRowArray();
-        }
+        // 1. Verifikasi section jika dikirim langsung
+        $secRow = (!empty($sectionId) && is_numeric($sectionId))
+            ? $db->table('wbs_sections')->where('id', (int) $sectionId)->get()->getRowArray()
+            : null;
 
-        // 2. If section not found or invalid, resolve using project
+        // 2. Resolusi otomatis section dari proyek jika belum ada
         if (!$secRow && $project) {
             $latestRun = $db->table('estimation_runs')
                 ->where('project_id', $project['id'])
@@ -357,7 +301,7 @@ class EstimationController extends ResourceController
                 ->getRowArray();
 
             if (!$latestRun) {
-                $runUuid = \App\Models\ProjectModel::generateUuidV4();
+                $runUuid = ProjectModel::generateUuidV4();
                 $db->table('estimation_runs')->insert([
                     'uuid'          => $runUuid,
                     'project_id'    => $project['id'],
@@ -365,8 +309,7 @@ class EstimationController extends ResourceController
                     'total_items'   => 0,
                     'created_at'    => date('Y-m-d H:i:s'),
                 ]);
-                $runId = (int) $db->insertID();
-                $latestRun = ['id' => $runId, 'uuid' => $runUuid];
+                $latestRun = ['id' => (int) $db->insertID(), 'uuid' => $runUuid];
             }
 
             $sections = $db->table('wbs_sections')
@@ -390,7 +333,7 @@ class EstimationController extends ResourceController
 
             if (!$secRow) {
                 $secName = !empty($category) ? strtoupper($category) : 'PEKERJAAN UMUM';
-                $secUuid = \App\Models\ProjectModel::generateUuidV4();
+                $secUuid = ProjectModel::generateUuidV4();
                 $db->table('wbs_sections')->insert([
                     'uuid'            => $secUuid,
                     'run_id'          => $latestRun['id'],
@@ -399,12 +342,11 @@ class EstimationController extends ResourceController
                     'name'            => $secName,
                     'sort_order'      => 1
                 ]);
-                $newSecId = (int) $db->insertID();
-                $secRow = $db->table('wbs_sections')->where('id', $newSecId)->get()->getRowArray();
+                $secRow = $db->table('wbs_sections')->where('id', (int) $db->insertID())->get()->getRowArray();
             }
         }
 
-        // 3. Fallback to any existing wbs_section if still null
+        // 3. Fallback ke sembarang wbs_section jika masih null
         if (!$secRow) {
             $secRow = $db->table('wbs_sections')->orderBy('id', 'ASC')->get()->getRowArray();
         }
@@ -415,54 +357,40 @@ class EstimationController extends ResourceController
 
         $sectionId = (int) $secRow['id'];
 
-        // Get max item_no in this section
-        $maxNoRow = $db->table('estimation_items')
-            ->where('section_id', $sectionId)
-            ->selectMax('item_no')
-            ->get()
-            ->getRowArray();
-        $nextNo = ((int) ($maxNoRow['item_no'] ?? 0)) + 1;
+        // Tentukan nomor urut item berikutnya di section ini
+        $maxNoRow = $db->table('estimation_items')->where('section_id', $sectionId)->selectMax('item_no')->get()->getRowArray();
+        $nextNo   = ((int) ($maxNoRow['item_no'] ?? 0)) + 1;
 
-        $itemName = trim($json['item_name'] ?? $json['name'] ?? 'Pekerjaan Baru');
-        $ahspCode = trim($json['ahsp_code'] ?? '');
+        $itemName  = trim($json['item_name'] ?? $json['name'] ?? 'Pekerjaan Baru');
+        $ahspCode  = trim($json['ahsp_code'] ?? '');
         $unitPrice = (float) ($json['unit_price'] ?? 0);
-        $volume = (float) ($json['volume'] ?? 1.0);
-        $unit = trim($json['unit'] ?? 'm2');
-        $ahspName = trim($json['ahsp_name'] ?? $itemName);
+        $volume    = (float) ($json['volume'] ?? 1.0);
+        $unit      = trim($json['unit'] ?? 'm2');
+        $ahspName  = trim($json['ahsp_name'] ?? $itemName);
 
-        // Price and AHSP auto resolution
+        // Resolusi harga satuan & kode AHSP otomatis dari tabel referensi master jika belum ada
         if ($unitPrice <= 0 || empty($ahspCode)) {
             $ahspRow = null;
             if (!empty($ahspCode) && $ahspCode !== '-') {
                 $ahspRow = $db->table('ahsp_items')->where('id_pekerjaan', $ahspCode)->get()->getRowArray();
             }
             if (!$ahspRow && !empty($itemName)) {
-                $ahspRow = $db->table('ahsp_items')->where('nama_pekerjaan', $itemName)->get()->getRowArray();
-                if (!$ahspRow) {
-                    $ahspRow = $db->table('ahsp_items')->like('nama_pekerjaan', $itemName)->get()->getRowArray();
-                }
+                $ahspRow = $db->table('ahsp_items')->where('nama_pekerjaan', $itemName)->get()->getRowArray()
+                    ?: $db->table('ahsp_items')->like('nama_pekerjaan', $itemName)->get()->getRowArray();
             }
             if ($ahspRow) {
-                if ($unitPrice <= 0 && !empty($ahspRow['harga_satuan'])) {
-                    $unitPrice = (float) $ahspRow['harga_satuan'];
-                }
-                if (empty($ahspCode)) {
-                    $ahspCode = $ahspRow['id_pekerjaan'];
-                }
-                if (empty($ahspName) && !empty($ahspRow['nama_pekerjaan'])) {
-                    $ahspName = $ahspRow['nama_pekerjaan'];
-                }
-                if (empty($unit) && !empty($ahspRow['satuan'])) {
-                    $unit = $ahspRow['satuan'];
-                }
+                if ($unitPrice <= 0 && !empty($ahspRow['harga_satuan'])) $unitPrice = (float) $ahspRow['harga_satuan'];
+                if (empty($ahspCode)) $ahspCode = $ahspRow['id_pekerjaan'];
+                if (empty($ahspName) && !empty($ahspRow['nama_pekerjaan'])) $ahspName = $ahspRow['nama_pekerjaan'];
+                if (empty($unit) && !empty($ahspRow['satuan'])) $unit = $ahspRow['satuan'];
             }
         }
 
-        $secCode = $secRow['code'] ?? '1';
-        $itemCode = $secCode . '.' . $nextNo;
+        $secCode    = $secRow['code'] ?? '1';
+        $itemCode   = $secCode . '.' . $nextNo;
         $ahspStatus = !empty($ahspCode) && $ahspCode !== '-' ? 'mapped_high' : ($json['ahsp_status'] ?? 'unmapped');
 
-        $itemData = [
+        $insertId = $itemModel->insert([
             'section_id'   => $sectionId,
             'item_no'      => $nextNo,
             'item_code'    => $itemCode,
@@ -475,14 +403,13 @@ class EstimationController extends ResourceController
             'ahsp_unit'    => $unit,
             'ahsp_status'  => $ahspStatus,
             'confidence'   => 'high',
-        ];
+        ]);
 
-        $insertId = $itemModel->insert($itemData);
         if (!$insertId) {
             return $this->fail('Gagal menambahkan item pekerjaan.', 500);
         }
 
-        // Update total_items count in estimation_runs if run_id exists
+        // Sinkronkan total_items di tabel estimation_runs
         if (!empty($secRow['run_id'])) {
             $totalCount = $db->table('estimation_items as ei')
                 ->join('wbs_sections as ws', 'ws.id = ei.section_id')
@@ -492,7 +419,7 @@ class EstimationController extends ResourceController
         }
 
         $createdItem = $itemModel->find($insertId);
-        $subtotal = (float)$createdItem['volume'] * (float)$createdItem['unit_price'];
+        $subtotal    = (float)$createdItem['volume'] * (float)$createdItem['unit_price'];
 
         $responseData = array_merge($createdItem, [
             'name'         => $createdItem['item_name'],
@@ -512,17 +439,10 @@ class EstimationController extends ResourceController
         ]);
     }
 
-    /**
-     * PUT/PATCH /api/estimation-items/(:segment)
-     * Update an individual estimation item (by ID, UUID, or item_uid)
-     */
+    // PUT/PATCH /api/estimation-items/(:segment): Perbarui item estimasi individual (ID, UUID, atau item_uid)
     public function updateItem($itemIdOrUuid = null)
     {
-        $itemModel = new EstimationItemModel();
-
-        $item = $itemModel->findByIdOrUuid($itemIdOrUuid)
-            ?: $itemModel->where('item_uid', $itemIdOrUuid)->first();
-
+        $item = $this->findItem($itemIdOrUuid);
         if (!$item) {
             return $this->failNotFound('Item estimasi tidak ditemukan.');
         }
@@ -546,19 +466,18 @@ class EstimationController extends ResourceController
         }
 
         if (!empty($updateData)) {
-            // Auto fetch harga_satuan dari ahsp_items jika ahsp_code diupdate dan unit_price belum diisi / 0
+            // Ambil harga_satuan dari ahsp_items otomatis jika ahsp_code diperbarui dan harga belum diisi
             if (isset($updateData['ahsp_code']) && (!isset($updateData['unit_price']) || (float)$updateData['unit_price'] <= 0)) {
-                $db = \Config\Database::connect();
-                $ahspRow = $db->table('ahsp_items')->where('id_pekerjaan', $updateData['ahsp_code'])->get()->getRowArray();
+                $ahspRow = Database::connect()->table('ahsp_items')->where('id_pekerjaan', $updateData['ahsp_code'])->get()->getRowArray();
                 if ($ahspRow && !empty($ahspRow['harga_satuan'])) {
                     $updateData['unit_price'] = (float) $ahspRow['harga_satuan'];
                 }
             }
 
-            $itemModel->update($item['id'], $updateData);
+            (new EstimationItemModel())->update($item['id'], $updateData);
         }
 
-        $updatedItem = $itemModel->find($item['id']);
+        $updatedItem       = (new EstimationItemModel())->find($item['id']);
         $updatedItem['id'] = (int) $updatedItem['id'];
 
         return $this->respond([
@@ -569,22 +488,15 @@ class EstimationController extends ResourceController
         ]);
     }
 
-    /**
-     * DELETE /api/estimation-items/(:segment)
-     * Delete an individual estimation item
-     */
+    // DELETE /api/estimation-items/(:segment): Hapus item estimasi individual
     public function deleteItem($itemIdOrUuid = null)
     {
-        $itemModel = new EstimationItemModel();
-
-        $item = $itemModel->findByIdOrUuid($itemIdOrUuid)
-            ?: $itemModel->where('item_uid', $itemIdOrUuid)->first();
-
+        $item = $this->findItem($itemIdOrUuid);
         if (!$item) {
             return $this->failNotFound('Item estimasi tidak ditemukan.');
         }
 
-        $itemModel->delete($item['id']);
+        (new EstimationItemModel())->delete($item['id']);
 
         return $this->respondDeleted([
             'status'  => 200,
@@ -593,12 +505,10 @@ class EstimationController extends ResourceController
         ]);
     }
 
-    /**
-     * Helper to reconstruct nested WBS JSON from Database
-     */
+    // Helper rekonstruksi struktur bersarang WBS JSON dari database
     private function formatRunData($runIdOrUuid)
     {
-        $db = \Config\Database::connect();
+        $db = Database::connect();
 
         $run = is_numeric($runIdOrUuid)
             ? $db->table('estimation_runs')->where('id', $runIdOrUuid)->get()->getRowArray()
@@ -608,32 +518,16 @@ class EstimationController extends ResourceController
             return $this->failNotFound('Data estimasi tidak ditemukan.');
         }
 
-        $project = $db->table('projects')
-            ->where('id', $run['project_id'])
-            ->get()
-            ->getRowArray();
-
-        $sections = $db->table('wbs_sections')
-            ->where('run_id', $run['id'])
-            ->orderBy('sort_order', 'ASC')
-            ->get()
-            ->getResultArray();
+        $project = $db->table('projects')->where('id', $run['project_id'])->get()->getRowArray();
+        $sections = $db->table('wbs_sections')->where('run_id', $run['id'])->orderBy('sort_order', 'ASC')->get()->getResultArray();
 
         $formattedSections = [];
         foreach ($sections as $sec) {
-            $items = $db->table('estimation_items')
-                ->where('section_id', $sec['id'])
-                ->orderBy('item_no', 'ASC')
-                ->get()
-                ->getResultArray();
+            $items = $db->table('estimation_items')->where('section_id', $sec['id'])->orderBy('item_no', 'ASC')->get()->getResultArray();
 
             $formattedItems = [];
             foreach ($items as $item) {
-                $candidates = $db->table('item_ahsp_candidates')
-                    ->where('item_id', $item['id'])
-                    ->orderBy('rank', 'ASC')
-                    ->get()
-                    ->getResultArray();
+                $candidates = $db->table('item_ahsp_candidates')->where('item_id', $item['id'])->orderBy('rank', 'ASC')->get()->getResultArray();
 
                 $formattedCandidates = array_map(function ($cand) {
                     return [

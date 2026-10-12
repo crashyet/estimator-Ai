@@ -4,22 +4,51 @@ namespace App\Controllers;
 
 use App\Models\ProjectModel;
 use App\Models\AhspItemModel;
+use Config\Database;
+use Config\Services;
 
 class ProjectWebController extends BaseController
 {
-    /**
-     * Display the Project List View (Daftar Proyek Anda)
-     */
+    // Cari proyek berdasarkan ID/UUID atau fallback ke proyek prioritas / terbaru
+    protected function resolveProject($idOrUuid, bool $withFallback = true)
+    {
+        $projectModel = new ProjectModel();
+        $requestedId  = $idOrUuid ?: $this->request->getGet('id') ?: $this->request->getGet('uuid');
+        $project      = null;
+
+        if (!empty($requestedId)) {
+            $project = $projectModel->findByIdOrUuid($requestedId);
+        }
+
+        if (!$project && $withFallback) {
+            $project = $projectModel->like('title', '3333')->first()
+                ?: $projectModel->orderBy('id', 'DESC')->first();
+        }
+
+        return $project;
+    }
+
+    // Normalisasi URL foto proyek (hapus localhost/IP lokal dan pastikan URL lengkap)
+    protected function normalizeProjectImage(?string $raw): string
+    {
+        $img = !empty($raw) ? $raw : '/assets/foto/proyek/no-foto.jpg';
+        if (preg_match('#^https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+)(:\d+)?(/.*)?$#i', $img, $m)) {
+            $img = !empty($m[3]) ? $m[3] : '/assets/foto/proyek/no-foto.jpg';
+        }
+        if (!str_starts_with($img, 'http://') && !str_starts_with($img, 'https://')) {
+            $img = base_url(ltrim($img, '/'));
+        }
+        return $img;
+    }
+
+    // GET / (proyek, projects): Tampilkan daftar proyek beserta total anggaran & filter lokasi
     public function index()
     {
         $projectModel = new ProjectModel();
+        $projects     = $projectModel->orderBy('created_at', 'DESC')->findAll();
+        $db           = Database::connect();
 
-        // Fetch all projects ordered by newest first
-        $projects = $projectModel->orderBy('created_at', 'DESC')->findAll();
-
-        $db = \Config\Database::connect();
-
-        // Attach latest estimation run & calculate total budget if available
+        // Hitung total anggaran estimasi terakhir untuk tiap proyek
         $dataProjects = array_map(function ($project) use ($db) {
             $latestRun = $db->table('estimation_runs')
                 ->where('project_id', $project['id'])
@@ -39,39 +68,27 @@ class ProjectWebController extends BaseController
                 $totalBudget = (float) ($totalBudgetRow['total_budget'] ?? 0);
             }
 
-            $dateStr = !empty($project['created_at']) ? substr($project['created_at'], 0, 10) : date('Y-m-d');
-            $yearStr = !empty($project['created_at']) ? substr($project['created_at'], 0, 4) : date('Y');
-
             return [
-                'id' => (int) $project['id'],
-                'uuid' => $project['uuid'],
-                'title' => $project['title'] ?? 'Proyek Tanpa Judul',
-                'client' => !empty($project['client']) ? $project['client'] : '-',
-                'location' => !empty($project['location']) ? $project['location'] : 'Kab Simeulue',
+                'id'             => (int) $project['id'],
+                'uuid'           => $project['uuid'],
+                'title'          => $project['title'] ?? 'Proyek Tanpa Judul',
+                'client'         => !empty($project['client']) ? $project['client'] : '-',
+                'location'       => !empty($project['location']) ? $project['location'] : 'Kab Simeulue',
                 'contractor_fee' => isset($project['contractor_fee']) ? (float) $project['contractor_fee'] : 10.00,
-                'ppn' => isset($project['ppn']) ? (float) $project['ppn'] : 11.00,
-                'status' => $project['status'] ?? 'Perencanaan',
-                'summary' => $project['summary'] ?? '',
-                'image' => (function ($raw) {
-                    $img = !empty($raw) ? $raw : '/assets/foto/proyek/no-foto.jpg';
-                    if (preg_match('#^https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+)(:\d+)?(/.*)?$#i', $img, $m)) {
-                        $img = !empty($m[3]) ? $m[3] : '/assets/foto/proyek/no-foto.jpg';
-                    }
-                    if (!str_starts_with($img, 'http://') && !str_starts_with($img, 'https://')) {
-                        $img = base_url(ltrim($img, '/'));
-                    }
-                    return $img;
-                })($project['image'] ?? ''),
-                'total_budget' => $totalBudget,
-                'date' => $dateStr,
-                'year' => $yearStr,
-                'is_locked' => false,
-                'created_at' => $project['created_at'],
-                'updated_at' => $project['updated_at'],
+                'ppn'            => isset($project['ppn']) ? (float) $project['ppn'] : 11.00,
+                'status'         => $project['status'] ?? 'Perencanaan',
+                'summary'        => $project['summary'] ?? '',
+                'image'          => $this->normalizeProjectImage($project['image'] ?? ''),
+                'total_budget'   => $totalBudget,
+                'date'           => !empty($project['created_at']) ? substr($project['created_at'], 0, 10) : date('Y-m-d'),
+                'year'           => !empty($project['created_at']) ? substr($project['created_at'], 0, 4) : date('Y'),
+                'is_locked'      => false,
+                'created_at'     => $project['created_at'],
+                'updated_at'     => $project['updated_at'],
             ];
         }, $projects);
 
-        // Collect unique locations for the dropdown filter
+        // Kumpulkan daftar lokasi unik untuk opsi dropdown filter
         $locations = [];
         foreach ($dataProjects as $p) {
             if (!empty($p['location']) && $p['location'] !== '-' && !in_array($p['location'], $locations)) {
@@ -81,84 +98,38 @@ class ProjectWebController extends BaseController
         sort($locations);
 
         return view('projects/index', [
-            'projects' => $dataProjects,
+            'projects'  => $dataProjects,
             'locations' => $locations,
         ]);
     }
 
-    /**
-     * Display the Create Project View (Lengkapi Profil Proyek)
-     */
+    // GET /buat_proyek (proyek/create): Tampilkan formulir pembuatan proyek baru
     public function create()
     {
         $locations = [
-            'Kab Simeulue',
-            'Kab Cilacap',
-            'Kota Jakarta Selatan',
-            'Kota Jakarta Pusat',
-            'Kota Jakarta Barat',
-            'Kota Jakarta Timur',
-            'Kota Jakarta Utara',
-            'Kota Bandung',
-            'Kota Surabaya',
-            'Kota Semarang',
-            'Kota Yogyakarta',
-            'Kab Sleman',
-            'Kab Bantul',
-            'Kota Surakarta (Solo)',
-            'Kota Malang',
-            'Kota Denpasar',
-            'Kab Badung',
-            'Kota Medan',
-            'Kota Palembang',
-            'Kota Makassar',
-            'Kota Balikpapan',
-            'Kota Samarinda',
-            'Kota Banjarmasin',
-            'Kota Pontianak',
-            'Kota Manado',
-            'Kota Padang',
-            'Kota Pekanbaru',
-            'Kota Batam',
-            'Kota Tangerang',
-            'Kota Tangerang Selatan',
-            'Kota Bekasi',
-            'Kota Bogor',
-            'Kota Depok',
-            'Kab Bogor',
-            'Kab Bekasi',
-            'Lainnya...'
+            'Kab Simeulue', 'Kab Cilacap', 'Kota Jakarta Selatan', 'Kota Jakarta Pusat',
+            'Kota Jakarta Barat', 'Kota Jakarta Timur', 'Kota Jakarta Utara', 'Kota Bandung',
+            'Kota Surabaya', 'Kota Semarang', 'Kota Yogyakarta', 'Kab Sleman', 'Kab Bantul',
+            'Kota Surakarta (Solo)', 'Kota Malang', 'Kota Denpasar', 'Kab Badung',
+            'Kota Medan', 'Kota Palembang', 'Kota Makassar', 'Kota Balikpapan',
+            'Kota Samarinda', 'Kota Banjarmasin', 'Kota Pontianak', 'Kota Manado',
+            'Kota Padang', 'Kota Pekanbaru', 'Kota Batam', 'Kota Tangerang',
+            'Kota Tangerang Selatan', 'Kota Bekasi', 'Kota Bogor', 'Kota Depok',
+            'Kab Bogor', 'Kab Bekasi', 'Lainnya...'
         ];
 
-        return view('projects/create', [
-            'locations' => $locations,
-        ]);
+        return view('projects/create', ['locations' => $locations]);
     }
 
-    /**
-     * Display the Estimation & Detection Result View (Hasil Deteksi WBS & Anggaran)
-     */
+    // GET /anggaran (proyek/(:segment)/anggaran, deteksi): Tampilkan hasil deteksi WBS & estimasi anggaran
     public function anggaran($idOrUuid = null)
     {
-        $projectModel = new ProjectModel();
-        $requestedId = $idOrUuid ?: $this->request->getGet('id') ?: $this->request->getGet('uuid');
-
-        $project = null;
-        if (!empty($requestedId)) {
-            $project = $projectModel->findByIdOrUuid($requestedId);
-        }
-
-        // Fallback: If not specified or not found, pick the most relevant project (e.g. titled "33333" / "3333" or newest)
-        if (!$project) {
-            $project = $projectModel->like('title', '3333')->first()
-                ?: $projectModel->orderBy('id', 'DESC')->first();
-        }
-
+        $project = $this->resolveProject($idOrUuid, true);
         if (!$project) {
             return redirect()->to(base_url('buat_proyek'));
         }
 
-        // If project status is already at RAB stage, redirect directly to RAB page UNLESS explicit view parameter is passed (e.g. from navbar link &view=anggaran)
+        // Alihkan langsung ke halaman RAB jika status proyek sudah tahap RAB kecuali ada parameter view eksplisit
         $explicitView = $this->request->getGet('view') ?: $this->request->getGet('mode') ?: $this->request->getGet('override') ?: $this->request->getGet('force');
         if (empty($explicitView)) {
             $statusLower = strtolower(trim($project['status'] ?? ''));
@@ -167,355 +138,96 @@ class ProjectWebController extends BaseController
             }
         }
 
-        $db = \Config\Database::connect();
-
-        // 1. Fetch latest estimation run
-        $latestRun = $db->table('estimation_runs')
-            ->where('project_id', $project['id'])
-            ->orderBy('id', 'DESC')
-            ->get()
-            ->getRowArray();
-
-        $sections = [];
+        $db        = Database::connect();
+        $latestRun = $db->table('estimation_runs')->where('project_id', $project['id'])->orderBy('id', 'DESC')->get()->getRowArray();
+        $sections  = [];
 
         if ($latestRun) {
-            $dbSections = $db->table('wbs_sections')
-                ->where('run_id', $latestRun['id'])
-                ->orderBy('sort_order', 'ASC')
-                ->get()
-                ->getResultArray();
+            $dbSections = $db->table('wbs_sections')->where('run_id', $latestRun['id'])->orderBy('sort_order', 'ASC')->get()->getResultArray();
 
             foreach ($dbSections as $sIdx => $sec) {
-                $dbItems = $db->table('estimation_items')
-                    ->where('section_id', $sec['id'])
-                    ->orderBy('item_no', 'ASC')
-                    ->get()
-                    ->getResultArray();
+                $dbItems = $db->table('estimation_items')->where('section_id', $sec['id'])->orderBy('item_no', 'ASC')->get()->getResultArray();
+                $items   = [];
 
-                $items = [];
                 foreach ($dbItems as $iIdx => $item) {
                     $items[] = [
-                        'id' => (int) $item['id'],
-                        'uuid' => $item['uuid'],
-                        'no' => (int) ($item['item_no'] ?: ($iIdx + 1)),
-                        'code' => $item['item_code'] ?: ($sec['code'] . '.' . ($iIdx + 1)),
-                        'name' => $item['item_name'],
-                        'volume' => (float) $item['volume'],
-                        'unit' => $item['unit'] ?: 'm2',
-                        'unit_price' => (float) $item['unit_price'],
-                        'ahsp_code' => $item['ahsp_code'] ?: '-',
-                        'ahsp_name' => $item['ahsp_name'] ?: $item['item_name'],
-                        'ahsp_unit' => $item['ahsp_unit'] ?: $item['unit'],
-                        'ahsp_score' => (float) $item['ahsp_score'],
-                        'ahsp_status' => $item['ahsp_status'] ?: 'mapped_high',
+                        'id'           => (int) $item['id'],
+                        'uuid'         => $item['uuid'],
+                        'no'           => (int) ($item['item_no'] ?: ($iIdx + 1)),
+                        'code'         => $item['item_code'] ?: ($sec['code'] . '.' . ($iIdx + 1)),
+                        'name'         => $item['item_name'],
+                        'volume'       => (float) $item['volume'],
+                        'unit'         => $item['unit'] ?: 'm2',
+                        'unit_price'   => (float) $item['unit_price'],
+                        'ahsp_code'    => $item['ahsp_code'] ?: '-',
+                        'ahsp_name'    => $item['ahsp_name'] ?: $item['item_name'],
+                        'ahsp_unit'    => $item['ahsp_unit'] ?: $item['unit'],
+                        'ahsp_score'   => (float) $item['ahsp_score'],
+                        'ahsp_status'  => $item['ahsp_status'] ?: 'mapped_high',
                         'warning_note' => $item['warning_note'] ?: '',
                     ];
                 }
 
                 $sections[] = [
-                    'id' => (int) $sec['id'],
-                    'code' => $sec['code'] ?: chr(65 + $sIdx),
-                    'name' => strtoupper($sec['name']),
+                    'id'    => (int) $sec['id'],
+                    'code'  => $sec['code'] ?: chr(65 + $sIdx),
+                    'name'  => strtoupper($sec['name']),
                     'items' => $items,
                 ];
             }
         }
 
-        // Fallback: If project has no database run or items are empty, provide standard WBS sections matching the reference view
+        // Fallback: Jika belum ada hasil estimasi di DB, gunakan data contoh WBS terstruktur
         if (empty($sections)) {
             $sections = [
                 [
-                    'id' => 'sec-A',
-                    'code' => 'A',
-                    'name' => 'PEKERJAAN PERSIAPAN',
+                    'id'    => 'sec-A', 'code' => 'A', 'name' => 'PEKERJAAN PERSIAPAN',
                     'items' => [
-                        [
-                            'id' => 101,
-                            'no' => 1,
-                            'code' => 'A.1',
-                            'name' => 'Pembersihan (Penyapan) Area Tanam',
-                            'volume' => 0.00,
-                            'unit' => 'm2',
-                            'unit_price' => 0,
-                            'ahsp_code' => 'A.2.2.1.1',
-                            'ahsp_name' => 'Pembersihan dan Perataan Lapangan',
-                            'ahsp_status' => 'mapped_high',
-                            'has_warning' => false,
-                            'warning_note' => ''
-                        ],
-                        [
-                            'id' => 102,
-                            'no' => 2,
-                            'code' => 'A.2',
-                            'name' => 'Pasangan Bouwplank',
-                            'volume' => 0.00,
-                            'unit' => 'm1',
-                            'unit_price' => 0,
-                            'ahsp_code' => 'A.2.2.1.4',
-                            'ahsp_name' => 'Pengukuran dan Pemasangan Bouwplank',
-                            'ahsp_status' => 'mapped_high',
-                            'has_warning' => false,
-                            'warning_note' => ''
-                        ],
+                        ['id' => 101, 'no' => 1, 'code' => 'A.1', 'name' => 'Pembersihan (Penyapan) Area Tanam', 'volume' => 0.00, 'unit' => 'm2', 'unit_price' => 0, 'ahsp_code' => 'A.2.2.1.1', 'ahsp_name' => 'Pembersihan dan Perataan Lapangan', 'ahsp_status' => 'mapped_high', 'has_warning' => false, 'warning_note' => ''],
+                        ['id' => 102, 'no' => 2, 'code' => 'A.2', 'name' => 'Pasangan Bouwplank', 'volume' => 0.00, 'unit' => 'm1', 'unit_price' => 0, 'ahsp_code' => 'A.2.2.1.4', 'ahsp_name' => 'Pengukuran dan Pemasangan Bouwplank', 'ahsp_status' => 'mapped_high', 'has_warning' => false, 'warning_note' => ''],
                     ]
                 ],
                 [
-                    'id' => 'sec-B',
-                    'code' => 'B',
-                    'name' => 'PEKERJAAN TANAH & PONDASI',
+                    'id'    => 'sec-B', 'code' => 'B', 'name' => 'PEKERJAAN TANAH & PONDASI',
                     'items' => [
-                        [
-                            'id' => 201,
-                            'no' => 1,
-                            'code' => 'B.1',
-                            'name' => 'Penggalian cadas atau tanah keras > 3m tiap tambah dalam 1m secara semi mekanis',
-                            'volume' => 0.00,
-                            'unit' => 'm3',
-                            'unit_price' => 0,
-                            'ahsp_code' => 'A.2.3.1.2',
-                            'ahsp_name' => 'Penggalian Tanah Biasa Sedalam 1m',
-                            'ahsp_status' => 'mapped_high',
-                            'has_warning' => false,
-                            'warning_note' => ''
-                        ],
-                        [
-                            'id' => 202,
-                            'no' => 2,
-                            'code' => 'B.2',
-                            'name' => 'Urugan tanah biasa atau tanah liat berpasir tanpa pemadatan secara manual',
-                            'volume' => 0.00,
-                            'unit' => 'm3',
-                            'unit_price' => 0,
-                            'ahsp_code' => 'A.2.3.1.9',
-                            'ahsp_name' => 'Pengurugan Kembali Galian Tanah',
-                            'ahsp_status' => 'mapped_high',
-                            'has_warning' => false,
-                            'warning_note' => ''
-                        ],
-                        [
-                            'id' => 203,
-                            'no' => 3,
-                            'code' => 'B.3',
-                            'name' => 'Pemasangan Lantai Kerja Beton Bertulang Bawah Footplat',
-                            'volume' => 0.00,
-                            'unit' => 'm3',
-                            'unit_price' => 0,
-                            'ahsp_code' => '',
-                            'ahsp_name' => '',
-                            'ahsp_status' => 'unmapped',
-                            'has_warning' => true,
-                            'warning_note' => 'Item belum dipetakan ke standar AHSP'
-                        ],
-                        [
-                            'id' => 204,
-                            'no' => 4,
-                            'code' => 'B.4',
-                            'name' => 'Urugan kembali galian tanah tanpa pemadatan secara manual',
-                            'volume' => 0.00,
-                            'unit' => 'm3',
-                            'unit_price' => 0,
-                            'ahsp_code' => 'A.2.3.1.11',
-                            'ahsp_name' => 'Pemadatan Tanah',
-                            'ahsp_status' => 'mapped_high',
-                            'has_warning' => false,
-                            'warning_note' => ''
-                        ],
+                        ['id' => 201, 'no' => 1, 'code' => 'B.1', 'name' => 'Penggalian cadas atau tanah keras > 3m tiap tambah dalam 1m secara semi mekanis', 'volume' => 0.00, 'unit' => 'm3', 'unit_price' => 0, 'ahsp_code' => 'A.2.3.1.2', 'ahsp_name' => 'Penggalian Tanah Biasa Sedalam 1m', 'ahsp_status' => 'mapped_high', 'has_warning' => false, 'warning_note' => ''],
+                        ['id' => 202, 'no' => 2, 'code' => 'B.2', 'name' => 'Urugan tanah biasa atau tanah liat berpasir tanpa pemadatan secara manual', 'volume' => 0.00, 'unit' => 'm3', 'unit_price' => 0, 'ahsp_code' => 'A.2.3.1.9', 'ahsp_name' => 'Pengurugan Kembali Galian Tanah', 'ahsp_status' => 'mapped_high', 'has_warning' => false, 'warning_note' => ''],
+                        ['id' => 203, 'no' => 3, 'code' => 'B.3', 'name' => 'Pemasangan Lantai Kerja Beton Bertulang Bawah Footplat', 'volume' => 0.00, 'unit' => 'm3', 'unit_price' => 0, 'ahsp_code' => '', 'ahsp_name' => '', 'ahsp_status' => 'unmapped', 'has_warning' => true, 'warning_note' => 'Item belum dipetakan ke standar AHSP'],
+                        ['id' => 204, 'no' => 4, 'code' => 'B.4', 'name' => 'Urugan kembali galian tanah tanpa pemadatan secara manual', 'volume' => 0.00, 'unit' => 'm3', 'unit_price' => 0, 'ahsp_code' => 'A.2.3.1.11', 'ahsp_name' => 'Pemadatan Tanah', 'ahsp_status' => 'mapped_high', 'has_warning' => false, 'warning_note' => ''],
                     ]
                 ],
                 [
-                    'id' => 'sec-C',
-                    'code' => 'C',
-                    'name' => 'PEKERJAAN STRUKTUR BETON BERTULANG',
+                    'id'    => 'sec-C', 'code' => 'C', 'name' => 'PEKERJAAN STRUKTUR BETON BERTULANG',
                     'items' => [
-                        [
-                            'id' => 301,
-                            'no' => 1,
-                            'code' => 'C.1',
-                            'name' => 'Pengecoran Beton Menggunakan Ready Mixed Fc 25 MPa',
-                            'volume' => 0.00,
-                            'unit' => 'm3',
-                            'unit_price' => 0,
-                            'ahsp_code' => 'A.4.1.1.5',
-                            'ahsp_name' => 'Pengecoran Beton Readymix K-300 / Fc 25 MPa',
-                            'ahsp_status' => 'mapped_high',
-                            'has_warning' => false,
-                            'warning_note' => ''
-                        ],
-                        [
-                            'id' => 302,
-                            'no' => 2,
-                            'code' => 'C.2',
-                            'name' => 'Pengecoran Beton menggunakan Ready Mixed (untuk Bangunan Gedung)',
-                            'volume' => 0.00,
-                            'unit' => 'm3',
-                            'unit_price' => 0,
-                            'ahsp_code' => 'A.4.1.1.7',
-                            'ahsp_name' => 'Pengecoran Beton Kolom Readymix',
-                            'ahsp_status' => 'mapped_high',
-                            'has_warning' => false,
-                            'warning_note' => ''
-                        ],
-                        [
-                            'id' => 303,
-                            'no' => 3,
-                            'code' => 'C.3',
-                            'name' => 'Pengecoran Beton menggunakan Ready Mixed (untuk Bangunan Gedung)',
-                            'volume' => 0.00,
-                            'unit' => 'm3',
-                            'unit_price' => 0,
-                            'ahsp_code' => 'A.4.1.1.8',
-                            'ahsp_name' => 'Pengecoran Beton Balok Readymix',
-                            'ahsp_status' => 'mapped_high',
-                            'has_warning' => false,
-                            'warning_note' => ''
-                        ],
-                        [
-                            'id' => 304,
-                            'no' => 4,
-                            'code' => 'C.4',
-                            'name' => 'Pengecoran Beton menggunakan Ready Mixed (untuk Bangunan Gedung)',
-                            'volume' => 0.00,
-                            'unit' => 'm3',
-                            'unit_price' => 0,
-                            'ahsp_code' => 'A.4.1.1.9',
-                            'ahsp_name' => 'Pengecoran Pelat Lantai Readymix',
-                            'ahsp_status' => 'mapped_high',
-                            'has_warning' => false,
-                            'warning_note' => ''
-                        ],
-                        [
-                            'id' => 305,
-                            'no' => 5,
-                            'code' => 'C.5',
-                            'name' => 'Pengecoran Beton menggunakan Ready Mixed (untuk Bangunan Gedung)',
-                            'volume' => 0.00,
-                            'unit' => 'm3',
-                            'unit_price' => 0,
-                            'ahsp_code' => 'A.4.1.1.10',
-                            'ahsp_name' => 'Pengecoran Tangga Beton Readymix',
-                            'ahsp_status' => 'mapped_high',
-                            'has_warning' => false,
-                            'warning_note' => ''
-                        ],
-                        [
-                            'id' => 306,
-                            'no' => 6,
-                            'code' => 'C.6',
-                            'name' => 'Pengecoran Beton menggunakan Ready Mixed (untuk Bangunan Gedung)',
-                            'volume' => 0.00,
-                            'unit' => 'm3',
-                            'unit_price' => 0,
-                            'ahsp_code' => 'A.4.1.1.11',
-                            'ahsp_name' => 'Pengecoran Sloof Beton Readymix',
-                            'ahsp_status' => 'mapped_high',
-                            'has_warning' => false,
-                            'warning_note' => ''
-                        ],
+                        ['id' => 301, 'no' => 1, 'code' => 'C.1', 'name' => 'Pengecoran Beton Menggunakan Ready Mixed Fc 25 MPa', 'volume' => 0.00, 'unit' => 'm3', 'unit_price' => 0, 'ahsp_code' => 'A.4.1.1.5', 'ahsp_name' => 'Pengecoran Beton Readymix K-300 / Fc 25 MPa', 'ahsp_status' => 'mapped_high', 'has_warning' => false, 'warning_note' => ''],
+                        ['id' => 302, 'no' => 2, 'code' => 'C.2', 'name' => 'Pengecoran Beton menggunakan Ready Mixed (untuk Bangunan Gedung)', 'volume' => 0.00, 'unit' => 'm3', 'unit_price' => 0, 'ahsp_code' => 'A.4.1.1.7', 'ahsp_name' => 'Pengecoran Beton Kolom Readymix', 'ahsp_status' => 'mapped_high', 'has_warning' => false, 'warning_note' => ''],
+                        ['id' => 303, 'no' => 3, 'code' => 'C.3', 'name' => 'Pengecoran Beton menggunakan Ready Mixed (untuk Bangunan Gedung)', 'volume' => 0.00, 'unit' => 'm3', 'unit_price' => 0, 'ahsp_code' => 'A.4.1.1.8', 'ahsp_name' => 'Pengecoran Beton Balok Readymix', 'ahsp_status' => 'mapped_high', 'has_warning' => false, 'warning_note' => ''],
+                        ['id' => 304, 'no' => 4, 'code' => 'C.4', 'name' => 'Pengecoran Beton menggunakan Ready Mixed (untuk Bangunan Gedung)', 'volume' => 0.00, 'unit' => 'm3', 'unit_price' => 0, 'ahsp_code' => 'A.4.1.1.9', 'ahsp_name' => 'Pengecoran Pelat Lantai Readymix', 'ahsp_status' => 'mapped_high', 'has_warning' => false, 'warning_note' => ''],
+                        ['id' => 305, 'no' => 5, 'code' => 'C.5', 'name' => 'Pengecoran Beton menggunakan Ready Mixed (untuk Bangunan Gedung)', 'volume' => 0.00, 'unit' => 'm3', 'unit_price' => 0, 'ahsp_code' => 'A.4.1.1.10', 'ahsp_name' => 'Pengecoran Tangga Beton Readymix', 'ahsp_status' => 'mapped_high', 'has_warning' => false, 'warning_note' => ''],
+                        ['id' => 306, 'no' => 6, 'code' => 'C.6', 'name' => 'Pengecoran Beton menggunakan Ready Mixed (untuk Bangunan Gedung)', 'volume' => 0.00, 'unit' => 'm3', 'unit_price' => 0, 'ahsp_code' => 'A.4.1.1.11', 'ahsp_name' => 'Pengecoran Sloof Beton Readymix', 'ahsp_status' => 'mapped_high', 'has_warning' => false, 'warning_note' => ''],
                     ]
                 ],
                 [
-                    'id' => 'sec-D',
-                    'code' => 'D',
-                    'name' => 'PEKERJAAN DINDING & PLESTERAN',
+                    'id'    => 'sec-D', 'code' => 'D', 'name' => 'PEKERJAAN DINDING & PLESTERAN',
                     'items' => [
-                        [
-                            'id' => 401,
-                            'no' => 1,
-                            'code' => 'D.1',
-                            'name' => 'Pemasangan Dinding Bata Ringan Tebal 20 cm dengan Mortar Siap Pakai',
-                            'volume' => 0.00,
-                            'unit' => 'm2',
-                            'unit_price' => 0,
-                            'ahsp_code' => 'A.4.4.1.12',
-                            'ahsp_name' => 'Pasangan Dinding Bata Ringan Mortar',
-                            'ahsp_status' => 'mapped_high',
-                            'has_warning' => false,
-                            'warning_note' => ''
-                        ],
-                        [
-                            'id' => 402,
-                            'no' => 2,
-                            'code' => 'D.2',
-                            'name' => 'Pemasangan Dinding Partisi (Double), Gypsumboard t= 12mm',
-                            'volume' => 0.00,
-                            'unit' => 'm2',
-                            'unit_price' => 0,
-                            'ahsp_code' => 'A.4.4.1.20',
-                            'ahsp_name' => 'Partisi Rangka Metal Gypsum 12mm Double',
-                            'ahsp_status' => 'mapped_high',
-                            'has_warning' => false,
-                            'warning_note' => ''
-                        ],
-                        [
-                            'id' => 403,
-                            'no' => 3,
-                            'code' => 'D.3',
-                            'name' => 'Pemasangan Plesteran 1SP : 2PP Tebal 15 mm',
-                            'volume' => 0.00,
-                            'unit' => 'm2',
-                            'unit_price' => 0,
-                            'ahsp_code' => 'A.4.4.2.1',
-                            'ahsp_name' => 'Plesteran 1 Pc : 2 Ps Tebal 15 mm',
-                            'ahsp_status' => 'mapped_high',
-                            'has_warning' => false,
-                            'warning_note' => ''
-                        ],
-                        [
-                            'id' => 404,
-                            'no' => 4,
-                            'code' => 'D.4',
-                            'name' => 'Pemasangan Acian',
-                            'volume' => 0.00,
-                            'unit' => 'm2',
-                            'unit_price' => 0,
-                            'ahsp_code' => 'A.4.4.2.27',
-                            'ahsp_name' => 'Acian Semen Portland',
-                            'ahsp_status' => 'mapped_high',
-                            'has_warning' => false,
-                            'warning_note' => ''
-                        ],
+                        ['id' => 401, 'no' => 1, 'code' => 'D.1', 'name' => 'Pemasangan Dinding Bata Ringan Tebal 20 cm dengan Mortar Siap Pakai', 'volume' => 0.00, 'unit' => 'm2', 'unit_price' => 0, 'ahsp_code' => 'A.4.4.1.12', 'ahsp_name' => 'Pasangan Dinding Bata Ringan Mortar', 'ahsp_status' => 'mapped_high', 'has_warning' => false, 'warning_note' => ''],
+                        ['id' => 402, 'no' => 2, 'code' => 'D.2', 'name' => 'Pemasangan Dinding Partisi (Double), Gypsumboard t= 12mm', 'volume' => 0.00, 'unit' => 'm2', 'unit_price' => 0, 'ahsp_code' => 'A.4.4.1.20', 'ahsp_name' => 'Partisi Rangka Metal Gypsum 12mm Double', 'ahsp_status' => 'mapped_high', 'has_warning' => false, 'warning_note' => ''],
+                        ['id' => 403, 'no' => 3, 'code' => 'D.3', 'name' => 'Pemasangan Plesteran 1SP : 2PP Tebal 15 mm', 'volume' => 0.00, 'unit' => 'm2', 'unit_price' => 0, 'ahsp_code' => 'A.4.4.2.1', 'ahsp_name' => 'Plesteran 1 Pc : 2 Ps Tebal 15 mm', 'ahsp_status' => 'mapped_high', 'has_warning' => false, 'warning_note' => ''],
+                        ['id' => 404, 'no' => 4, 'code' => 'D.4', 'name' => 'Pemasangan Acian', 'volume' => 0.00, 'unit' => 'm2', 'unit_price' => 0, 'ahsp_code' => 'A.4.4.2.27', 'ahsp_name' => 'Acian Semen Portland', 'ahsp_status' => 'mapped_high', 'has_warning' => false, 'warning_note' => ''],
                     ]
                 ],
                 [
-                    'id' => 'sec-E',
-                    'code' => 'E',
-                    'name' => 'PEKERJAAN KUSEN, PINTU & JENDELA',
+                    'id'    => 'sec-E', 'code' => 'E', 'name' => 'PEKERJAAN KUSEN, PINTU & JENDELA',
                     'items' => [
-                        [
-                            'id' => 501,
-                            'no' => 1,
-                            'code' => 'E.1',
-                            'name' => 'Pemasangan Kusen Pintu Aluminium 4 inch Powder Coating',
-                            'volume' => 0.00,
-                            'unit' => 'm1',
-                            'unit_price' => 0,
-                            'ahsp_code' => 'A.4.6.1.1',
-                            'ahsp_name' => 'Kusen Pintu dan Jendela Aluminium',
-                            'ahsp_status' => 'mapped_high',
-                            'has_warning' => false,
-                            'warning_note' => ''
-                        ],
-                        [
-                            'id' => 502,
-                            'no' => 2,
-                            'code' => 'E.2',
-                            'name' => 'Pemasangan Daun Pintu Panel Kayu Solid Kamper',
-                            'volume' => 0.00,
-                            'unit' => 'unit',
-                            'unit_price' => 0,
-                            'ahsp_code' => 'A.4.6.2.2',
-                            'ahsp_name' => 'Daun Pintu Panel Kayu Kamper',
-                            'ahsp_status' => 'mapped_high',
-                            'has_warning' => false,
-                            'warning_note' => ''
-                        ],
+                        ['id' => 501, 'no' => 1, 'code' => 'E.1', 'name' => 'Pemasangan Kusen Pintu Aluminium 4 inch Powder Coating', 'volume' => 0.00, 'unit' => 'm1', 'unit_price' => 0, 'ahsp_code' => 'A.4.6.1.1', 'ahsp_name' => 'Kusen Pintu dan Jendela Aluminium', 'ahsp_status' => 'mapped_high', 'has_warning' => false, 'warning_note' => ''],
+                        ['id' => 502, 'no' => 2, 'code' => 'E.2', 'name' => 'Pemasangan Daun Pintu Panel Kayu Solid Kamper', 'volume' => 0.00, 'unit' => 'unit', 'unit_price' => 0, 'ahsp_code' => 'A.4.6.2.2', 'ahsp_name' => 'Daun Pintu Panel Kayu Kamper', 'ahsp_status' => 'mapped_high', 'has_warning' => false, 'warning_note' => ''],
                     ]
                 ],
             ];
         }
 
-        // Calculate total items and unmapped items
-        $totalItems = 0;
+        // Hitung total item dan identifikasi item unmapped
+        $totalItems    = 0;
         $unmappedItems = [];
 
         foreach ($sections as $sIdx => &$sec) {
@@ -539,25 +251,18 @@ class ProjectWebController extends BaseController
         }
         unset($sec, $it);
 
-        // If the database has an explicit total_items count in latestRun, use it or fallback to counted
         if ($latestRun && !empty($latestRun['total_items'])) {
             $totalItems = (int) $latestRun['total_items'];
         }
 
-        $hasRuns = !empty($latestRun);
-        $showDetect = !$hasRuns || ($this->request->getGet('detect') === '1');
-
+        $hasRuns         = !empty($latestRun);
+        $showDetect      = !$hasRuns || ($this->request->getGet('detect') === '1');
         $detectionMethod = $latestRun['detection_method'] ?? 'file';
         $lastPromptText  = '';
 
         if ($latestRun) {
-            $promptRow = $db->table('project_prompts')
-                ->where('run_id', $latestRun['id'])
-                ->get()
-                ->getRowArray();
-            if ($promptRow) {
-                $lastPromptText = $promptRow['prompt_text'];
-            }
+            $promptRow = $db->table('project_prompts')->where('run_id', $latestRun['id'])->get()->getRowArray();
+            if ($promptRow) $lastPromptText = $promptRow['prompt_text'];
         }
 
         return view('projects/anggaran', [
@@ -573,39 +278,20 @@ class ProjectWebController extends BaseController
         ]);
     }
 
-    /**
-     * Display the AHSP Mapping View (Pemetaan Item Pekerjaan AHSP)
-     */
+    // GET /pemetaan-ahsp (proyek/(:segment)/pemetaan-ahsp): Tampilkan antarmuka pemetaan item pekerjaan AHSP
     public function pemetaanAhsp($idOrUuid = null)
     {
-        $projectModel = new ProjectModel();
-        $requestedId = $idOrUuid ?: $this->request->getGet('id') ?: $this->request->getGet('uuid');
-
-        $project = null;
-        if (!empty($requestedId)) {
-            $project = $projectModel->findByIdOrUuid($requestedId);
-        }
-
-        if (!$project) {
-            $project = $projectModel->orderBy('id', 'DESC')->first();
-        }
-
+        $project = $this->resolveProject($idOrUuid, true);
         if (!$project) {
             return redirect()->to(base_url('proyek'));
         }
 
-        $db = \Config\Database::connect();
+        $db        = Database::connect();
+        $latestRun = $db->table('estimation_runs')->where('project_id', $project['id'])->orderBy('id', 'DESC')->get()->getRowArray();
 
-        // 1. Fetch latest estimation run
-        $latestRun = $db->table('estimation_runs')
-            ->where('project_id', $project['id'])
-            ->orderBy('id', 'DESC')
-            ->get()
-            ->getRowArray();
-
-        // 2. Fetch specific target item or fallback to first item
+        // Cari item target pemetaan spesifik atau fallback ke item pertama yang belum terpetakan
         $requestedItemId = $this->request->getGet('item') ?: $this->request->getGet('item_id');
-        $targetItem = null;
+        $targetItem      = null;
 
         if ($latestRun) {
             $itemQuery = $db->table('estimation_items as ei')
@@ -624,25 +310,21 @@ class ProjectWebController extends BaseController
             }
 
             if (!$targetItem) {
-                // Try finding first unmapped item, or simply first item
                 $targetItem = (clone $itemQuery)
                     ->where('ws.run_id', $latestRun['id'])
                     ->where('ei.ahsp_status', 'unmapped')
                     ->orderBy('ei.id', 'ASC')
                     ->get()
+                    ->getRowArray()
+                    ?: (clone $itemQuery)
+                    ->where('ws.run_id', $latestRun['id'])
+                    ->orderBy('ei.id', 'ASC')
+                    ->get()
                     ->getRowArray();
-
-                if (!$targetItem) {
-                    $targetItem = (clone $itemQuery)
-                        ->where('ws.run_id', $latestRun['id'])
-                        ->orderBy('ei.id', 'ASC')
-                        ->get()
-                        ->getRowArray();
-                }
             }
         }
 
-        // 3. Fetch AHSP candidates for this target item
+        // Ambil kandidat AHSP yang tersimpan di DB atau pencarian AI jika kosong
         $candidates = [];
         if ($targetItem) {
             $candidates = $db->table('item_ahsp_candidates')
@@ -651,23 +333,22 @@ class ProjectWebController extends BaseController
                 ->get()
                 ->getResultArray();
 
-            // If empty in DB, query live from AHSP vector search
             if (empty($candidates)) {
                 try {
-                    $client = \Config\Services::curlrequest();
-                    $envUrl = env('PYTHON_API_URL') ?: 'http://localhost:8200';
+                    $envUrl    = env('PYTHON_API_URL') ?: 'http://localhost:8200';
                     $searchUrl = rtrim($envUrl, '/') . '/api/ahsp/search?q=' . urlencode($targetItem['item_name']) . '&limit=5';
-                    $resp = $client->get($searchUrl, ['http_errors' => false, 'timeout' => 5]);
+                    $resp      = Services::curlrequest()->get($searchUrl, ['http_errors' => false, 'timeout' => 5]);
+
                     if ($resp->getStatusCode() === 200) {
                         $json = json_decode($resp->getBody(), true);
                         if (!empty($json['results'])) {
                             foreach ($json['results'] as $idx => $r) {
                                 $candidates[] = [
-                                    'id_pekerjaan' => $r['id_pekerjaan'] ?? ($r['code'] ?? ''),
+                                    'id_pekerjaan'   => $r['id_pekerjaan'] ?? ($r['code'] ?? ''),
                                     'nama_pekerjaan' => $r['nama_pekerjaan'] ?? ($r['name'] ?? ''),
-                                    'satuan' => $r['satuan'] ?? ($r['unit'] ?? $targetItem['unit']),
-                                    'score' => (float) ($r['score'] ?? 0.8),
-                                    'rank' => $idx + 1,
+                                    'satuan'         => $r['satuan'] ?? ($r['unit'] ?? $targetItem['unit']),
+                                    'score'          => (float) ($r['score'] ?? 0.8),
+                                    'rank'           => $idx + 1,
                                 ];
                             }
                         }
@@ -678,60 +359,36 @@ class ProjectWebController extends BaseController
         }
 
         return view('projects/pemetaan_ahsp', [
-            'project' => $project,
+            'project'    => $project,
             'targetItem' => $targetItem,
             'candidates' => $candidates,
-            'latestRun' => $latestRun,
-            'returnUrl' => base_url('anggaran?id=' . urlencode($project['uuid'] ?: $project['id'])),
+            'latestRun'  => $latestRun,
+            'returnUrl'  => base_url('anggaran?id=' . urlencode($project['uuid'] ?: $project['id'])),
         ]);
     }
 
-    /**
-     * Display the RAB View (Rencana Anggaran Biaya)
-     */
+    // GET /rab (proyek/(:segment)/rab): Tampilkan spreadsheet Rencana Anggaran Biaya interaktif
     public function rab($idOrUuid = null)
     {
         $projectModel = new ProjectModel();
-        $requestedId = $idOrUuid ?: $this->request->getGet('id') ?: $this->request->getGet('uuid');
-
-        $project = null;
-        if (!empty($requestedId)) {
-            $project = $projectModel->findByIdOrUuid($requestedId);
-        }
-
-        if (!$project) {
-            $project = $projectModel->like('title', '3333')->first()
-                ?: $projectModel->orderBy('id', 'DESC')->first();
-        }
-
+        $project      = $this->resolveProject($idOrUuid, true);
         if (!$project) {
             return redirect()->to(base_url('buat_proyek'));
         }
 
-        // Auto update project status to 'Tahap RAB' if it's not already in RAB stage
+        // Otomatis sinkronkan status proyek ke 'Tahap RAB'
         $statusLower = strtolower(trim($project['status'] ?? ''));
         if (empty($statusLower) || !in_array($statusLower, ['rab', 'tahap rab', 'penyusunan rab', 'selesai', 'disetujui'])) {
             $projectModel->update($project['id'], ['status' => 'Tahap RAB']);
             $project['status'] = 'Tahap RAB';
         }
 
-        $db = \Config\Database::connect();
-
-        // 1. Fetch latest estimation run
-        $latestRun = $db->table('estimation_runs')
-            ->where('project_id', $project['id'])
-            ->orderBy('id', 'DESC')
-            ->get()
-            ->getRowArray();
-
-        $sections = [];
+        $db        = Database::connect();
+        $latestRun = $db->table('estimation_runs')->where('project_id', $project['id'])->orderBy('id', 'DESC')->get()->getRowArray();
+        $sections  = [];
 
         if ($latestRun) {
-            $dbSections = $db->table('wbs_sections')
-                ->where('run_id', $latestRun['id'])
-                ->orderBy('sort_order', 'ASC')
-                ->get()
-                ->getResultArray();
+            $dbSections = $db->table('wbs_sections')->where('run_id', $latestRun['id'])->orderBy('sort_order', 'ASC')->get()->getResultArray();
 
             foreach ($dbSections as $sIdx => $sec) {
                 $dbItems = $db->table('estimation_items as ei')
@@ -742,35 +399,27 @@ class ProjectWebController extends BaseController
                     ->get()
                     ->getResultArray();
 
-                $items = [];
+                $items       = [];
                 $secSubtotal = 0;
-                foreach ($dbItems as $iIdx => $item) {
-                    $vol = (float) $item['volume'];
 
-                    // Prioritaskan harga satuan dari item yang tersimpan di database (hasil input / ubah pengguna)
+                foreach ($dbItems as $iIdx => $item) {
+                    $vol   = (float) $item['volume'];
                     $price = 0.0;
+
+                    // Prioritaskan harga satuan item yang tersimpan, fallback ke ahsp_items master
                     if (!empty($item['unit_price']) && (float) $item['unit_price'] > 0) {
                         $price = (float) $item['unit_price'];
                     } elseif (!empty($item['ahsp_price']) && (float) $item['ahsp_price'] > 0) {
-                        // Default: ambil dari DB AHSP jika unit_price masih 0 / belum pernah diisi
                         $price = (float) $item['ahsp_price'];
                         if (!empty($item['id'])) {
                             $db->table('estimation_items')->where('id', $item['id'])->update(['unit_price' => $price]);
                         }
                     } else {
-                        // Fallback: cari ke ahsp_items berdasarkan nama pekerjaan jika ahsp_code belum terpetakan
                         $searchName = !empty($item['ahsp_name']) ? $item['ahsp_name'] : ($item['item_name'] ?? '');
                         if (!empty($searchName)) {
-                            $ahspRow = $db->table('ahsp_items')
-                                ->where('nama_pekerjaan', $searchName)
-                                ->get()
-                                ->getRowArray();
-                            if (!$ahspRow) {
-                                $ahspRow = $db->table('ahsp_items')
-                                    ->like('nama_pekerjaan', $searchName)
-                                    ->get()
-                                    ->getRowArray();
-                            }
+                            $ahspRow = $db->table('ahsp_items')->where('nama_pekerjaan', $searchName)->get()->getRowArray()
+                                ?: $db->table('ahsp_items')->like('nama_pekerjaan', $searchName)->get()->getRowArray();
+
                             if ($ahspRow && !empty($ahspRow['harga_satuan'])) {
                                 $price = (float) $ahspRow['harga_satuan'];
                                 if (!empty($item['id'])) {
@@ -780,222 +429,79 @@ class ProjectWebController extends BaseController
                         }
                     }
 
-                    // Hitung total harga (harga satuan dikalikan volume)
-                    $subtotal = $vol * $price;
+                    $subtotal     = $vol * $price;
                     $secSubtotal += $subtotal;
 
                     $items[] = [
-                        'id' => (int) $item['id'],
-                        'uuid' => $item['uuid'],
-                        'no' => (int) ($item['item_no'] ?: ($iIdx + 1)),
-                        'code' => $item['item_code'] ?: ($sec['code'] . '.' . ($iIdx + 1)),
-                        'name' => $item['item_name'],
-                        'volume' => $vol,
-                        'unit' => $item['unit'] ?: 'm2',
-                        'unit_price' => $price,
-                        'subtotal' => $subtotal,
-                        'bobot' => 0.00,
-                        'ahsp_code' => $item['ahsp_code'] ?: '-',
-                        'ahsp_name' => $item['ahsp_name'] ?: $item['item_name'],
-                        'ahsp_unit' => $item['ahsp_unit'] ?: $item['unit'],
-                        'ahsp_score' => (float) $item['ahsp_score'],
-                        'ahsp_status' => $item['ahsp_status'] ?: 'mapped_high',
+                        'id'           => (int) $item['id'],
+                        'uuid'         => $item['uuid'],
+                        'no'           => (int) ($item['item_no'] ?: ($iIdx + 1)),
+                        'code'         => $item['item_code'] ?: ($sec['code'] . '.' . ($iIdx + 1)),
+                        'name'         => $item['item_name'],
+                        'volume'       => $vol,
+                        'unit'         => $item['unit'] ?: 'm2',
+                        'unit_price'   => $price,
+                        'subtotal'     => $subtotal,
+                        'bobot'        => 0.00,
+                        'ahsp_code'    => $item['ahsp_code'] ?: '-',
+                        'ahsp_name'    => $item['ahsp_name'] ?: $item['item_name'],
+                        'ahsp_unit'    => $item['ahsp_unit'] ?: $item['unit'],
+                        'ahsp_score'   => (float) $item['ahsp_score'],
+                        'ahsp_status'  => $item['ahsp_status'] ?: 'mapped_high',
                         'warning_note' => $item['warning_note'] ?: '',
                     ];
                 }
 
                 $sections[] = [
-                    'id' => (int) $sec['id'],
-                    'code' => $sec['code'] ?: (string) ($sIdx + 1),
-                    'name' => strtoupper($sec['name']),
+                    'id'       => (int) $sec['id'],
+                    'code'     => $sec['code'] ?: (string) ($sIdx + 1),
+                    'name'     => strtoupper($sec['name']),
                     'subtotal' => $secSubtotal,
-                    'bobot' => 0.00,
-                    'items' => $items,
+                    'bobot'    => 0.00,
+                    'items'    => $items,
                 ];
             }
         }
 
-        // Fallback: If DB run is empty or has no sections, use reference data matching screenshot
+        // Fallback: Jika belum ada run di DB, gunakan data referensi standar
         if (empty($sections)) {
             $sections = [
                 [
-                    'id' => 'sec-1',
-                    'code' => '1',
-                    'name' => 'PEKERJAAN PERSIAPAN',
-                    'subtotal' => 0.00,
-                    'bobot' => 0.00,
+                    'id' => 'sec-1', 'code' => '1', 'name' => 'PEKERJAAN PERSIAPAN', 'subtotal' => 0.00, 'bobot' => 0.00,
                     'items' => [
-                        [
-                            'id' => 101,
-                            'no' => 1,
-                            'code' => '1.1',
-                            'name' => 'Pembersihan (Penyapuan) Area Tanam',
-                            'ahsp_code' => '4.2.6.1',
-                            'ahsp_name' => 'Pembersihan (Penyapuan) Area Tanam',
-                            'volume' => 96.00,
-                            'unit' => 'm2',
-                            'unit_price' => 0.00,
-                            'subtotal' => 0.00,
-                            'bobot' => 0.00,
-                            'ahsp_status' => 'mapped_high'
-                        ],
-                        [
-                            'id' => 102,
-                            'no' => 2,
-                            'code' => '1.2',
-                            'name' => 'Pasangan Bouwplank',
-                            'ahsp_code' => '1.1.4.2',
-                            'ahsp_name' => 'Pasangan Bouwplank',
-                            'volume' => 40.00,
-                            'unit' => 'm1',
-                            'unit_price' => 0.00,
-                            'subtotal' => 0.00,
-                            'bobot' => 0.00,
-                            'ahsp_status' => 'mapped_high'
-                        ],
+                        ['id' => 101, 'no' => 1, 'code' => '1.1', 'name' => 'Pembersihan (Penyapuan) Area Tanam', 'ahsp_code' => '4.2.6.1', 'ahsp_name' => 'Pembersihan (Penyapuan) Area Tanam', 'volume' => 96.00, 'unit' => 'm2', 'unit_price' => 0.00, 'subtotal' => 0.00, 'bobot' => 0.00, 'ahsp_status' => 'mapped_high'],
+                        ['id' => 102, 'no' => 2, 'code' => '1.2', 'name' => 'Pasangan Bouwplank', 'ahsp_code' => '1.1.4.2', 'ahsp_name' => 'Pasangan Bouwplank', 'volume' => 40.00, 'unit' => 'm1', 'unit_price' => 0.00, 'subtotal' => 0.00, 'bobot' => 0.00, 'ahsp_status' => 'mapped_high'],
                     ]
                 ],
                 [
-                    'id' => 'sec-2',
-                    'code' => '2',
-                    'name' => 'PEKERJAAN TANAH DAN PONDASI',
-                    'subtotal' => 0.00,
-                    'bobot' => 0.00,
+                    'id' => 'sec-2', 'code' => '2', 'name' => 'PEKERJAAN TANAH DAN PONDASI', 'subtotal' => 0.00, 'bobot' => 0.00,
                     'items' => [
-                        [
-                            'id' => 201,
-                            'no' => 1,
-                            'code' => '2.1',
-                            'name' => 'Penggalian cadas atau tanah keras > 3m tiap tambah dalam 1m secara semi mekanis',
-                            'ahsp_code' => '1.2.4.2.4',
-                            'ahsp_name' => 'Penggalian cadas atau tanah keras > 3m tiap tambah dalam 1m secara semi mekanis',
-                            'volume' => 28.80,
-                            'unit' => 'm3',
-                            'unit_price' => 0.00,
-                            'subtotal' => 0.00,
-                            'bobot' => 0.00,
-                            'ahsp_status' => 'mapped_high'
-                        ],
-                        [
-                            'id' => 202,
-                            'no' => 2,
-                            'code' => '2.2',
-                            'name' => 'Urugan dengan pasir uruk untuk volume s.d 200 m3 tanpa pemadatan secara manual',
-                            'ahsp_code' => '1.3.1.2',
-                            'ahsp_name' => 'Urugan dengan pasir uruk untuk volume s.d 200 m3 tanpa pemadatan secara manual',
-                            'volume' => 1.44,
-                            'unit' => 'm3',
-                            'unit_price' => 0.00,
-                            'subtotal' => 0.00,
-                            'bobot' => 0.00,
-                            'ahsp_status' => 'mapped_high'
-                        ],
-                        [
-                            'id' => 203,
-                            'no' => 3,
-                            'code' => '2.3',
-                            'name' => 'Pengecoran Beton menggunakan Ready Mixed (untuk Bangunan Gedung)',
-                            'ahsp_code' => '2.2.1.6.1',
-                            'ahsp_name' => 'Pengecoran Beton menggunakan Ready Mixed (untuk Bangunan Gedung)',
-                            'volume' => 2.88,
-                            'unit' => 'm3',
-                            'unit_price' => 0.00,
-                            'subtotal' => 0.00,
-                            'bobot' => 0.00,
-                            'ahsp_status' => 'mapped_high'
-                        ],
+                        ['id' => 201, 'no' => 1, 'code' => '2.1', 'name' => 'Penggalian cadas atau tanah keras > 3m tiap tambah dalam 1m secara semi mekanis', 'ahsp_code' => '1.2.4.2.4', 'ahsp_name' => 'Penggalian cadas atau tanah keras > 3m tiap tambah dalam 1m secara semi mekanis', 'volume' => 28.80, 'unit' => 'm3', 'unit_price' => 0.00, 'subtotal' => 0.00, 'bobot' => 0.00, 'ahsp_status' => 'mapped_high'],
+                        ['id' => 202, 'no' => 2, 'code' => '2.2', 'name' => 'Urugan dengan pasir uruk untuk volume s.d 200 m3 tanpa pemadatan secara manual', 'ahsp_code' => '1.3.1.2', 'ahsp_name' => 'Urugan dengan pasir uruk untuk volume s.d 200 m3 tanpa pemadatan secara manual', 'volume' => 1.44, 'unit' => 'm3', 'unit_price' => 0.00, 'subtotal' => 0.00, 'bobot' => 0.00, 'ahsp_status' => 'mapped_high'],
+                        ['id' => 203, 'no' => 3, 'code' => '2.3', 'name' => 'Pengecoran Beton menggunakan Ready Mixed (untuk Bangunan Gedung)', 'ahsp_code' => '2.2.1.6.1', 'ahsp_name' => 'Pengecoran Beton menggunakan Ready Mixed (untuk Bangunan Gedung)', 'volume' => 2.88, 'unit' => 'm3', 'unit_price' => 0.00, 'subtotal' => 0.00, 'bobot' => 0.00, 'ahsp_status' => 'mapped_high'],
                     ]
                 ],
                 [
-                    'id' => 'sec-3',
-                    'code' => '3',
-                    'name' => 'PEKERJAAN MEP & UTILITAS',
-                    'subtotal' => 0.00,
-                    'bobot' => 0.00,
+                    'id' => 'sec-3', 'code' => '3', 'name' => 'PEKERJAAN MEP & UTILITAS', 'subtotal' => 0.00, 'bobot' => 0.00,
                     'items' => [
-                        [
-                            'id' => 301,
-                            'no' => 1,
-                            'code' => '3.1',
-                            'name' => 'Pemasangan Instalasi Stop Kontak',
-                            'ahsp_code' => '5.1.5.13',
-                            'ahsp_name' => 'Pemasangan Instalasi Stop Kontak',
-                            'volume' => 32.00,
-                            'unit' => 'titik',
-                            'unit_price' => 0.00,
-                            'subtotal' => 0.00,
-                            'bobot' => 0.00,
-                            'ahsp_status' => 'mapped_high'
-                        ],
-                        [
-                            'id' => 302,
-                            'no' => 2,
-                            'code' => '3.2',
-                            'name' => 'Pemasangan pipa PVC AW, DN. 1-1/4" (32 mm)',
-                            'ahsp_code' => '6.4.1.4',
-                            'ahsp_name' => 'Pemasangan pipa PVC AW, DN. 1-1/4" (32 mm)',
-                            'volume' => 45.00,
-                            'unit' => 'm',
-                            'unit_price' => 0.00,
-                            'subtotal' => 0.00,
-                            'bobot' => 0.00,
-                            'ahsp_status' => 'mapped_high'
-                        ],
-                        [
-                            'id' => 303,
-                            'no' => 3,
-                            'code' => '3.3',
-                            'name' => 'Pasangan Bouwplank',
-                            'ahsp_code' => '1.1.4.2',
-                            'ahsp_name' => 'Pasangan Bouwplank',
-                            'volume' => 50.00,
-                            'unit' => 'm1',
-                            'unit_price' => 0.00,
-                            'subtotal' => 0.00,
-                            'bobot' => 0.00,
-                            'ahsp_status' => 'mapped_high'
-                        ],
-                        [
-                            'id' => 304,
-                            'no' => 4,
-                            'code' => '3.4',
-                            'name' => 'Pembuatan Sumur Resapan Air Limbah diameter 80 cm, t=100 cm (dengan Tutup Beton)',
-                            'ahsp_code' => '6.2.4.1',
-                            'ahsp_name' => 'Pembuatan Sumur Resapan Air Limbah diameter 80 cm, t=100 cm (dengan Tutup Beton)',
-                            'volume' => 1.00,
-                            'unit' => 'buah',
-                            'unit_price' => 0.00,
-                            'subtotal' => 0.00,
-                            'bobot' => 0.00,
-                            'ahsp_status' => 'mapped_high'
-                        ],
-                        [
-                            'id' => 305,
-                            'no' => 5,
-                            'code' => '3.5',
-                            'name' => 'Pemasangan Base Air Terminal',
-                            'ahsp_code' => '5.2.2',
-                            'ahsp_name' => 'Pemasangan Base Air Terminal',
-                            'volume' => 1.00,
-                            'unit' => 'unit',
-                            'unit_price' => 0.00,
-                            'subtotal' => 0.00,
-                            'bobot' => 0.00,
-                            'ahsp_status' => 'mapped_high'
-                        ],
+                        ['id' => 301, 'no' => 1, 'code' => '3.1', 'name' => 'Pemasangan Instalasi Stop Kontak', 'ahsp_code' => '5.1.5.13', 'ahsp_name' => 'Pemasangan Instalasi Stop Kontak', 'volume' => 32.00, 'unit' => 'titik', 'unit_price' => 0.00, 'subtotal' => 0.00, 'bobot' => 0.00, 'ahsp_status' => 'mapped_high'],
+                        ['id' => 302, 'no' => 2, 'code' => '3.2', 'name' => 'Pemasangan pipa PVC AW, DN. 1-1/4" (32 mm)', 'ahsp_code' => '6.4.1.4', 'ahsp_name' => 'Pemasangan pipa PVC AW, DN. 1-1/4" (32 mm)', 'volume' => 45.00, 'unit' => 'm', 'unit_price' => 0.00, 'subtotal' => 0.00, 'bobot' => 0.00, 'ahsp_status' => 'mapped_high'],
+                        ['id' => 303, 'no' => 3, 'code' => '3.3', 'name' => 'Pasangan Bouwplank', 'ahsp_code' => '1.1.4.2', 'ahsp_name' => 'Pasangan Bouwplank', 'volume' => 50.00, 'unit' => 'm1', 'unit_price' => 0.00, 'subtotal' => 0.00, 'bobot' => 0.00, 'ahsp_status' => 'mapped_high'],
+                        ['id' => 304, 'no' => 4, 'code' => '3.4', 'name' => 'Pembuatan Sumur Resapan Air Limbah diameter 80 cm, t=100 cm (dengan Tutup Beton)', 'ahsp_code' => '6.2.4.1', 'ahsp_name' => 'Pembuatan Sumur Resapan Air Limbah diameter 80 cm, t=100 cm (dengan Tutup Beton)', 'volume' => 1.00, 'unit' => 'buah', 'unit_price' => 0.00, 'subtotal' => 0.00, 'bobot' => 0.00, 'ahsp_status' => 'mapped_high'],
+                        ['id' => 305, 'no' => 5, 'code' => '3.5', 'name' => 'Pemasangan Base Air Terminal', 'ahsp_code' => '5.2.2', 'ahsp_name' => 'Pemasangan Base Air Terminal', 'volume' => 1.00, 'unit' => 'unit', 'unit_price' => 0.00, 'subtotal' => 0.00, 'bobot' => 0.00, 'ahsp_status' => 'mapped_high'],
                     ]
                 ],
             ];
 
-            // Resolve harga_satuan dari master ahsp_items dan hitung subtotal (harga satuan * volume)
+            // Resolusi harga satuan dari ahsp_items untuk mock sections
             foreach ($sections as &$sec) {
                 $secSubtotal = 0;
                 foreach ($sec['items'] as &$it) {
-                    $code = trim($it['ahsp_code'] ?? '');
-                    $ahspRow = null;
-                    if (!empty($code) && $code !== '-') {
-                        $ahspRow = $db->table('ahsp_items')->where('id_pekerjaan', $code)->get()->getRowArray();
-                    }
+                    $code    = trim($it['ahsp_code'] ?? '');
+                    $ahspRow = (!empty($code) && $code !== '-')
+                        ? $db->table('ahsp_items')->where('id_pekerjaan', $code)->get()->getRowArray()
+                        : null;
+
                     if (!$ahspRow && !empty($it['name'])) {
                         $ahspRow = $db->table('ahsp_items')->where('nama_pekerjaan', $it['name'])->get()->getRowArray();
                     }
@@ -1003,14 +509,14 @@ class ProjectWebController extends BaseController
                         $it['unit_price'] = (float) $ahspRow['harga_satuan'];
                     }
                     $it['subtotal'] = (float) $it['volume'] * (float) $it['unit_price'];
-                    $secSubtotal += $it['subtotal'];
+                    $secSubtotal   += $it['subtotal'];
                 }
                 $sec['subtotal'] = $secSubtotal;
             }
             unset($sec, $it);
         }
 
-        // Calculate Grand Total and Weights
+        // Hitung Grand Total dan Bobot persentase tiap item
         $grandTotal = 0;
         $totalItems = 0;
         foreach ($sections as $sec) {
@@ -1023,11 +529,11 @@ class ProjectWebController extends BaseController
         foreach ($sections as $sIdx => &$sec) {
             $secSubtotal = 0;
             foreach ($sec['items'] as $iIdx => &$it) {
-                $itSubtotal = (float) ($it['subtotal'] ?? 0);
+                $itSubtotal   = (float) ($it['subtotal'] ?? 0);
                 $secSubtotal += $itSubtotal;
-                $it['bobot'] = $grandTotal > 0 ? ($itSubtotal / $grandTotal) * 100 : 0.00;
+                $it['bobot']  = $grandTotal > 0 ? ($itSubtotal / $grandTotal) * 100 : 0.00;
 
-                // Auto generate AHSP code if item is unmapped or ahsp_code is empty/dash
+                // Auto generate kode AHSP jika masih kosong atau unmapped
                 $rawCode = trim($it['ahsp_code'] ?? '');
                 $status  = $it['ahsp_status'] ?? '';
                 if (empty($rawCode) || $rawCode === '-' || $status === 'unmapped') {
@@ -1042,27 +548,24 @@ class ProjectWebController extends BaseController
                 }
             }
             $sec['subtotal'] = $secSubtotal;
-            $sec['bobot'] = $grandTotal > 0 ? ($secSubtotal / $grandTotal) * 100 : 0.00;
+            $sec['bobot']    = $grandTotal > 0 ? ($secSubtotal / $grandTotal) * 100 : 0.00;
         }
         unset($sec, $it);
 
-        // Prioritaskan PPN dari data project, default pembuatan project awal adalah 11%
-        $ppnRate = (!empty($project['ppn']) && (float)$project['ppn'] > 0) 
-            ? (float) $project['ppn'] 
-            : 11.00;
-
+        // Pastikan tarif PPN proyek tersimpan (default 11%)
+        $ppnRate = (!empty($project['ppn']) && (float)$project['ppn'] > 0) ? (float) $project['ppn'] : 11.00;
         if (empty($project['ppn']) || (float)$project['ppn'] <= 0) {
             $projectModel->update($project['id'], ['ppn' => 11.00]);
             $project['ppn'] = 11.00;
         }
 
         return view('projects/rab', [
-            'project' => $project,
-            'sections' => $sections,
+            'project'    => $project,
+            'sections'   => $sections,
             'grandTotal' => $grandTotal,
-            'ppnRate' => $ppnRate,
+            'ppnRate'    => $ppnRate,
             'totalItems' => $totalItems,
-            'latestRun' => $latestRun,
+            'latestRun'  => $latestRun,
         ]);
     }
 }

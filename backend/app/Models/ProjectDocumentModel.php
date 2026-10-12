@@ -13,15 +13,10 @@ class ProjectDocumentModel extends Model
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
     protected $allowedFields    = [
-        'id',
-        'project_id',
-        'file_name',
-        'file_path',
-        'file_size',
-        'file_type',
+        'id', 'project_id', 'file_name', 'file_path', 'file_size', 'file_type'
     ];
 
-    // Dates
+    // Konfigurasi waktu
     protected $useTimestamps = true;
     protected $dateFormat    = 'datetime';
     protected $createdField  = 'created_at';

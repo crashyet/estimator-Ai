@@ -3,134 +3,72 @@
 namespace App\Controllers;
 
 use CodeIgniter\RESTful\ResourceController;
+use Config\Services;
 
 class AHSPController extends ResourceController
 {
+    // Ambil base URL service Python dari environment dengan fallback localhost:8200
     protected function getPythonBaseUrl(): string
     {
-        $envUrl = env('PYTHON_API_URL') ?: 'http://localhost:8200';
-        return rtrim($envUrl, '/');
+        return rtrim(env('PYTHON_API_URL') ?: 'http://localhost:8200', '/');
     }
 
-    /**
-     * Proxy GET /api/ahsp/list
-     * Mendukung query parameters: page, limit, search
-     */
+    // Helper proxy terpusat: meneruskan request ke service Python tanpa duplikasi cURL
+    protected function proxyRequest(string $method, string $path, array $options = [], string $errorMsg = '', bool $withQuery = false)
+    {
+        $url = $this->getPythonBaseUrl() . $path;
+        if ($withQuery && ($query = $this->request->getUri()->getQuery())) {
+            $url .= '?' . $query;
+        }
+
+        try {
+            // Eksekusi cURL request
+            $response = Services::curlrequest()->request($method, $url, array_merge(['http_errors' => false], $options));
+
+            // Teruskan response langsung dari service Python
+            return $this->response
+                ->setStatusCode($response->getStatusCode())
+                ->setContentType('application/json')
+                ->setBody($response->getBody());
+        } catch (\Exception $e) {
+            // Tangani error koneksi atau timeout ke service Python
+            return $this->respond([
+                'success' => false,
+                'message' => $errorMsg,
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // GET /api/ahsp/list: Proxy daftar item AHSP (query: page, limit, search)
     public function list()
     {
-        $queryString = $this->request->getUri()->getQuery();
-        $targetUrl = $this->getPythonBaseUrl() . '/api/ahsp/list' . ($queryString ? '?' . $queryString : '');
-
-        $client = \Config\Services::curlrequest();
-
-        try {
-            $response = $client->get($targetUrl, [
-                'http_errors' => false,
-                'timeout'     => 30
-            ]);
-
-            return $this->response
-                ->setStatusCode($response->getStatusCode())
-                ->setContentType('application/json')
-                ->setBody($response->getBody());
-        } catch (\Exception $e) {
-            return $this->respond([
-                'success' => false,
-                'message' => 'Tidak dapat terhubung ke AHSP AI service.',
-                'error'   => $e->getMessage()
-            ], 500);
-        }
+        return $this->proxyRequest('GET', '/api/ahsp/list', ['timeout' => 30], 'Tidak dapat terhubung ke AHSP AI service.', true);
     }
 
-    /**
-     * Proxy GET /api/ahsp/search
-     * Mendukung query parameters: q, limit
-     */
+    // GET /api/ahsp/search: Proxy pencarian semantic AHSP (query: q, limit)
     public function search()
     {
-        $queryString = $this->request->getUri()->getQuery();
-        $targetUrl = $this->getPythonBaseUrl() . '/api/ahsp/search' . ($queryString ? '?' . $queryString : '');
-
-        $client = \Config\Services::curlrequest();
-
-        try {
-            $response = $client->get($targetUrl, [
-                'http_errors' => false,
-                'timeout'     => 30
-            ]);
-
-            return $this->response
-                ->setStatusCode($response->getStatusCode())
-                ->setContentType('application/json')
-                ->setBody($response->getBody());
-        } catch (\Exception $e) {
-            return $this->respond([
-                'success' => false,
-                'message' => 'Gagal melakukan pencarian AHSP.',
-                'error'   => $e->getMessage()
-            ], 500);
-        }
+        return $this->proxyRequest('GET', '/api/ahsp/search', ['timeout' => 30], 'Gagal melakukan pencarian AHSP.', true);
     }
 
-    /**
-     * Proxy POST /api/ahsp/map-item
-     * Request body: JSON {"item_name": "...", "item_unit": "..."}
-     */
+    // POST /api/ahsp/map-item: Proxy pemetaan item pekerjaan ke AHSP (body: item_name, item_unit)
     public function mapItem()
     {
-        $json = $this->request->getJSON(true);
-        $targetUrl = $this->getPythonBaseUrl() . '/api/ahsp/map-item';
-
-        $client = \Config\Services::curlrequest();
-
-        try {
-            $response = $client->post($targetUrl, [
-                'json'        => $json,
-                'headers'     => [
-                    'Content-Type' => 'application/json',
-                    'Accept'       => 'application/json'
-                ],
-                'http_errors' => false,
-                'timeout'     => 30
-            ]);
-
-            return $this->response
-                ->setStatusCode($response->getStatusCode())
-                ->setContentType('application/json')
-                ->setBody($response->getBody());
-        } catch (\Exception $e) {
-            return $this->respond([
-                'success' => false,
-                'message' => 'Gagal memetakan item ke AHSP.',
-                'error'   => $e->getMessage()
-            ], 500);
-        }
+        $options = [
+            'json'    => $this->request->getJSON(true),
+            'headers' => [
+                'Content-Type' => 'application/json',
+                'Accept'       => 'application/json'
+            ],
+            'timeout' => 30
+        ];
+        return $this->proxyRequest('POST', '/api/ahsp/map-item', $options, 'Gagal memetakan item ke AHSP.');
     }
 
-    /**
-     * Proxy GET /api/ahsp/stats
-     */
+    // GET /api/ahsp/stats: Proxy statistik master data AHSP
     public function stats()
     {
-        $targetUrl = $this->getPythonBaseUrl() . '/api/ahsp/stats';
-        $client = \Config\Services::curlrequest();
-
-        try {
-            $response = $client->get($targetUrl, [
-                'http_errors' => false,
-                'timeout'     => 15
-            ]);
-
-            return $this->response
-                ->setStatusCode($response->getStatusCode())
-                ->setContentType('application/json')
-                ->setBody($response->getBody());
-        } catch (\Exception $e) {
-            return $this->respond([
-                'success' => false,
-                'message' => 'Gagal mengambil statistik AHSP.',
-                'error'   => $e->getMessage()
-            ], 500);
-        }
+        return $this->proxyRequest('GET', '/api/ahsp/stats', ['timeout' => 15], 'Gagal mengambil statistik AHSP.');
     }
 }

@@ -4,7 +4,17 @@
 
 <?= $this->section('styles') ?>
 <style>
-  /* Hero Banner */
+  :root {
+    --btn-submit-green: #2e7d32;
+    --btn-submit-hover: #1b5e20;
+    --btn-cancel-yellow: #fbc02d;
+    --btn-cancel-hover: #f57f17;
+    --btn-doc-green: #7cb342;
+    --btn-doc-hover: #689f38;
+    --card-border: #e2e8f0;
+  }
+
+  /* Hero banner atas */
   .hero-banner {
     background-color: var(--brand-banner-bg);
     position: relative;
@@ -15,7 +25,6 @@
     overflow: hidden;
     box-shadow: inset 0 -2px 6px rgba(0, 0, 0, 0.05);
   }
-
   .hero-banner-bg {
     position: absolute;
     inset: 0;
@@ -25,7 +34,6 @@
     pointer-events: none;
     z-index: 1;
   }
-
   .hero-banner-title {
     color: #ffffff;
     font-weight: 800;
@@ -38,7 +46,7 @@
     position: relative;
   }
 
-  /* Red Action Button */
+  /* Tombol aksi merah: Buat Proyek */
   .btn-create-project {
     background-color: var(--brand-red);
     color: #ffffff;
@@ -55,7 +63,6 @@
     transition: all 0.2s ease;
     text-decoration: none;
   }
-
   .btn-create-project:hover {
     background-color: var(--brand-red-hover);
     color: #ffffff;
@@ -63,7 +70,7 @@
     box-shadow: 0 4px 10px rgba(235, 51, 36, 0.35);
   }
 
-  /* Filter Card */
+  /* Kartu filter data */
   .filter-card {
     background-color: #ffffff;
     border: 1px solid #e2e8f0;
@@ -72,7 +79,6 @@
     margin-bottom: 28px;
     overflow: hidden;
   }
-
   .filter-card-header {
     background-color: var(--brand-green);
     color: #ffffff;
@@ -84,12 +90,10 @@
     gap: 8px;
     user-select: none;
   }
-
   .filter-card-body {
     padding: 18px 20px;
     background-color: #ffffff;
   }
-
   .filter-label {
     font-size: 12px;
     color: #64748b;
@@ -97,7 +101,6 @@
     margin-bottom: 5px;
     display: block;
   }
-
   .filter-control {
     font-size: 12.5px;
     border: 1px solid #cbd5e1;
@@ -106,14 +109,13 @@
     color: #334155;
     transition: border-color 0.15s ease-in-out;
   }
-
   .filter-control:focus {
     border-color: var(--brand-green);
     outline: none;
     box-shadow: 0 0 0 2px rgba(15, 168, 60, 0.15);
   }
 
-  /* Project Cards */
+  /* Grid kartu proyek */
   .project-card {
     background-color: #ffffff;
     border: 1px solid #e2e8f0;
@@ -125,12 +127,10 @@
     height: 100%;
     overflow: hidden;
   }
-
   .project-card:hover {
     transform: translateY(-3px);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.09);
   }
-
   .project-card-image {
     width: 100%;
     height: 195px;
@@ -145,7 +145,6 @@
     position: relative;
     overflow: hidden;
   }
-
   .project-card-image img {
     width: 100%;
     height: 100%;
@@ -153,11 +152,9 @@
     object-position: center 75%;
     transition: transform 0.3s ease;
   }
-
   .project-card:hover .project-card-image img {
     transform: scale(1.04);
   }
-
   .project-card-title {
     font-size: 15px;
     font-weight: 700;
@@ -172,17 +169,14 @@
     cursor: pointer;
     transition: color 0.15s ease;
   }
-
   .project-card-title:hover {
     color: var(--brand-green-dark);
   }
-
   .project-metadata {
     padding: 0 16px;
     display: flex;
     flex-direction: column;
   }
-
   .metadata-row {
     display: flex;
     align-items: center;
@@ -192,7 +186,6 @@
     font-size: 13px;
     color: #64748b;
   }
-
   .metadata-icon-box {
     width: 26px;
     height: 26px;
@@ -204,7 +197,6 @@
     color: #64748b;
     font-size: 13px;
   }
-
   .metadata-text {
     white-space: nowrap;
     overflow: hidden;
@@ -212,7 +204,7 @@
     color: #64748b;
   }
 
-  /* Action Buttons Row */
+  /* Deretan tombol aksi melingkar hijau */
   .project-actions {
     padding: 20px 10px 18px;
     display: flex;
@@ -221,7 +213,6 @@
     gap: 8px;
     margin-top: auto;
   }
-
   .btn-circle-action {
     width: 36px;
     height: 36px;
@@ -237,19 +228,16 @@
     cursor: pointer;
     padding: 0;
   }
-
   .btn-circle-action:hover {
     background-color: var(--brand-green-hover);
     color: #ffffff;
     transform: scale(1.08);
     box-shadow: 0 3px 8px rgba(8, 150, 19, 0.3);
   }
-
   .btn-circle-action.btn-delete:hover {
     background-color: #dc3545;
     box-shadow: 0 3px 8px rgba(220, 53, 69, 0.35);
   }
-
   .btn-circle-action.is-locked {
     background-color: #64748b;
   }
@@ -257,17 +245,16 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<!-- 1. HERO BANNER: DAFTAR PROYEK ANDA -->
+<!-- Hero banner atas -->
 <section class="hero-banner">
-  <img src="<?= base_url('assets/img/proyek-bg13.png') ?>" alt="Daftar Proyek Anda" class="hero-banner-bg"
-    onerror="this.style.display='none'">
+  <img src="<?= base_url('assets/img/proyek-bg13.png') ?>" alt="Daftar Proyek Anda" class="hero-banner-bg" onerror="this.style.display='none'">
   <h1 class="hero-banner-title">DAFTAR PROYEK ANDA</h1>
 </section>
 
-<!-- 2. MAIN CONTENT CONTAINER -->
+<!-- Konten utama daftar proyek -->
 <main class="container-xl py-4 px-3 px-md-4 flex-grow-1">
 
-  <!-- Red Action Button: + BUAT PROYEK BARU -->
+  <!-- Tombol Buat Proyek Baru -->
   <div class="mb-4 d-flex align-items-center justify-content-start">
     <a href="<?= base_url('buat_proyek') ?>" class="btn-create-project">
       <i class="bi bi-plus-circle-fill fs-6"></i>
@@ -275,7 +262,7 @@
     </a>
   </div>
 
-  <!-- Filter Card: Tampilkan Berdasarkan -->
+  <!-- Kartu filter pencarian proyek -->
   <div class="filter-card">
     <div class="filter-card-header">
       <i class="bi bi-caret-down-fill" style="font-size: 10px;"></i>
@@ -283,14 +270,10 @@
     </div>
     <div class="filter-card-body">
       <div class="row g-3">
-        <!-- Field 1: Nama Proyek -->
         <div class="col-md-4">
           <label class="filter-label" for="filterName">Nama Proyek</label>
-          <input type="text" id="filterName" class="form-control filter-control" placeholder="Ketik Nama Proyek"
-            autocomplete="off">
+          <input type="text" id="filterName" class="form-control filter-control" placeholder="Ketik Nama Proyek" autocomplete="off">
         </div>
-
-        <!-- Field 2: Lokasi Proyek -->
         <div class="col-md-4">
           <label class="filter-label" for="filterLocation">Lokasi Proyek</label>
           <select id="filterLocation" class="form-select filter-control">
@@ -300,32 +283,26 @@
             <?php endforeach; ?>
           </select>
         </div>
-
-        <!-- Field 3: Tahun -->
         <div class="col-md-4">
           <label class="filter-label" for="filterYear">Tahun</label>
-          <input type="text" id="filterYear" class="form-control filter-control" placeholder="Ketik Tahun"
-            autocomplete="off">
+          <input type="text" id="filterYear" class="form-control filter-control" placeholder="Ketik Tahun" autocomplete="off">
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Active Filter Counter & Reset Bar (Hidden by default) -->
-  <div id="filterStatusAlert"
-    class="d-none alert alert-light border py-2 px-3 mb-4 d-flex align-items-center justify-content-between rounded-1">
+  <!-- Informasi filter aktif & reset -->
+  <div id="filterStatusAlert" class="d-none alert alert-light border py-2 px-3 mb-4 d-flex align-items-center justify-content-between rounded-1">
     <div class="small text-muted">
       <i class="bi bi-filter me-1 text-success"></i>
-      Menampilkan <strong id="visibleCount" class="text-dark">0</strong> dari total <strong
-        id="totalCount"><?= count($projects) ?></strong> proyek
+      Menampilkan <strong id="visibleCount" class="text-dark">0</strong> dari total <strong id="totalCount"><?= count($projects) ?></strong> proyek
     </div>
-    <button type="button" class="btn btn-sm btn-link text-success text-decoration-none fw-semibold p-0"
-      onclick="resetFilter()">
+    <button type="button" class="btn btn-sm btn-link text-success text-decoration-none fw-semibold p-0" onclick="resetFilter()">
       <i class="bi bi-arrow-counterclockwise me-1"></i>Reset Filter
     </button>
   </div>
 
-  <!-- 3. PROJECT CARDS GRID -->
+  <!-- Grid kartu proyek -->
   <div id="projectsGrid" class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4 pb-5">
     <?php if (!empty($projects)): ?>
       <?php foreach ($projects as $p): ?>
@@ -336,73 +313,47 @@
           data-summary="<?= esc($p['summary']) ?>" data-status="<?= esc($p['status']) ?>">
 
           <div class="project-card">
-            <!-- Card Image Header -->
-            <div class="project-card-image" title="Klik untuk melihat estimasi"
-              onclick="viewProjectDetail(<?= $p['id'] ?>)">
-              <img src="<?= esc($p['image']) ?>" alt="<?= esc($p['title']) ?>"
-                onerror="this.src='<?= base_url('assets/foto/proyek/no-foto.jpg') ?>'">
+            <!-- Gambar sampul proyek -->
+            <div class="project-card-image" title="Klik untuk melihat estimasi" onclick="viewProjectDetail(<?= $p['id'] ?>)">
+              <img src="<?= esc($p['image']) ?>" alt="<?= esc($p['title']) ?>" onerror="this.src='<?= base_url('assets/foto/proyek/no-foto.jpg') ?>'">
             </div>
 
-            <!-- Project Title -->
+            <!-- Judul proyek -->
             <h3 class="project-card-title" title="<?= esc($p['title']) ?>" onclick="viewProjectDetail(<?= $p['id'] ?>)">
               <?= esc($p['title']) ?>
             </h3>
 
-            <!-- 3 Metadata Rows with Gray Square Icon Containers & Dashed Borders -->
+            <!-- Informasi metadata (klien, lokasi, tanggal) -->
             <div class="project-metadata">
-              <!-- Row 1: Client -->
               <div class="metadata-row">
-                <div class="metadata-icon-box">
-                  <i class="bi bi-person-fill"></i>
-                </div>
+                <div class="metadata-icon-box"><i class="bi bi-person-fill"></i></div>
                 <span class="metadata-text card-client-val"><?= esc($p['client']) ?></span>
               </div>
-
-              <!-- Row 2: Location -->
               <div class="metadata-row">
-                <div class="metadata-icon-box">
-                  <i class="bi bi-geo-alt-fill"></i>
-                </div>
+                <div class="metadata-icon-box"><i class="bi bi-geo-alt-fill"></i></div>
                 <span class="metadata-text card-location-val"><?= esc($p['location']) ?></span>
               </div>
-
-              <!-- Row 3: Date -->
               <div class="metadata-row">
-                <div class="metadata-icon-box">
-                  <i class="bi bi-calendar3"></i>
-                </div>
+                <div class="metadata-icon-box"><i class="bi bi-calendar3"></i></div>
                 <span class="metadata-text card-date-val"><?= esc($p['date']) ?></span>
               </div>
             </div>
 
-            <!-- Action Buttons Row: 5 Round Green Circular Buttons -->
+            <!-- Tombol aksi kartu proyek -->
             <div class="project-actions">
-              <!-- 1. Edit (Pencil) -->
               <button type="button" class="btn-circle-action" title="Edit Proyek" onclick="openEditModal(<?= $p['id'] ?>)">
                 <i class="bi bi-pencil-fill" style="font-size: 13px;"></i>
               </button>
-
-              <!-- 2. Team / Info (Users) -->
-              <button type="button" class="btn-circle-action" title="Tim Proyek & Detail"
-                onclick="openTeamModal(<?= $p['id'] ?>)">
+              <button type="button" class="btn-circle-action" title="Tim Proyek & Detail" onclick="openTeamModal(<?= $p['id'] ?>)">
                 <i class="bi bi-people-fill" style="font-size: 14px;"></i>
               </button>
-
-              <!-- 3. Duplicate (Copy) -->
-              <button type="button" class="btn-circle-action" title="Duplikat Proyek"
-                onclick="duplicateProject(<?= $p['id'] ?>)">
+              <button type="button" class="btn-circle-action" title="Duplikat Proyek" onclick="duplicateProject(<?= $p['id'] ?>)">
                 <i class="bi bi-copy" style="font-size: 13px;"></i>
               </button>
-
-              <!-- 4. Delete (Trash) -->
-              <button type="button" class="btn-circle-action btn-delete" title="Hapus Proyek"
-                onclick="confirmDeleteProject(<?= $p['id'] ?>)">
+              <button type="button" class="btn-circle-action btn-delete" title="Hapus Proyek" onclick="confirmDeleteProject(<?= $p['id'] ?>)">
                 <i class="bi bi-trash3-fill" style="font-size: 13px;"></i>
               </button>
-
-              <!-- 5. Lock / Unlock -->
-              <button type="button" class="btn-circle-action btn-lock" title="Kunci / Buka Akses Proyek"
-                onclick="toggleLockProject(this, <?= $p['id'] ?>)">
+              <button type="button" class="btn-circle-action btn-lock" title="Kunci / Buka Akses Proyek" onclick="toggleLockProject(this, <?= $p['id'] ?>)">
                 <i class="bi bi-unlock-fill" style="font-size: 13px;"></i>
               </button>
             </div>
@@ -412,10 +363,9 @@
     <?php endif; ?>
   </div>
 
-  <!-- Empty State / No Match Alert -->
+  <!-- Tampilan jika tidak ada hasil pencarian -->
   <div id="noResultsState" class="d-none text-center py-5">
-    <div
-      class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center p-3 text-secondary mb-3">
+    <div class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center p-3 text-secondary mb-3">
       <i class="bi bi-search fs-3"></i>
     </div>
     <h5 class="fw-bold text-secondary">Tidak ada proyek yang sesuai dengan filter</h5>
@@ -427,9 +377,7 @@
 
 </main>
 
-<!-- ==================== MODALS ==================== -->
-
-<!-- Modal 1: Edit Proyek -->
+<!-- Modal 1: Edit Data Proyek -->
 <div class="modal fade" id="editProjectModal" tabindex="-1" aria-labelledby="editProjectModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content border-0 shadow-lg">
@@ -443,21 +391,17 @@
         <input type="hidden" id="editProjectId">
         <div class="modal-body p-4">
           <div class="mb-3">
-            <label class="form-label small fw-semibold text-secondary">Nama Proyek <span
-                class="text-danger">*</span></label>
+            <label class="form-label small fw-semibold text-secondary">Nama Proyek <span class="text-danger">*</span></label>
             <input type="text" id="editTitle" class="form-control" required autocomplete="off">
           </div>
-
           <div class="mb-3">
             <label class="form-label small fw-semibold text-secondary">Klien / Pemilik Proyek</label>
             <input type="text" id="editClient" class="form-control" autocomplete="off">
           </div>
-
           <div class="mb-3">
             <label class="form-label small fw-semibold text-secondary">Lokasi Proyek</label>
             <input type="text" id="editLocation" class="form-control" autocomplete="off">
           </div>
-
           <div class="row g-3 mb-3">
             <div class="col-6">
               <label class="form-label small fw-semibold text-secondary">Jasa Kontraktor (%)</label>
@@ -468,7 +412,6 @@
               <input type="number" step="0.1" id="editPpn" class="form-control">
             </div>
           </div>
-
           <div class="mb-2">
             <label class="form-label small fw-semibold text-secondary">Keterangan / Ringkasan</label>
             <textarea id="editSummary" class="form-control" rows="3"></textarea>
@@ -476,8 +419,7 @@
         </div>
         <div class="modal-footer bg-light py-2 border-top">
           <button type="button" class="btn btn-sm btn-light border px-3" data-bs-dismiss="modal">Batal</button>
-          <button type="submit" id="btnSubmitEdit" class="btn btn-sm btn-success px-4 fw-semibold"
-            style="background-color: var(--brand-green); border-color: var(--brand-green);">
+          <button type="submit" id="btnSubmitEdit" class="btn btn-sm btn-success px-4 fw-semibold" style="background-color: var(--brand-green); border-color: var(--brand-green);">
             <i class="bi bi-save me-1"></i> Perbarui
           </button>
         </div>
@@ -491,13 +433,11 @@
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content border-0 shadow-lg text-center p-3">
       <div class="modal-body">
-        <div
-          class="rounded-circle bg-danger bg-opacity-10 text-danger d-inline-flex align-items-center justify-content-center p-3 mb-3">
+        <div class="rounded-circle bg-danger bg-opacity-10 text-danger d-inline-flex align-items-center justify-content-center p-3 mb-3">
           <i class="bi bi-exclamation-triangle fs-2"></i>
         </div>
         <h6 class="fw-bold text-dark mb-1">Hapus Proyek?</h6>
-        <p class="small text-muted mb-3" id="deleteProjectTitle">Apakah Anda yakin ingin menghapus proyek ini beserta
-          seluruh riwayat estimasinya?</p>
+        <p class="small text-muted mb-3" id="deleteProjectTitle">Apakah Anda yakin ingin menghapus proyek ini beserta seluruh riwayat estimasinya?</p>
         <div class="d-flex gap-2 justify-content-center">
           <button type="button" class="btn btn-sm btn-light border px-3" data-bs-dismiss="modal">Batal</button>
           <button type="button" id="btnConfirmDelete" class="btn btn-sm btn-danger px-3 fw-semibold">
@@ -522,30 +462,25 @@
       <div class="modal-body p-4">
         <h6 class="fw-bold text-success mb-1" id="teamModalTitle">Nama Proyek</h6>
         <p class="small text-muted mb-3" id="teamModalMeta">Lokasi &bull; Klien</p>
-
         <div class="p-3 bg-light rounded-2 border mb-3">
           <div class="small fw-bold text-dark mb-2">Anggota Tim Estimator:</div>
           <div class="d-flex align-items-center gap-2 mb-2">
-            <div class="rounded-circle bg-success text-white small d-flex align-items-center justify-content-center"
-              style="width: 28px; height: 28px;">AD</div>
+            <div class="rounded-circle bg-success text-white small d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">AD</div>
             <div>
               <div class="small fw-semibold text-dark">Adhitya (Lead QS / Estimator)</div>
               <div class="text-muted" style="font-size: 11px;">Estimator Utama &bull; PIC</div>
             </div>
           </div>
           <div class="d-flex align-items-center gap-2">
-            <div class="rounded-circle bg-secondary text-white small d-flex align-items-center justify-content-center"
-              style="width: 28px; height: 28px;">AI</div>
+            <div class="rounded-circle bg-secondary text-white small d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">AI</div>
             <div>
               <div class="small fw-semibold text-dark">Gemini 2.5 Pro Estimator Bot</div>
               <div class="text-muted" style="font-size: 11px;">Automated WBS & AHSP Mapping AI</div>
             </div>
           </div>
         </div>
-
         <div class="small text-muted">
-          <i class="bi bi-shield-check text-success me-1"></i> Semua data estimasi, WBS, dan AHSP tersinkronisasi
-          otomatis dengan server backend.
+          <i class="bi bi-shield-check text-success me-1"></i> Semua data estimasi, WBS, dan AHSP tersinkronisasi otomatis dengan server backend.
         </div>
       </div>
       <div class="modal-footer bg-light py-2 border-top">
@@ -558,7 +493,7 @@
 
 <?= $this->section('scripts') ?>
 <script>
-  // Interactive Real-time Filters
+  // Filter interaktif realtime kartu proyek
   const filterNameInput = document.getElementById('filterName');
   const filterLocationSelect = document.getElementById('filterLocation');
   const filterYearInput = document.getElementById('filterYear');
@@ -620,7 +555,7 @@
     showToast('Filter Direset', 'Menampilkan seluruh daftar proyek.', 'info');
   }
 
-  // View project detail
+  // Buka detail proyek berdasarkan tahap estimasi / RAB
   function viewProjectDetail(id) {
     const card = document.querySelector(`.project-col[data-id="${id}"]`);
     const title = card ? card.dataset.title : 'Proyek';
@@ -636,14 +571,13 @@
     }, 450);
   }
 
-  // Modals
+  // Inisialisasi modal bootstrap
   const editModal = new bootstrap.Modal(document.getElementById('editProjectModal'));
   const deleteModal = new bootstrap.Modal(document.getElementById('deleteProjectModal'));
   const teamModalInstance = new bootstrap.Modal(document.getElementById('teamModal'));
-
   let deletingProjectId = null;
 
-  // 1. Open Edit Modal
+  // 1. Tampilkan modal edit proyek
   function openEditModal(id) {
     const card = document.querySelector(`.project-col[data-id="${id}"]`);
     if (!card) return;
@@ -659,7 +593,7 @@
     editModal.show();
   }
 
-  // Save Edit (AJAX to /api/projects/:id)
+  // Simpan perubahan data proyek via AJAX PUT /api/projects/:id
   async function handleSaveEdit(e) {
     e.preventDefault();
     const id = document.getElementById('editProjectId').value;
@@ -712,7 +646,7 @@
     }
   }
 
-  // 2. Team Modal
+  // 2. Tampilkan modal tim proyek
   function openTeamModal(id) {
     const card = document.querySelector(`.project-col[data-id="${id}"]`);
     if (!card) return;
@@ -723,7 +657,7 @@
     showToast('Tim Proyek', `Membuka informasi tim untuk "${card.dataset.title}".`, 'info');
   }
 
-  // 3. Duplicate Project
+  // 3. Duplikat proyek via AJAX POST /api/projects
   async function duplicateProject(id) {
     const card = document.querySelector(`.project-col[data-id="${id}"]`);
     if (!card) return;
@@ -759,7 +693,7 @@
     }
   }
 
-  // 4. Delete Project
+  // 4. Konfirmasi dan eksekusi hapus proyek via AJAX DELETE /api/projects/:id
   function confirmDeleteProject(id) {
     const card = document.querySelector(`.project-col[data-id="${id}"]`);
     if (!card) return;
@@ -803,7 +737,7 @@
     }
   });
 
-  // 5. Toggle Lock
+  // 5. Toggle status kunci proyek (visual protect)
   function toggleLockProject(btn, id) {
     const icon = btn.querySelector('i');
     const isLocked = icon.classList.contains('bi-lock-fill');

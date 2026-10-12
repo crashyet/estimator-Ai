@@ -12,21 +12,15 @@ class ProjectPromptModel extends Model
     protected $returnType       = 'array';
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
-    protected $allowedFields    = [
-        'id',
-        'run_id',
-        'prompt_text',
-    ];
+    protected $allowedFields    = ['id', 'run_id', 'prompt_text'];
 
-    // Dates
+    // Konfigurasi waktu
     protected $useTimestamps = true;
     protected $dateFormat    = 'datetime';
     protected $createdField  = 'created_at';
     protected $updatedField  = 'updated_at';
 
-    /**
-     * Fetch prompt by run ID
-     */
+    // Ambil data prompt berdasarkan run ID
     public function getByRunId($runId)
     {
         return $this->where('run_id', $runId)->first();

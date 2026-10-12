@@ -13,30 +13,15 @@ class EstimationItemModel extends Model
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
     protected $allowedFields    = [
-        'id',
-        'uuid',
-        'section_id',
-        'item_uid',
-        'item_no',
-        'item_code',
-        'item_name',
-        'volume',
-        'unit',
-        'confidence',
-        'warning_note',
-        'ahsp_code',
-        'ahsp_name',
-        'ahsp_unit',
-        'ahsp_score',
-        'ahsp_status',
-        'unit_price',
-        'pipeline_debug_log',
+        'id', 'uuid', 'section_id', 'item_uid', 'item_no', 'item_code', 'item_name',
+        'volume', 'unit', 'confidence', 'warning_note', 'ahsp_code', 'ahsp_name',
+        'ahsp_unit', 'ahsp_score', 'ahsp_status', 'unit_price', 'pipeline_debug_log'
     ];
 
     protected $useTimestamps = false;
+    protected $beforeInsert  = ['generateUuid'];
 
-    protected $beforeInsert = ['generateUuid'];
-
+    // Hook otomatis isi UUID v4 sebelum insert jika belum tersedia
     protected function generateUuid(array $data)
     {
         if (empty($data['data']['uuid'])) {
@@ -45,11 +30,9 @@ class EstimationItemModel extends Model
         return $data;
     }
 
+    // Cari item estimasi berdasarkan ID numerik atau UUID
     public function findByIdOrUuid($idOrUuid)
     {
-        if (is_numeric($idOrUuid)) {
-            return $this->find($idOrUuid);
-        }
-        return $this->where('uuid', $idOrUuid)->first();
+        return is_numeric($idOrUuid) ? $this->find($idOrUuid) : $this->where('uuid', $idOrUuid)->first();
     }
 }
